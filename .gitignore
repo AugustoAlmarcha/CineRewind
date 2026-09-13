@@ -1,9 +1,0 @@
-# Dependencias descargadas
-node_modules/
-
-# Archivos con contraseñas y claves privadas
-.env
-server/.env
-
-# Logs del sistema
-npm-debug.log*
