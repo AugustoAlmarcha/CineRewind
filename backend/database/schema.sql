@@ -30,6 +30,15 @@ CREATE TABLE IF NOT EXISTS historial_visualizaciones (
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 4. Tabla de Estado de Seguimiento de Series (Viendo Actualmente)
+CREATE TABLE IF NOT EXISTS seguimiento_series (
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    obra_id INTEGER NOT NULL REFERENCES obras_catalogo(id) ON DELETE CASCADE,
+    activo BOOLEAN DEFAULT true,
+    actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (usuario_id, obra_id)
+);
+
 -- Índices de consulta rápida
 CREATE INDEX IF NOT EXISTS idx_historial_usuario_fecha 
 ON historial_visualizaciones (usuario_id, fecha_visto DESC);

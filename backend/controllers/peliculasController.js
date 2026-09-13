@@ -8,7 +8,7 @@ const buscarPeliculas = async (req, res) => {
   }
 
   try {
-    const url = `https://api.themoviedb.org/3/search/multi?api_key=${process.env.TMDB_API_KEY}&language=es-ES&query=${encodeURIComponent(query)}&page=1&include_adult=false`;
+    const url = `https://api.themoviedb.org/3/search/multi?api_key=${process.env.TMDB_API_KEY}&language=es-MX&query=${encodeURIComponent(query)}&page=1&include_adult=false`;
 
     const respuesta = await fetch(url);
     const data = await respuesta.json();
@@ -38,7 +38,7 @@ const obtenerDetallePelicula = async (req, res) => {
   const endpointTipo = tipo.toLowerCase() === 'serie' || tipo.toLowerCase() === 'tv' ? 'tv' : 'movie';
 
   try {
-    const url = `https://api.themoviedb.org/3/${endpointTipo}/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}&language=es-ES`;
+    const url = `https://api.themoviedb.org/3/${endpointTipo}/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
 
     const respuesta = await fetch(url);
     if (!respuesta.ok) {
@@ -69,7 +69,44 @@ const obtenerDetallePelicula = async (req, res) => {
   }
 };
 
+// Obtener episodios de una temporada con sus fotos horizontales
+const obtenerDetalleTemporada = async (req, res) => {
+  const { tmdb_id, season_number } = req.params;
+
+  try {
+    const url = `https://api.themoviedb.org/3/tv/${tmdb_id}/season/${season_number}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
+    const respuesta = await fetch(url);
+
+    if (!respuesta.ok) {
+      return res.status(respuesta.status).json({ error: 'Temporada no encontrada en TMDb' });
+    }
+
+    const data = await respuesta.json();
+
+    const episodios = (data.episodes || []).map((ep) => ({
+      episodio_numero: ep.episode_number,
+      nombre: ep.name,
+      sinopsis: ep.overview,
+      still_path: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : null,
+      duracion: ep.runtime,
+    }));
+
+    res.json({
+      temporada_numero: data.season_number,
+      nombre: data.name,
+      poster_temporada: data.poster_path 
+        ? `https://image.tmdb.org/t/p/w500${data.poster_path}` 
+        : null,
+      episodios,
+    });
+  } catch (error) {
+    console.error('Error al obtener episodios:', error.message);
+    res.status(500).json({ error: 'Error al consultar episodios en TMDb' });
+  }
+};
+
 module.exports = {
   buscarPeliculas,
   obtenerDetallePelicula,
+  obtenerDetalleTemporada,
 };
