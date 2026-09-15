@@ -79,3 +79,48 @@ export const obtenerEpisodiosVistosAPI = async (usuarioId, tmdbId, temporada) =>
   if (!res.ok) throw new Error('Error al cargar capítulos vistos');
   return res.json();
 };
+
+export const obtenerDetalleEpisodioAPI = async (tmdbId, temp, ep) => {
+  const res = await fetch(`/api/peliculas/serie/${tmdbId}/temporada/${temp}/episodio/${ep}`);
+  if (!res.ok) throw new Error('Error al cargar detalle del capítulo');
+  return res.json();
+};
+
+export const guardarReseniaAPI = async (id, datos) => {
+  if (!id) throw new Error('ID de visualización no válido');
+  const res = await fetch(`/api/historial/${id}/resenia`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(datos),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al guardar la reseña');
+  }
+  return res.json();
+};
+
+export const eliminarLoteAPI = async (ids) => {
+  const res = await fetch('/api/historial/lote/eliminar', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error('Error al eliminar los registros seleccionados');
+  return res.json();
+};
+export const formatearImagenTMDb = (ruta, tamano = 'w500') => {
+  if (!ruta) return null;
+  if (ruta.startsWith('http')) return ruta;
+  return `https://image.tmdb.org/t/p/${tamano}${ruta.startsWith('/') ? ruta : `/${ruta}`}`;
+};
+
+// GET: Detalle de película o serie desde TMDb (temporadas, géneros, actores)
+export const obtenerDetallePeliculaAPI = async (tipo, tmdb_id) => {
+  const res = await fetch(`/api/peliculas/detalle/${tipo}/${tmdb_id}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al obtener detalles de la obra');
+  }
+  return await res.json();
+};

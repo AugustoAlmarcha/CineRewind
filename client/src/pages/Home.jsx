@@ -1,32 +1,92 @@
-import React, { useEffect, useState } from 'react';
-import ViendoCard from '../components/ViendoCard';
+import React, { useEffect, useState, useMemo } from 'react';
+import CarruselViendo from '../components/home/CarruselViendo';
+import HeaderHistorial from '../components/home/HeaderHistorial';
+import GrillaHistorial from '../components/home/GrillaHistorial';
+import BarraAccionLote from '../components/home/BarraAccionLote';
+import ModalRegistrar from '../components/ModalRegistrar';
+import ModalConfirmar from '../components/ModalConfirmar';
+import ModalDetalleTimeline from '../components/ModalDetalleTimeline';
+import ModalDetalleEpisodioViendo from '../components/ModalDetalleEpisodioViendo';
+import ModalResumenTemporada from '../components/ModalResumenTemporada';
+
 import { 
   obtenerViendoActualmenteAPI, 
   avanzarCapituloAPI, 
   obtenerTimelineAPI, 
   eliminarVisualizacionAPI, 
-  descartarViendoAPI
+  eliminarLoteAPI,
+  descartarViendoAPI 
 } from '../api';
 
 export default function Home() {
   const [seriesActivas, setSeriesActivas] = useState([]);
   const [timeline, setTimeline] = useState([]);
-  const [filtro, setFiltro] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState('');
+
+  // Modos de visualización avanzados
+  const [modoVistaGeneral, setModoVistaGeneral] = useState('timeline'); // 'timeline' | 'series_global'
+  const [verTodoElAnio, setVerTodoElAnio] = useState(false);
+  const [vistaAgrupada, setVistaAgrupada] = useState(false);
+
+  // Navegación temporal
+  const [anioSeleccionado, setAnioSeleccionado] = useState(null);
+  const [mesSeleccionado, setMesSeleccionado] = useState(null);
+
+  // Estados de modales
+  const [serieParaEditar, setSerieParaEditar] = useState(null);
+  const [itemDetalle, setItemDetalle] = useState(null);
+  const [serieParaDetalleXRay, setSerieParaDetalleXRay] = useState(null);
+  const [temporadaParaResumen, setTemporadaParaResumen] = useState(null);
+
+  // Selección múltiple y borrado en lote
+  const [modoSeleccion, setModoSeleccion] = useState(false);
+  const [seleccionadosParaBorrar, setSeleccionadosParaBorrar] = useState([]);
+
+  // Diálogo de confirmación
+  const [dialogoConfirmar, setDialogoConfirmar] = useState({
+    abierto: false,
+    titulo: '',
+    mensaje: '',
+    onConfirm: null,
+  });
 
   const cargarDatos = async () => {
     try {
-      const series = await obtenerViendoActualmenteAPI(1);
+      const [series, historial] = await Promise.all([
+        obtenerViendoActualmenteAPI(1),
+        obtenerTimelineAPI(1, filtroTipo)
+      ]);
       setSeriesActivas(series);
-      const historial = await obtenerTimelineAPI(1, filtro);
       setTimeline(historial);
     } catch (err) {
-      console.error('Error al cargar datos del dashboard:', err);
+      console.error('Error al cargar datos:', err);
     }
   };
 
   useEffect(() => {
     cargarDatos();
-  }, [filtro]);
+  }, [filtroTipo]);
+
+  const arbolHistorial = useMemo(() => {
+    const mapa = {};
+    timeline.forEach((item) => {
+      const f = new Date(item.fecha_visto);
+      const anio = f.getFullYear();
+      const mes = f.getMonth();
+      if (!mapa[anio]) mapa[anio] = {};
+      if (!mapa[anio][mes]) mapa[anio][mes] = [];
+      mapa[anio][mes].push(item);
+    });
+    return mapa;
+  }, [timeline]);
+
+  const listaAnios = Object.keys(arbolHistorial).sort((a, b) => b - a);
+
+  const toggleSeleccionItem = (id) => {
+    setSeleccionadosParaBorrar((prev) => 
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
 
   const handleAvanzar = async (serie) => {
     try {
@@ -43,125 +103,155 @@ export default function Home() {
     }
   };
 
-  const handleEliminar = async (id) => {
-    const confirmar = window.confirm('¿Deseas eliminar este registro de tu historial?');
-    if (!confirmar) return;
-
-    try {
-      await eliminarVisualizacionAPI(id);
-      cargarDatos();
-    } catch (err) {
-      console.error('Error al eliminar registro:', err);
-    }
+  const solicitarEliminarLote = () => {
+    if (seleccionadosParaBorrar.length === 0) return;
+    setDialogoConfirmar({
+      abierto: true,
+      titulo: `¿Eliminar ${seleccionadosParaBorrar.length} registros?`,
+      mensaje: 'Los registros seleccionados se quitarán permanentemente de tu cuenta.',
+      onConfirm: async () => {
+        try {
+          await eliminarLoteAPI(seleccionadosParaBorrar);
+          setSeleccionadosParaBorrar([]);
+          setModoSeleccion(false);
+          cargarDatos();
+        } finally {
+          setDialogoConfirmar((prev) => ({ ...prev, abierto: false }));
+        }
+      },
+    });
   };
 
-  const handleDescartar = async (obraId) => {
-  const confirmar = window.confirm('¿Quieres quitar esta serie de tu lista activa?');
-  if (!confirmar) return;
-  try {
-    await descartarViendoAPI(1, obraId);
-    cargarDatos();
-  } catch (err) {
-    console.error(err);
-  }
-};
+  const solicitarDescartarViendo = (obraId) => {
+    setDialogoConfirmar({
+      abierto: true,
+      titulo: '¿Quitar de Viendo Actualmente?',
+      mensaje: 'La serie se ocultará del carrusel superior, pero todo tu historial se conservará.',
+      onConfirm: async () => {
+        try {
+          await descartarViendoAPI(1, obraId);
+          cargarDatos();
+        } finally {
+          setDialogoConfirmar((prev) => ({ ...prev, abierto: false }));
+        }
+      },
+    });
+  };
 
   return (
-    <main className="max-w-7xl mx-auto px-6 py-10 space-y-12">
-      {/* Sección Viendo Actualmente (HU-02) */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-extrabold tracking-tight text-neutral-900 dark:text-white">
-          Viendo Actualmente
-        </h2>
-        <div className="flex gap-5 overflow-x-auto pb-4 pt-1">
-          {seriesActivas.length > 0 ? (
-            seriesActivas.map((serie) => (
-              <ViendoCard key={serie.obra_id} serie={serie} onAvanzar={handleAvanzar} onDescartar={handleDescartar} />
-            ))
-          ) : (
-            <p className="text-sm text-neutral-500 italic">No tienes series activas en curso.</p>
-          )}
-        </div>
+    <main className="max-w-7xl mx-auto px-8 py-10 space-y-12">
+      {/* 1. Carrusel de Series Activas */}
+      <CarruselViendo 
+        seriesActivas={seriesActivas}
+        onAvanzar={handleAvanzar}
+        onDescartar={solicitarDescartarViendo}
+        onVerInfoEpisodio={(item) => setSerieParaDetalleXRay(item)}
+        onAbrirDetalle={(item) => {
+          setSerieParaEditar({
+            tmdb_id: item.tmdb_id,
+            titulo: item.titulo,
+            poster_path: item.poster_path,
+            tipo: 'serie',
+          });
+        }}
+      />
+
+      {/* 2. Mi Diario Cinemático y Biblioteca */}
+      <section className="space-y-6">
+        <HeaderHistorial 
+          modoVistaGeneral={modoVistaGeneral}
+          setModoVistaGeneral={setModoVistaGeneral}
+          verTodoElAnio={verTodoElAnio}
+          setVerTodoElAnio={setVerTodoElAnio}
+          anioSeleccionado={anioSeleccionado}
+          mesSeleccionado={mesSeleccionado}
+          onVolverAnios={() => { 
+            setAnioSeleccionado(null); 
+            setMesSeleccionado(null); 
+            setVerTodoElAnio(false); 
+          }}
+          onVolverMeses={() => { 
+            setMesSeleccionado(null); 
+            setVerTodoElAnio(false); 
+          }}
+          modoSeleccion={modoSeleccion}
+          setModoSeleccion={setModoSeleccion}
+          setSeleccionadosParaBorrar={setSeleccionadosParaBorrar}
+          filtroTipo={filtroTipo}
+          setFiltroTipo={setFiltroTipo}
+          vistaAgrupada={vistaAgrupada}
+          setVistaAgrupada={setVistaAgrupada}
+        />
+
+        <GrillaHistorial 
+          modoVistaGeneral={modoVistaGeneral}
+          verTodoElAnio={verTodoElAnio}
+          anioSeleccionado={anioSeleccionado}
+          mesSeleccionado={mesSeleccionado}
+          arbolHistorial={arbolHistorial}
+          listaAnios={listaAnios}
+          timelineCompleto={timeline}
+          onSeleccionarAnio={(anio) => { 
+            setAnioSeleccionado(anio); 
+            setVerTodoElAnio(false); 
+          }}
+          onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
+          modoSeleccion={modoSeleccion}
+          seleccionadosParaBorrar={seleccionadosParaBorrar}
+          onToggleItem={toggleSeleccionItem}
+          onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
+          vistaAgrupada={vistaAgrupada}
+          onAbrirResumenTemporada={(grupo) => setTemporadaParaResumen(grupo)}
+        />
       </section>
 
-      {/* Sección Timeline Cronológico (HU-03) */}
-      <section className="space-y-5">
-        <div className="flex items-center justify-between border-b border-neutral-300/80 dark:border-white/10 pb-4">
-          <h2 className="text-xl font-extrabold tracking-tight text-neutral-900 dark:text-white">
-            Mi Timeline
-          </h2>
-          <div className="flex gap-2 bg-neutral-200/70 dark:bg-[#1a1a1e] p-1.5 rounded-xl border border-neutral-300 dark:border-white/5">
-            {['', 'pelicula', 'serie'].map((t) => (
-              <button
-                key={t}
-                onClick={() => setFiltro(t)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
-                  filtro === t 
-                    ? 'bg-rose-600 text-white shadow-sm' 
-                    : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                }`}
-              >
-                {t === '' ? 'Todos' : t}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* 3. Barra Flotante de Borrado Masivo */}
+      {modoSeleccion && (
+        <BarraAccionLote 
+          cantidadSeleccionada={seleccionadosParaBorrar.length}
+          onEliminar={solicitarEliminarLote}
+        />
+      )}
 
-        <div className="space-y-3">
-          {timeline.length > 0 ? (
-            timeline.map((item) => {
-              const posterUrl = item.poster_path
-                ? (item.poster_path.startsWith('http') 
-                    ? item.poster_path 
-                    : `https://image.tmdb.org/t/p/w500${item.poster_path}`)
-                : null;
+      {/* 4. Modales Globales */}
+      {serieParaEditar && (
+        <ModalRegistrar 
+          obra={serieParaEditar} 
+          onClose={() => setSerieParaEditar(null)} 
+          onRegistroCompletado={() => { cargarDatos(); setSerieParaEditar(null); }} 
+        />
+      )}
 
-              return (
-                <div
-                  key={item.visualizacion_id}
-                  className="bg-white dark:bg-[#1a1a1e] border border-neutral-200 dark:border-white/5 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:border-neutral-300 dark:hover:border-white/15 transition-all"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-20 bg-neutral-200 dark:bg-neutral-800 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 shadow-inner">
-                      {posterUrl ? (
-                        <img src={posterUrl} alt={item.titulo} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-[10px] text-neutral-500 font-semibold">Sin foto</span>
-                      )}
-                    </div>
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-bold text-rose-600 dark:text-rose-500 uppercase tracking-wider">
-                        {item.tipo} {item.temporada ? `· T${item.temporada} E${item.episodio}` : ''}
-                      </span>
-                      <h4 className="text-base font-bold text-neutral-900 dark:text-white">{item.titulo}</h4>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
-                        {item.plataforma || 'Sin plataforma'}
-                      </p>
-                    </div>
-                  </div>
+      {serieParaDetalleXRay && (
+        <ModalDetalleEpisodioViendo 
+          serie={serieParaDetalleXRay}
+          onClose={() => setSerieParaDetalleXRay(null)}
+          onMarcarVisto={handleAvanzar}
+        />
+      )}
 
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
-                      {new Date(item.fecha_visto).toLocaleDateString()}
-                    </span>
-                    <button
-                      onClick={() => handleEliminar(item.visualizacion_id)}
-                      className="p-2 text-neutral-400 hover:text-rose-600 hover:bg-rose-600/10 rounded-xl transition cursor-pointer"
-                      title="Eliminar visualización"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p className="text-sm text-neutral-500 italic py-4">No hay registros de visualizaciones aún.</p>
-          )}
-        </div>
-      </section>
+      {itemDetalle && (
+        <ModalDetalleTimeline 
+          item={itemDetalle}
+          onClose={() => setItemDetalle(null)}
+          onActualizado={() => { cargarDatos(); setItemDetalle(null); }}
+        />
+      )}
+
+      {temporadaParaResumen && (
+        <ModalResumenTemporada
+          data={temporadaParaResumen}
+          onClose={() => setTemporadaParaResumen(null)}
+        />
+      )}
+
+      <ModalConfirmar
+        isOpen={dialogoConfirmar.abierto}
+        titulo={dialogoConfirmar.titulo}
+        mensaje={dialogoConfirmar.mensaje}
+        onConfirm={dialogoConfirmar.onConfirm}
+        onCancel={() => setDialogoConfirmar((prev) => ({ ...prev, abierto: false }))}
+      />
     </main>
   );
 }

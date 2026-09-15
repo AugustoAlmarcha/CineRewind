@@ -8,7 +8,9 @@ const {
   eliminarVisualizacion,
   descartarDeViendo,
   registrarLoteVisualizaciones,
-  obtenerEpisodiosVistosTemporada, // <-- 1. Importar aquí
+  obtenerEpisodiosVistosTemporada, 
+  actualizarReseniaYCalificacion,
+  eliminarLoteVisualizaciones
 } = require('../controllers/historialController');
 
 router.post('/registrar', registrarVisualizacion);
@@ -17,6 +19,8 @@ router.post('/avanzar-capitulo', avanzarCapitulo);
 router.get('/timeline/:usuario_id', obtenerTimeline);
 router.delete('/:id', eliminarVisualizacion);
 router.delete('/viendo-actualmente/:usuario_id/:obra_id', descartarDeViendo);
+router.patch('/:id/resenia', actualizarReseniaYCalificacion);
+router.delete('/lote/eliminar', eliminarLoteVisualizaciones);
 
 // Rutas para selección múltiple y capítulos vistos:
 router.post('/registrar-lote', registrarLoteVisualizaciones);

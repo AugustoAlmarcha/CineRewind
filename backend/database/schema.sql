@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS historial_visualizaciones (
     fecha_visto DATE NOT NULL DEFAULT CURRENT_DATE,
     plataforma VARCHAR(50),
     pais VARCHAR(50),
+    calificacion NUMERIC(2, 1),
+    resenia TEXT,
+    foto_episodio TEXT, -- <-- Nueva columna
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
