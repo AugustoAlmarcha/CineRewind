@@ -7,7 +7,7 @@ const NOMBRES_MESES = [
 ];
 
 export default function GrillaHistorial({
-  modoVistaGeneral, // 'timeline' | 'series_global'
+  modoVistaGeneral, // 'timeline' | 'series_global' | 'peliculas_global'
   verTodoElAnio,
   anioSeleccionado,
   mesSeleccionado,
@@ -22,8 +22,11 @@ export default function GrillaHistorial({
   onAbrirDetalleTimeline,
   vistaAgrupada,
   onAbrirResumenTemporada,
+  busquedaHistorial = '',
 }) {
-  // MODO 1: BIBLIOTECA DE SERIES (Hilo continuo sin importar año ni mes)
+  const query = busquedaHistorial.trim().toLowerCase();
+
+  // MODO 1: BIBLIOTECA GLOBAL DE SERIES (Hilo continuo con búsqueda)
   const seriesContinuas = useMemo(() => {
     if (modoVistaGeneral !== 'series_global') return [];
     
@@ -42,14 +45,43 @@ export default function GrillaHistorial({
         mapa.get(it.obra_id).items.push(it);
       });
 
-    return Array.from(mapa.values());
-  }, [timelineCompleto, modoVistaGeneral]);
+    const lista = Array.from(mapa.values());
+    if (!query) return lista;
+    return lista.filter((s) => s.titulo.toLowerCase().includes(query));
+  }, [timelineCompleto, modoVistaGeneral, query]);
 
+  // MODO 2: BIBLIOTECA GLOBAL DE PELÍCULAS (Sin duplicar, con búsqueda)
+  const peliculasContinuas = useMemo(() => {
+    if (modoVistaGeneral !== 'peliculas_global') return [];
+
+    const mapa = new Map();
+    timelineCompleto
+      .filter((it) => it.tipo === 'pelicula')
+      .forEach((it) => {
+        const idClave = it.obra_id || it.tmdb_id;
+        if (!mapa.has(idClave)) {
+          mapa.set(idClave, it);
+        }
+      });
+
+    const lista = Array.from(mapa.values());
+    if (!query) return lista;
+    return lista.filter((p) => p.titulo.toLowerCase().includes(query));
+  }, [timelineCompleto, modoVistaGeneral, query]);
+
+  // RENDER: BIBLIOTECA DE SERIES
   if (modoVistaGeneral === 'series_global') {
+    if (seriesContinuas.length === 0) {
+      return (
+        <div className="py-20 text-center text-neutral-400 text-sm">
+          {query ? `No se encontraron series que coincidan con "${busquedaHistorial}"` : 'Aún no registraste ninguna serie.'}
+        </div>
+      );
+    }
+
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 animate-fadeIn">
         {seriesContinuas.map((serie) => {
-          // Extraer temporadas distintas vistas en cualquier momento
           const temporadasVistas = [...new Set(serie.items.map((i) => i.temporada))].sort((a, b) => a - b);
 
           return (
@@ -82,7 +114,61 @@ export default function GrillaHistorial({
     );
   }
 
-  // MODO 2: TIMELINE POR AÑOS (Nivel 1)
+  // RENDER: BIBLIOTECA DE PELÍCULAS
+  if (modoVistaGeneral === 'peliculas_global') {
+    if (peliculasContinuas.length === 0) {
+      return (
+        <div className="py-20 text-center text-neutral-400 text-sm">
+          {query ? `No se encontraron películas que coincidan con "${busquedaHistorial}"` : 'Aún no registraste ninguna película.'}
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 animate-fadeIn">
+        {peliculasContinuas.map((pelicula) => {
+          const id = pelicula.visualizacion_id || pelicula.id;
+          const posterUrl = pelicula.poster_obra || pelicula.poster_path;
+
+          return (
+            <div
+              key={id}
+              onClick={() => onAbrirDetalleTimeline(pelicula)}
+              className="aspect-square relative rounded-3xl overflow-hidden shadow-lg border border-neutral-300/40 dark:border-white/10 hover:scale-105 transition-all duration-300 cursor-pointer group"
+            >
+              {posterUrl ? (
+                <img src={posterUrl} alt={pelicula.titulo} className="w-full h-full object-cover group-hover:scale-110 transition duration-300 brightness-90" />
+              ) : (
+                <div className="w-full h-full bg-[#1c1c22] flex items-center justify-center p-4 text-center text-xs font-bold text-neutral-400">{pelicula.titulo}</div>
+              )}
+
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-4 pointer-events-none">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-rose-600 text-white rounded-lg shadow">
+                    Película
+                  </span>
+                  {pelicula.calificacion && (
+                    <span className="text-xs font-black text-amber-400 drop-shadow">
+                      ★ {Number(pelicula.calificacion).toFixed(1)}
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-black text-white truncate drop-shadow">{pelicula.titulo}</h4>
+                  <p className="text-[10px] text-neutral-300">
+                    {pelicula.fecha_visto ? new Date(pelicula.fecha_visto).toLocaleDateString() : ''}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // MODO TIMELINE: POR AÑOS (Nivel 1)
   if (!anioSeleccionado) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
@@ -110,7 +196,7 @@ export default function GrillaHistorial({
     );
   }
 
-  // MODO 3: MESES DEL AÑO (Nivel 2, si no eligió "Ver Todo el Año")
+  // MODO TIMELINE: MESES DEL AÑO (Nivel 2)
   if (anioSeleccionado && mesSeleccionado === null && !verTodoElAnio) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 animate-fadeIn">
@@ -139,13 +225,12 @@ export default function GrillaHistorial({
     );
   }
 
-  // MODO 4: LISTADO DE OBRAS (Sea dentro de un Mes o de Todo el Año Completo)
+  // MODO TIMELINE: LISTADO DE OBRAS (Mes o Todo el Año)
   const itemsActivos = verTodoElAnio
     ? Object.keys(arbolHistorial[anioSeleccionado] || {}).flatMap((m) => arbolHistorial[anioSeleccionado][m])
     : (arbolHistorial[anioSeleccionado]?.[mesSeleccionado] || []);
 
   if (vistaAgrupada) {
-    const agrupados = [];
     const mapa = new Map();
     itemsActivos.forEach((it) => {
       const clave = it.tipo === 'serie' ? `${it.obra_id}_T${it.temporada}` : `peli_${it.visualizacion_id}`;
@@ -156,36 +241,62 @@ export default function GrillaHistorial({
           temporada: it.temporada,
           poster: it.poster_obra || it.poster_path,
           items: [],
+          es_final_temporada: false,
+          es_final_serie: false,
         });
       }
-      mapa.get(clave).items.push(it);
+      const entry = mapa.get(clave);
+      entry.items.push(it);
+      if (it.es_final_temporada) entry.es_final_temporada = true;
+      if (it.es_final_serie) entry.es_final_serie = true;
     });
 
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5 animate-fadeIn">
-        {Array.from(mapa.values()).map((grupo, idx) => (
-          <div
-            key={idx}
-            onClick={() => onAbrirResumenTemporada(grupo)}
-            className="aspect-square relative rounded-3xl overflow-hidden shadow-lg border border-neutral-300/40 dark:border-white/10 hover:scale-105 transition-all duration-300 cursor-pointer group"
-          >
-            <img src={grupo.poster} alt={grupo.titulo} className="w-full h-full object-cover group-hover:scale-110 transition duration-300 brightness-90" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-4 pointer-events-none">
-              <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-amber-500 text-black rounded-lg self-start shadow font-mono">
-                {grupo.tipo === 'serie' ? `T${grupo.temporada} · ${grupo.items.length} eps` : 'Película'}
-              </span>
-              <div>
-                <h4 className="text-sm font-black text-white truncate drop-shadow">{grupo.titulo}</h4>
-                <p className="text-[11px] text-rose-400 font-bold mt-0.5">Ver balance</p>
+        {Array.from(mapa.values()).map((grupo, idx) => {
+          const terminoTemporada = grupo.es_final_temporada || grupo.es_final_serie;
+
+          return (
+            <div
+              key={idx}
+              onClick={() => onAbrirResumenTemporada(grupo)}
+              className="aspect-square relative rounded-3xl overflow-hidden shadow-lg border border-neutral-300/40 dark:border-white/10 hover:scale-105 transition-all duration-300 cursor-pointer group"
+            >
+              <img 
+                src={grupo.poster} 
+                alt={grupo.titulo} 
+                className="w-full h-full object-cover group-hover:scale-110 transition duration-300 brightness-90" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-4 pointer-events-none">
+                {grupo.tipo === 'serie' ? (
+                  terminoTemporada ? (
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-amber-500 text-black rounded-lg self-start shadow font-mono">
+                      🏆 T{grupo.temporada} Completa
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-black/60 backdrop-blur-md text-neutral-200 border border-white/20 rounded-lg self-start shadow">
+                      T{grupo.temporada} · {grupo.items.length} {grupo.items.length === 1 ? 'ep visto' : 'eps vistos'}
+                    </span>
+                  )
+                ) : (
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 bg-rose-600 text-white rounded-lg self-start shadow">
+                    Película
+                  </span>
+                )}
+
+                <div>
+                  <h4 className="text-sm font-black text-white truncate drop-shadow">{grupo.titulo}</h4>
+                  <p className="text-[11px] text-rose-400 font-bold mt-0.5">Ver resumen</p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
 
-  // Lista de capítulos individuales (con hitos)
+  // LISTA INDIVIDUAL DE CAPÍTULOS CON HITOS PRECISOS
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5 animate-fadeIn">
       {itemsActivos.map((item) => {
@@ -196,7 +307,7 @@ export default function GrillaHistorial({
         const bordeEspecial = item.es_final_serie 
           ? 'ring-2 ring-amber-400 border-transparent shadow-amber-500/20 shadow-lg' 
           : item.es_final_temporada 
-            ? 'ring-2 ring-emerald-400 border-transparent shadow-emerald-500/20 shadow-md' 
+            ? 'ring-2 ring-amber-400/80 border-transparent shadow-amber-500/20 shadow-md' 
             : 'border-neutral-200 dark:border-white/10 hover:scale-105';
 
         return (
@@ -216,11 +327,15 @@ export default function GrillaHistorial({
             <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-3.5 pointer-events-none">
               <div className="flex justify-between items-center">
                 {item.es_final_serie ? (
-                  <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-gradient-to-r from-amber-500 to-yellow-300 text-neutral-900 rounded-md shadow">👑 Serie Fin</span>
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-gradient-to-r from-amber-500 to-yellow-300 text-neutral-900 rounded-md shadow flex items-center gap-1 font-mono">
+                    👑 Serie Finalizada
+                  </span>
                 ) : item.es_final_temporada ? (
-                  <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-500 text-white rounded-md shadow">🏆 T{item.temporada} Fin</span>
+                  <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-md shadow flex items-center gap-1 font-mono">
+                    🏆 Fin de Temporada {item.temporada}
+                  </span>
                 ) : (
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-rose-600 text-white rounded-md shadow">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-rose-600 text-white rounded-md shadow">
                     {item.tipo === 'serie' ? `T${item.temporada} E${item.episodio}` : 'Película'}
                   </span>
                 )}

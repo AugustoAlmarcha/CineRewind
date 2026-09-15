@@ -22,6 +22,7 @@ export default function Home() {
   const [seriesActivas, setSeriesActivas] = useState([]);
   const [timeline, setTimeline] = useState([]);
   const [filtroTipo, setFiltroTipo] = useState('');
+  const [busquedaHistorial, setBusquedaHistorial] = useState('');
 
   // Modos de visualización avanzados
   const [modoVistaGeneral, setModoVistaGeneral] = useState('timeline'); // 'timeline' | 'series_global'
@@ -158,51 +159,44 @@ export default function Home() {
 
       {/* 2. Mi Diario Cinemático y Biblioteca */}
       <section className="space-y-6">
-        <HeaderHistorial 
-          modoVistaGeneral={modoVistaGeneral}
-          setModoVistaGeneral={setModoVistaGeneral}
-          verTodoElAnio={verTodoElAnio}
-          setVerTodoElAnio={setVerTodoElAnio}
-          anioSeleccionado={anioSeleccionado}
-          mesSeleccionado={mesSeleccionado}
-          onVolverAnios={() => { 
-            setAnioSeleccionado(null); 
-            setMesSeleccionado(null); 
-            setVerTodoElAnio(false); 
-          }}
-          onVolverMeses={() => { 
-            setMesSeleccionado(null); 
-            setVerTodoElAnio(false); 
-          }}
-          modoSeleccion={modoSeleccion}
-          setModoSeleccion={setModoSeleccion}
-          setSeleccionadosParaBorrar={setSeleccionadosParaBorrar}
-          filtroTipo={filtroTipo}
-          setFiltroTipo={setFiltroTipo}
-          vistaAgrupada={vistaAgrupada}
-          setVistaAgrupada={setVistaAgrupada}
-        />
+      <HeaderHistorial 
+        modoVistaGeneral={modoVistaGeneral}
+        setModoVistaGeneral={setModoVistaGeneral}
+        verTodoElAnio={verTodoElAnio}
+        setVerTodoElAnio={setVerTodoElAnio}
+        anioSeleccionado={anioSeleccionado}
+        mesSeleccionado={mesSeleccionado}
+        onVolverAnios={() => { setAnioSeleccionado(null); setMesSeleccionado(null); setVerTodoElAnio(false); }}
+        onVolverMeses={() => { setMesSeleccionado(null); setVerTodoElAnio(false); }}
+        modoSeleccion={modoSeleccion}
+        setModoSeleccion={setModoSeleccion}
+        setSeleccionadosParaBorrar={setSeleccionadosParaBorrar}
+        filtroTipo={filtroTipo}
+        setFiltroTipo={setFiltroTipo}
+        vistaAgrupada={vistaAgrupada}
+        setVistaAgrupada={setVistaAgrupada}
+        busquedaHistorial={busquedaHistorial}
+        setBusquedaHistorial={setBusquedaHistorial}
+      />
 
-        <GrillaHistorial 
-          modoVistaGeneral={modoVistaGeneral}
-          verTodoElAnio={verTodoElAnio}
-          anioSeleccionado={anioSeleccionado}
-          mesSeleccionado={mesSeleccionado}
-          arbolHistorial={arbolHistorial}
-          listaAnios={listaAnios}
-          timelineCompleto={timeline}
-          onSeleccionarAnio={(anio) => { 
-            setAnioSeleccionado(anio); 
-            setVerTodoElAnio(false); 
-          }}
-          onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
-          modoSeleccion={modoSeleccion}
-          seleccionadosParaBorrar={seleccionadosParaBorrar}
-          onToggleItem={toggleSeleccionItem}
-          onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
-          vistaAgrupada={vistaAgrupada}
-          onAbrirResumenTemporada={(grupo) => setTemporadaParaResumen(grupo)}
-        />
+      <GrillaHistorial 
+        modoVistaGeneral={modoVistaGeneral}
+        verTodoElAnio={verTodoElAnio}
+        anioSeleccionado={anioSeleccionado}
+        mesSeleccionado={mesSeleccionado}
+        arbolHistorial={arbolHistorial}
+        listaAnios={listaAnios}
+        timelineCompleto={timeline}
+        onSeleccionarAnio={(anio) => { setAnioSeleccionado(anio); setVerTodoElAnio(false); }}
+        onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
+        modoSeleccion={modoSeleccion}
+        seleccionadosParaBorrar={seleccionadosParaBorrar}
+        onToggleItem={toggleSeleccionItem}
+        onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
+        vistaAgrupada={vistaAgrupada}
+        onAbrirResumenTemporada={(grupo) => setTemporadaParaResumen(grupo)}
+        busquedaHistorial={busquedaHistorial}
+      />
       </section>
 
       {/* 3. Barra Flotante de Borrado Masivo */}

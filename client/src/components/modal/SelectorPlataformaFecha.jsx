@@ -30,18 +30,48 @@ export default function SelectorPlataformaFecha({
 }) {
   const inputFechaRef = useRef(null);
 
+  const handleSeleccionarPlataforma = (id) => {
+    // Si se toca la que ya está activa, se desmarca dejándola en null
+    setPlataforma(plataforma === id ? null : id);
+  };
+
   return (
     <div className="px-6 py-4 bg-neutral-100/80 dark:bg-white/5 flex flex-wrap gap-6 items-center justify-between border-b border-neutral-200 dark:border-white/5">
       <div className="space-y-1.5">
-        <label className="text-xs font-bold text-neutral-600 dark:text-neutral-400">¿Dónde la viste?</label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-xs font-bold text-neutral-600 dark:text-neutral-400">¿Dónde la viste?</label>
+          {plataforma && (
+            <button
+              type="button"
+              onClick={() => setPlataforma(null)}
+              className="text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+            >
+              Desmarcar plataforma
+            </button>
+          )}
+        </div>
+
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Opción explícita de "Sin plataforma" */}
+          <button
+            type="button"
+            onClick={() => setPlataforma(null)}
+            className={`h-10 px-3 rounded-xl border flex items-center justify-center text-xs font-bold transition-all cursor-pointer shadow-sm ${
+              plataforma === null
+                ? 'bg-neutral-800 text-white dark:bg-white dark:text-neutral-900 border-transparent ring-2 ring-rose-500 scale-105 shadow-md'
+                : 'bg-white dark:bg-white/5 text-neutral-600 dark:text-neutral-400 border-neutral-300 dark:border-white/10 opacity-80 hover:opacity-100'
+            }`}
+          >
+            Sin plataforma
+          </button>
+
           {PLATAFORMAS.map((p) => {
             const activa = plataforma === p.id;
             return (
               <button
                 key={p.id}
                 type="button"
-                onClick={() => setPlataforma(p.id)}
+                onClick={() => handleSeleccionarPlataforma(p.id)}
                 title={p.nombre}
                 className={`h-10 px-3.5 rounded-xl border flex items-center justify-center transition-all cursor-pointer bg-white shadow-sm ${
                   activa

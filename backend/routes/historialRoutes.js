@@ -1,29 +1,36 @@
 const express = require('express');
 const router = express.Router();
+
+// Controlador de Historial y Reseñas
 const {
   registrarVisualizacion,
-  obtenerViendoActualmente,
-  avanzarCapitulo,
   obtenerTimeline,
   eliminarVisualizacion,
-  descartarDeViendo,
   registrarLoteVisualizaciones,
-  obtenerEpisodiosVistosTemporada, 
+  obtenerEpisodiosVistosTemporada,
   actualizarReseniaYCalificacion,
-  eliminarLoteVisualizaciones
+  eliminarLoteVisualizaciones,
 } = require('../controllers/historialController');
 
-router.post('/registrar', registrarVisualizacion);
+// Controlador de Seguimiento de Series (Carrusel)
+const {
+  obtenerViendoActualmente,
+  avanzarCapitulo,
+  descartarDeViendo,
+} = require('../controllers/seguimientoController');
+
+// Rutas de Seguimiento
 router.get('/viendo-actualmente/:usuario_id', obtenerViendoActualmente);
 router.post('/avanzar-capitulo', avanzarCapitulo);
-router.get('/timeline/:usuario_id', obtenerTimeline);
-router.delete('/:id', eliminarVisualizacion);
 router.delete('/viendo-actualmente/:usuario_id/:obra_id', descartarDeViendo);
+
+// Rutas de Historial
+router.post('/registrar', registrarVisualizacion);
+router.post('/registrar-lote', registrarLoteVisualizaciones);
+router.get('/timeline/:usuario_id', obtenerTimeline);
+router.get('/vistos/:usuario_id/:tmdb_id/:temporada', obtenerEpisodiosVistosTemporada);
 router.patch('/:id/resenia', actualizarReseniaYCalificacion);
 router.delete('/lote/eliminar', eliminarLoteVisualizaciones);
-
-// Rutas para selección múltiple y capítulos vistos:
-router.post('/registrar-lote', registrarLoteVisualizaciones);
-router.get('/vistos/:usuario_id/:tmdb_id/:temporada', obtenerEpisodiosVistosTemporada); // <-- 2. Esta es la ruta que da 404
+router.delete('/:id', eliminarVisualizacion);
 
 module.exports = router;

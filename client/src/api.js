@@ -124,3 +124,27 @@ export const obtenerDetallePeliculaAPI = async (tipo, tmdb_id) => {
   }
   return await res.json();
 };
+
+export const obtenerProveedoresAPI = async (tipo, tmdbId) => {
+  try {
+    const res = await fetch(`/api/peliculas/proveedores/${tipo}/${tmdbId}`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+};
+
+// En client/src/api.js
+export const obtenerTendenciasAPI = async (tipo = 'movie', pais = 'GLOBAL', pagina = 1) => {
+  const res = await fetch(`/api/peliculas/tendencias?tipo=${tipo}&pais=${pais}&pagina=${pagina}`);
+  if (!res.ok) throw new Error('Error al obtener tendencias');
+  return res.json();
+};
+
+// Obtener películas y series de un actor/actriz
+export const obtenerFilmografiaActorAPI = async (personId) => {
+  const res = await fetch(`/api/peliculas/actor/${personId}/obras`);
+  if (!res.ok) throw new Error('Error al obtener la filmografía del actor');
+  return res.json();
+};

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
+import Tendencias from './pages/Tendencias';
 import ModalRegistrar from './components/ModalRegistrar';
 
 export default function App() {
@@ -8,7 +10,7 @@ export default function App() {
   const [obraSeleccionada, setObraSeleccionada] = useState(null);
   const [actualizarTrigger, setActualizarTrigger] = useState(0);
 
-  // Sincronizar la clase 'dark' en el elemento html raíz
+  // Sincronizar tema oscuro global
   useEffect(() => {
     const root = document.documentElement;
     if (darkMode) {
@@ -27,13 +29,27 @@ export default function App() {
         onToggleTheme={toggleTheme} 
         onSeleccionarObra={(obra) => setObraSeleccionada(obra)} 
       />
-      <Home key={actualizarTrigger} />
+
+      <Routes>
+        <Route path="/" element={<Home key={actualizarTrigger} />} />
+        <Route 
+          path="/tendencias" 
+          element={
+            <Tendencias 
+              onSeleccionarObra={(obra) => setObraSeleccionada(obra)} 
+              actualizarTrigger={actualizarTrigger} 
+            />
+          } 
+        />
+      </Routes>
 
       {obraSeleccionada && (
         <ModalRegistrar
+          key={obraSeleccionada.tmdb_id || obraSeleccionada.id}
           obra={obraSeleccionada}
           onClose={() => setObraSeleccionada(null)}
           onRegistroCompletado={() => setActualizarTrigger((prev) => prev + 1)}
+          onCambiarObra={(nuevaObra) => setObraSeleccionada(nuevaObra)}
         />
       )}
     </div>

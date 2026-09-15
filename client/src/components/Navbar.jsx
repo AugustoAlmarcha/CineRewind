@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { buscarPeliculasAPI } from '../api';
+import { NavLink } from 'react-router-dom';
 
 export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
   const [query, setQuery] = useState('');
@@ -147,11 +148,27 @@ export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
 
         {/* Navegación y Botón de Tema */}
         <div className="flex items-center gap-6">
-          <nav className="flex items-center gap-6 text-sm font-semibold text-neutral-600 dark:text-neutral-400">
-            <span className="text-neutral-900 dark:text-white hover:text-rose-600 cursor-pointer transition">Inicio</span>
-            <span className="hover:text-neutral-900 dark:hover:text-white cursor-pointer transition">Tendencias</span>
-            <span className="hover:text-neutral-900 dark:hover:text-white cursor-pointer transition">Mi Perfil</span>
-          </nav>
+        <nav className="flex items-center gap-6 text-sm font-semibold">
+          <NavLink 
+            to="/" 
+            className={({ isActive }) => 
+              isActive ? 'text-rose-600 font-bold' : 'text-neutral-600 dark:text-neutral-400 hover:text-rose-600 transition'
+            }
+          >
+            Inicio
+          </NavLink>
+          <NavLink 
+            to="/tendencias" 
+            className={({ isActive }) => 
+              isActive ? 'text-rose-600 font-bold' : 'text-neutral-600 dark:text-neutral-400 hover:text-rose-600 transition'
+            }
+          >
+            Tendencias
+          </NavLink>
+          <span className="text-neutral-400 dark:text-neutral-500 cursor-not-allowed">
+            Mi Perfil
+          </span>
+        </nav>
 
           {/* Botón Sol / Luna en SVG */}
           <button

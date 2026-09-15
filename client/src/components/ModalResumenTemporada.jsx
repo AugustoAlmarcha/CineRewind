@@ -3,13 +3,14 @@ import React from 'react';
 export default function ModalResumenTemporada({ data, onClose }) {
   if (!data) return null;
 
-  const { titulo, temporada, poster, items = [] } = data;
+  const { titulo, temporada, poster, items = [], es_final_temporada, es_final_serie } = data;
 
-  // Cálculo de promedio de calificación
   const conPuntaje = items.filter((it) => it.calificacion && Number(it.calificacion) > 0);
   const promedio = conPuntaje.length > 0
     ? (conPuntaje.reduce((acc, curr) => acc + Number(curr.calificacion), 0) / conPuntaje.length).toFixed(1)
     : null;
+
+  const estaCompletada = es_final_temporada || es_final_serie;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
@@ -23,17 +24,26 @@ export default function ModalResumenTemporada({ data, onClose }) {
               className="w-20 h-28 object-cover rounded-2xl border border-white/10 shadow-lg flex-shrink-0" 
             />
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30 inline-block mb-1.5">
-                🏆 Hito Alcanzado
-              </span>
+              {/* Solo muestra la copa si la temporada o serie realmente se terminaron */}
+              {estaCompletada ? (
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30 inline-block mb-1.5 font-mono">
+                  {es_final_serie ? '👑 Serie Finalizada' : `🏆 Fin de Temporada ${temporada || 1}`}
+                </span>
+              ) : (
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-white/10 text-neutral-300 border border-white/10 inline-block mb-1.5 font-mono">
+                  📖 Temporada en curso
+                </span>
+              )}
+
               <h2 className="text-2xl font-black leading-tight">{titulo}</h2>
               <p className="text-xs text-rose-400 font-bold mt-0.5">
-                {temporada ? `Temporada ${temporada}` : 'Visualización Agrupada'}
+                {temporada ? `Temporada ${temporada}` : 'Serie Agrupada'}
               </p>
             </div>
           </div>
 
           <button 
+            type="button"
             onClick={onClose} 
             className="w-8 h-8 rounded-full bg-white/5 hover:bg-rose-600 text-neutral-400 hover:text-white flex items-center justify-center transition cursor-pointer"
           >
@@ -55,10 +65,10 @@ export default function ModalResumenTemporada({ data, onClose }) {
           </div>
         </div>
 
-        {/* Lista de episodios que componen la temporada */}
+        {/* Lista de episodios */}
         <div className="space-y-2 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
           <label className="text-[11px] font-black uppercase tracking-widest text-neutral-400">
-            Episodios completados en este periodo
+            Episodios registrados
           </label>
           {items.map((ep) => (
             <div 
@@ -70,13 +80,16 @@ export default function ModalResumenTemporada({ data, onClose }) {
                 {ep.calificacion && (
                   <span className="text-amber-400 font-bold">★ {Number(ep.calificacion).toFixed(1)}</span>
                 )}
-                <span className="text-[10px] text-neutral-400">{new Date(ep.fecha_visto).toLocaleDateString()}</span>
+                <span className="text-[10px] text-neutral-400">
+                  {ep.fecha_visto ? new Date(ep.fecha_visto).toLocaleDateString() : ''}
+                </span>
               </div>
             </div>
           ))}
         </div>
 
         <button 
+          type="button"
           onClick={onClose}
           className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-white transition cursor-pointer"
         >
