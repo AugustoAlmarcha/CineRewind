@@ -5,6 +5,7 @@ import {
   registrarVisualizacionAPI, 
   registrarLoteAPI,
   obtenerEpisodiosVistosAPI,
+  obtenerDetalleEpisodioAPI,
   obtenerProveedoresAPI
 } from '../api';
 import { obtenerFechaHoyLocal } from '../utils/fechas';
@@ -21,26 +22,44 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
   const [datosTemporada, setDatosTemporada] = useState(null);
   const [cargandoEpisodios, setCargandoEpisodios] = useState(false);
   
-  // Inicia sin plataforma predeterminada
   const [plataforma, setPlataforma] = useState(null);
-  
   const [fechaVisto, setFechaVisto] = useState(obtenerFechaHoyLocal());
   const [noRecuerdaFecha, setNoRecuerdaFecha] = useState(false);
 
   const [episodiosYaVistos, setEpisodiosYaVistos] = useState([]);
   const [episodiosSeleccionados, setEpisodiosSeleccionados] = useState([]);
 
-  // Estados para UI, control de errores y actores
+  // Estados para UI y actores
   const [errorRegistro, setErrorRegistro] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [repartoActores, setRepartoActores] = useState([]);
   const [mostrarActores, setMostrarActores] = useState(false);
   const [actorParaFilmografia, setActorParaFilmografia] = useState(null);
 
-  // 1. Obtener detalles de la obra (total de temporadas y reparto de actores)
+  // Estados para actores específicos de un episodio
+  const [actoresEpisodioModal, setActoresEpisodioModal] = useState(null);
+  const [cargandoActoresEp, setCargandoActoresEp] = useState(false);
+
+  const handleVerActoresCapitulo = async (e, epNumero, epNombre) => {
+    e.stopPropagation();
+    setCargandoActoresEp(true);
+    try {
+      const data = await obtenerDetalleEpisodioAPI(tmdbIdReal, temporadaSeleccionada, epNumero);
+      setActoresEpisodioModal({
+        episodioTitulo: `E${epNumero} · ${epNombre}`,
+        actores: data.actores || []
+      });
+    } catch (err) {
+      console.error('Error cargando actores del episodio:', err);
+      alert('No se pudo cargar el reparto de este capítulo.');
+    } finally {
+      setCargandoActoresEp(false);
+    }
+  };
+
+  // 1. Obtener detalles de la obra
   useEffect(() => {
     if (!tmdbIdReal) return;
-
     let cancelado = false;
 
     const cargarDetallesYCreditos = async () => {
@@ -63,13 +82,10 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     };
 
     cargarDetallesYCreditos();
-
-    return () => {
-      cancelado = true;
-    };
+    return () => { cancelado = true; };
   }, [tmdbIdReal, esSerie]);
 
-  // 2. Obtener episodios de la temporada seleccionada
+  // 2. Obtener episodios de la temporada
   useEffect(() => {
     if (!esSerie || !tmdbIdReal) return;
 
@@ -98,7 +114,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     cargarEpisodios();
   }, [tmdbIdReal, temporadaSeleccionada, esSerie]);
 
-  // Autodetección de plataforma de streaming
+  // Autodetección de plataforma
   useEffect(() => {
     if (!tmdbIdReal) return;
     let cancelado = false;
@@ -115,10 +131,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     };
 
     detectarPlataforma();
-
-    return () => {
-      cancelado = true;
-    };
+    return () => { cancelado = true; };
   }, [tmdbIdReal, esSerie]);
 
   const handleToggleNoRecuerda = () => {
@@ -183,15 +196,15 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     setErrorRegistro(null);
 
     try {
-    await registrarVisualizacionAPI({
-            usuario_id: 1,
-            tmdb_id: tmdbIdReal,
-            tipo: 'pelicula',
-            titulo: obra.titulo,
-            poster_path: obra.poster_path,
-            fecha_visto: fechaVisto,
-            plataforma: plataforma || null,
-          });
+      await registrarVisualizacionAPI({
+        usuario_id: 1,
+        tmdb_id: tmdbIdReal,
+        tipo: 'pelicula',
+        titulo: obra.titulo,
+        poster_path: obra.poster_path,
+        fecha_visto: fechaVisto,
+        plataforma: plataforma || null,
+      });
 
       onRegistroCompletado();
       onClose();
@@ -243,7 +256,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           onToggleNoRecuerda={handleToggleNoRecuerda}
         />
 
-        {/* Botón para alternar reparto de actores */}
+        {/* Botón para alternar reparto general */}
         {repartoActores.length > 0 && (
           <div className="px-6 pt-3 pb-1">
             <button
@@ -252,12 +265,12 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
               className="text-xs font-bold px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-white/10 bg-neutral-100 dark:bg-white/5 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 transition flex items-center gap-1.5 cursor-pointer"
             >
               <span>🎭</span>
-              <span>{mostrarActores ? 'Ocultar Reparto' : `Ver Reparto y Actores (${repartoActores.length})`}</span>
+              <span>{mostrarActores ? 'Ocultar Reparto' : `Ver Reparto General (${repartoActores.length})`}</span>
             </button>
           </div>
         )}
 
-        {/* Galería desplegable de Actores y Actrices con Clic Interactivo */}
+        {/* Galería de Actores de la Serie */}
         {mostrarActores && repartoActores.length > 0 && (
           <div className="px-6 py-4 border-b border-neutral-200 dark:border-white/10 bg-neutral-50/50 dark:bg-black/20 animate-fadeIn">
             <div className="flex items-center justify-between mb-3">
@@ -302,7 +315,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           </div>
         )}
 
-        {/* Alerta de Error integrada en la UI */}
+        {/* Alerta de Error */}
         {errorRegistro && (
           <div className="mx-6 mt-4 p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold rounded-2xl flex items-center justify-between gap-3 animate-fadeIn">
             <span>⚠️ {errorRegistro}</span>
@@ -352,15 +365,30 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                   ))}
                 </div>
 
-                {faltantesCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleSeleccionarPendientes}
-                    className="px-4 py-2 rounded-xl text-xs font-extrabold bg-neutral-200 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/20 transition cursor-pointer"
-                  >
-                    ✓ Marcar episodios restantes ({faltantesCount})
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorRegistro(null);
+                    if (!datosTemporada?.episodios) return;
+                    
+                    // Si quedan capítulos faltantes, selecciona los que faltan
+                    if (faltantesCount > 0) {
+                      const faltantes = datosTemporada.episodios
+                        .map((ep) => ep.episodio_numero)
+                        .filter((num) => !episodiosYaVistos.includes(num));
+                      setEpisodiosSeleccionados(episodiosSeleccionados.length === faltantes.length ? [] : faltantes);
+                    } else {
+                      // Si ya viste todos los episodios, permite seleccionar toda la temporada para rewatch
+                      const todos = datosTemporada.episodios.map((ep) => ep.episodio_numero);
+                      setEpisodiosSeleccionados(episodiosSeleccionados.length === todos.length ? [] : todos);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-extrabold bg-neutral-200 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/20 transition cursor-pointer"
+                >
+                  {faltantesCount > 0 
+                    ? `✓ Marcar episodios restantes (${faltantesCount})` 
+                    : '↺ Volver a marcar temporada completa'}
+                </button>
               </div>
 
               {cargandoEpisodios ? (
@@ -373,6 +401,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                   episodiosYaVistos={episodiosYaVistos}
                   episodiosSeleccionados={episodiosSeleccionados}
                   onToggleEpisodio={toggleSeleccionEpisodio}
+                  onVerActoresCapitulo={handleVerActoresCapitulo}
                 />
               )}
             </>
@@ -396,18 +425,113 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           </div>
         )}
 
-        {/* Modal de Filmografía del Actor Superpuesto */}
+        {/* Modal de Filmografía del Actor */}
         {actorParaFilmografia && (
           <ModalFilmografiaActor
             actor={actorParaFilmografia}
             onClose={() => setActorParaFilmografia(null)}
             onSeleccionarObra={(nuevaObra) => {
               setActorParaFilmografia(null);
-              if (onCambiarObra) {
-                onCambiarObra(nuevaObra);
-              }
+              if (onCambiarObra) onCambiarObra(nuevaObra);
             }}
           />
+        )}
+
+{/* Modal Emergente con el reparto específico del capítulo (Tarjetas Grandes) */}
+        {actoresEpisodioModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn">
+            <div className="bg-[#fcfaf7] dark:bg-[#141418] border border-neutral-300 dark:border-white/10 rounded-3xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white my-auto">
+              
+              {/* Cabecera */}
+              <div className="p-6 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-500">
+                    Reparto del capítulo
+                  </span>
+                  <h3 className="text-xl font-black">
+                    {actoresEpisodioModal.episodioTitulo}
+                  </h3>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                    Toca a un actor para explorar su filmografía
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActoresEpisodioModal(null)}
+                  className="w-9 h-9 rounded-full bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white flex items-center justify-center transition cursor-pointer text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Grilla con fotos verticales grandes */}
+              <div className="p-6 overflow-y-auto flex-1 scrollbar-thin">
+                {actoresEpisodioModal.actores.length === 0 ? (
+                  <p className="text-center text-neutral-500 dark:text-neutral-400 text-sm py-16">
+                    No se encontraron créditos registrados para este episodio.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {actoresEpisodioModal.actores.map((actor) => (
+                      <div
+                        key={actor.id}
+                        onClick={() => {
+                          setActoresEpisodioModal(null);
+                          setActorParaFilmografia(actor);
+                        }}
+                        className="bg-white dark:bg-neutral-900/90 rounded-2xl overflow-hidden border border-neutral-200 dark:border-white/10 shadow-xs hover:scale-105 hover:border-rose-500/50 transition-all duration-200 flex flex-col cursor-pointer group"
+                      >
+                        {/* Foto vertical espaciosa para apreciar el rostro */}
+                        <div className="w-full aspect-[2/3] bg-neutral-200 dark:bg-neutral-800 overflow-hidden relative">
+                          {actor.foto ? (
+                            <img
+                              src={actor.foto}
+                              alt={actor.nombre}
+                              loading="lazy"
+                              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-neutral-400 dark:text-neutral-500 text-xs gap-1.5">
+                              <span className="text-3xl">🎭</span>
+                              <span className="font-bold">Sin foto</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Textos legibles */}
+                        <div className="p-3 flex flex-col justify-between flex-1">
+                          <p
+                            className="text-xs font-black truncate text-neutral-900 dark:text-white group-hover:text-rose-600 transition-colors"
+                            title={actor.nombre}
+                          >
+                            {actor.nombre}
+                          </p>
+                          <p
+                            className="text-[11px] text-rose-600 dark:text-rose-400 font-bold truncate mt-0.5"
+                            title={actor.personaje}
+                          >
+                            {actor.personaje || 'Personaje'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Pie de modal */}
+              <div className="p-4 border-t border-neutral-200 dark:border-white/10 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setActoresEpisodioModal(null)}
+                  className="px-5 py-2.5 rounded-xl bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 text-xs font-bold transition cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
+
+            </div>
+          </div>
         )}
 
       </div>

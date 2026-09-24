@@ -25,80 +25,132 @@ function LogoPlataforma({ nombre }) {
   );
 }
 
-export default function ViendoCard({ serie, onAvanzar, onDescartar, onAbrirDetalle, onVerInfoEpisodio }) {
+export default function ViendoCard({ 
+  serie, 
+  index = 0, 
+  onAvanzar, 
+  onDescartar, 
+  onAbrirDetalle, 
+  onVerInfoEpisodio 
+}) {
   const proximaTemporada = serie.siguiente_temporada ?? serie.temporada;
   const proximoEpisodio = serie.siguiente_episodio ?? (parseInt(serie.episodio, 10) + 1);
 
-  const rutaImagen = serie.foto_siguiente || serie.foto_episodio || serie.poster_path;
-  const imagenUrl = rutaImagen
-    ? (rutaImagen.startsWith('http') 
-        ? rutaImagen 
-        : `https://image.tmdb.org/t/p/w500${rutaImagen.startsWith('/') ? rutaImagen : `/${rutaImagen}`}`)
+  // 1. Póster para la tarjeta base en reposo
+  const rutaPoster = serie.poster_temporada || serie.poster_path;
+  const posterUrl = rutaPoster
+    ? (rutaPoster.startsWith('http') 
+        ? rutaPoster 
+        : `https://image.tmdb.org/t/p/w500${rutaPoster.startsWith('/') ? rutaPoster : `/${rutaPoster}`}`)
     : null;
+
+  // 2. Foto horizontal panorámica para el pop-up emergente
+  const rutaFotoSiguiente = serie.foto_siguiente;
+  const fotoCapituloUrl = rutaFotoSiguiente
+    ? (rutaFotoSiguiente.startsWith('http') 
+        ? rutaFotoSiguiente 
+        : `https://image.tmdb.org/t/p/w780${rutaFotoSiguiente.startsWith('/') ? rutaFotoSiguiente : `/${rutaFotoSiguiente}`}`)
+    : posterUrl;
+
+  // La primera tarjeta se ancla al borde izquierdo para que el pop-up no se corte
+  const alineacionHorizontal = index === 0 
+    ? 'left-0 translate-x-0' 
+    : 'left-1/2 -translate-x-1/2';
 
   return (
     <div 
-      onClick={() => onAbrirDetalle && onAbrirDetalle(serie)}
-      className="relative w-72 aspect-[5/6] rounded-3xl overflow-hidden shadow-lg border border-neutral-300/40 dark:border-white/10 group flex-shrink-0 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl cursor-pointer bg-[#141418]"
+      onClick={() => onAbrirDetalle(serie)}
+      className="relative w-56 h-84 flex-shrink-0 cursor-pointer group select-none"
     >
-      {/* Captura con proporción ampliada */}
-      {imagenUrl ? (
-        <img 
-          src={imagenUrl} 
-          alt={serie.titulo} 
-          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          className="w-full h-full object-cover brightness-[0.95] group-hover:brightness-105 group-hover:scale-105 transition-all duration-500" 
-        />
-      ) : (
-        <div className="w-full h-full bg-[#1c1c22] flex items-center justify-center p-4 text-center text-xs font-bold text-neutral-400">
-          {serie.titulo}
+      {/* TARJETA BASE: Dimensiones originales intactas (w-56 h-84) */}
+      <div className="w-full h-full rounded-2xl overflow-hidden shadow-lg border border-neutral-300/40 dark:border-white/10 bg-[#141418] relative transition-opacity duration-200 group-hover:opacity-0">
+        {posterUrl ? (
+          <img 
+            src={posterUrl} 
+            alt={serie.titulo} 
+            className="w-full h-full object-cover brightness-[0.95]" 
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center p-4 text-center text-xs font-bold text-neutral-400">
+            {serie.titulo}
+          </div>
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-4 pointer-events-none">
+          <div className="flex justify-between items-center">
+            <LogoPlataforma nombre={serie.plataforma} />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-white truncate drop-shadow">{serie.titulo}</h3>
+            <p className="text-xs font-bold text-rose-400 mt-0.5">
+              T{proximaTemporada} · E{proximoEpisodio}
+            </p>
+          </div>
         </div>
-      )}
+      </div>
 
-      {/* Capa de controles y degradado */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-transparent flex flex-col justify-between p-4 pointer-events-none">
+      {/* POP-UP GRANDE EN HOVER: w-96 expansivo sin recortar márgenes */}
+      <div className={`absolute top-1/2 -translate-y-1/2 ${alineacionHorizontal} w-96 rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] z-30 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-105 transition-all duration-300 ease-out flex flex-col`}>
         
-        {/* Cabecera superior */}
-        <div className="flex justify-between items-center pointer-events-auto">
-          <LogoPlataforma nombre={serie.plataforma} />
+        {/* Captura panorámica 16:9 amplia */}
+        <div className="w-full aspect-video bg-neutral-900 relative overflow-hidden flex-shrink-0">
+          {fotoCapituloUrl ? (
+            <img 
+              src={fotoCapituloUrl} 
+              alt={`Capítulo ${proximoEpisodio}`} 
+              className="w-full h-full object-cover" 
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-xs text-neutral-500 font-bold">
+              Foto de capítulo no disponible
+            </div>
+          )}
 
-          <div className="flex items-center gap-1.5">
-            {onVerInfoEpisodio && (
+          <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-10">
+            <LogoPlataforma nombre={serie.plataforma} />
+
+            <div className="flex items-center gap-1.5">
+              {onVerInfoEpisodio && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onVerInfoEpisodio(serie);
+                  }}
+                  className="w-7 h-7 rounded-full bg-black/70 hover:bg-white hover:text-black text-white flex items-center justify-center text-xs font-bold transition cursor-pointer border border-white/20 backdrop-blur-sm"
+                  title="Ver sinopsis y actores (X-Ray)"
+                >
+                  ℹ
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onVerInfoEpisodio(serie);
+                  onDescartar(serie.obra_id);
                 }}
-                className="w-7 h-7 rounded-full bg-black/60 hover:bg-neutral-800 text-white flex items-center justify-center text-xs transition cursor-pointer border border-white/20"
-                title="Ver detalles y actores del episodio"
+                className="w-7 h-7 rounded-full bg-black/70 hover:bg-rose-600 text-white flex items-center justify-center text-xs transition cursor-pointer border border-white/20 backdrop-blur-sm"
+                title="Quitar de Viendo Actualmente"
               >
-                ℹ
+                ✕
               </button>
-            )}
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDescartar && onDescartar(serie.obra_id);
-              }}
-              className="w-7 h-7 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center text-xs transition cursor-pointer border border-white/20"
-              title="Quitar de Viendo Actualmente"
-            >
-              ✕
-            </button>
+            </div>
           </div>
+
+          <span className="absolute bottom-2.5 left-3 px-2.5 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-[10px] font-black text-white border border-white/10 uppercase tracking-wider">
+            Siguiente Episodio
+          </span>
         </div>
 
-        {/* Bloque inferior con más amplitud horizontal */}
-        <div className="space-y-2.5 pointer-events-auto">
+        {/* Panel informativo inferior */}
+        <div className="p-5 space-y-3.5 bg-[#16161c]">
           <div>
-            <h3 className="text-base font-black text-white leading-snug drop-shadow-md truncate" title={serie.titulo}>
+            <h3 className="text-lg font-black text-white truncate" title={serie.titulo}>
               {serie.titulo}
             </h3>
-            <p className="text-xs font-bold text-rose-400 drop-shadow">
-              Siguiente: T{proximaTemporada} · E{proximoEpisodio}
+            <p className="text-xs font-extrabold text-rose-500 mt-0.5">
+              Temporada {proximaTemporada} · Episodio {proximoEpisodio}
             </p>
           </div>
 
@@ -106,9 +158,9 @@ export default function ViendoCard({ serie, onAvanzar, onDescartar, onAbrirDetal
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onAvanzar && onAvanzar(serie);
+              onAvanzar(serie);
             }}
-            className="w-full bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow-lg transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5"
+            className="w-full bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-black py-2.5 px-4 rounded-xl shadow-lg transition duration-200 cursor-pointer flex items-center justify-center gap-1.5"
           >
             <span>✓</span> Marcar T{proximaTemporada} E{proximoEpisodio} visto
           </button>

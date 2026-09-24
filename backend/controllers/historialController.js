@@ -40,15 +40,16 @@ const registrarVisualizacion = async (req, res) => {
     ]);
     const obra_id = resObra.rows[0].id;
 
+    // Si es serie, solo consideramos duplicado si intentas cargar el mismo capítulo en la MISMA fecha
     if (tipo.toLowerCase() === 'serie') {
       const existeCap = await pool.query(
         `SELECT id FROM historial_visualizaciones 
-         WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4`,
-        [usuario_id, obra_id, temporada, episodio]
+        WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5`,
+        [usuario_id, obra_id, temporada, episodio, fecha_visto]
       );
       if (existeCap.rows.length > 0) {
         return res.status(409).json({ 
-          error: `Ya tienes registrado el capítulo ${episodio} de la temporada ${temporada}.` 
+          error: `Ya registraste el capítulo ${episodio} de la temporada ${temporada} en esta misma fecha.` 
         });
       }
     } else {
