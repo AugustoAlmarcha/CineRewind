@@ -2,28 +2,104 @@
 
 @variant dark (&:where(.dark, .dark *));
 
-/* Barra de desplazamiento moderna y visible para arrastrar */
-.carrusel-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(225, 29, 72, 0.6) transparent; /* Para Firefox */
+/* Selección de texto con la estética rose */
+::selection {
+  background-color: rgba(225, 29, 72, 0.3);
+  color: inherit;
 }
 
-/* Para Chrome, Edge, Brave en Windows */
+/* =========================================================================
+   1. Scrollbar para carruseles principales (más visible y llamativo)
+   ========================================================================= */
+.carrusel-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(225, 29, 72, 0.6) transparent; /* Firefox */
+}
+
 .carrusel-scroll::-webkit-scrollbar {
-  height: 8px !important; /* Altura fija */
+  height: 8px !important;
+  width: 8px !important;
 }
 
 .carrusel-scroll::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05); /* Fondo oscuro sutil */
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 9999px;
 }
 
 .carrusel-scroll::-webkit-scrollbar-thumb {
-  background-color: rgba(225, 29, 72, 0.6); /* Píldora rojiza visible */
+  background-color: rgba(225, 29, 72, 0.5);
   border-radius: 9999px;
   cursor: grab;
 }
 
 .carrusel-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: rgb(225, 29, 72); /* Se ilumina al pasar el mouse */
+  background-color: rgb(225, 29, 72);
+}
+
+.carrusel-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* =========================================================================
+   2. Scrollbar elegante y minimalista (Modo Claro y Oscuro)
+   ========================================================================= */
+.scrollbar-elegante {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent; /* Firefox Modo Claro */
+}
+
+.dark .scrollbar-elegante {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent; /* Firefox Modo Oscuro */
+}
+
+/* Chrome, Edge, Safari, Brave */
+.scrollbar-elegante::-webkit-scrollbar {
+  height: 6px; /* Grosor horizontal */
+  width: 6px;  /* Grosor vertical */
+}
+
+.scrollbar-elegante::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Pastilla deslizadora - Modo Claro */
+.scrollbar-elegante::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.scrollbar-elegante::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(225, 29, 72, 0.7); /* Tono rose en hover */
+}
+
+/* Pastilla deslizadora - Modo Oscuro */
+.dark .scrollbar-elegante::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+}
+
+.dark .scrollbar-elegante::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(225, 29, 72, 0.85); /* Tono rose en hover oscuro */
+}
+
+/* Ocultar botones de flechas de Windows en los extremos */
+.scrollbar-elegante::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* =========================================================================
+   3. Utilidad para ocultar scrollbar conservando el desplazamiento
+   ========================================================================= */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE y Edge */
+  scrollbar-width: none;    /* Firefox */
 }

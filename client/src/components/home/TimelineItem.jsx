@@ -1,4 +1,5 @@
 import React from 'react';
+import LogoPlataforma from '../common/LogoPlataforma';
 
 export default function TimelineItem({ 
   item, 
@@ -8,10 +9,11 @@ export default function TimelineItem({
   onToggleSeleccion,
   onAbrirDetalle 
 }) {
-  const posterUrl = item.poster_path
-    ? (item.poster_path.startsWith('http') 
-        ? item.poster_path 
-        : `https://image.tmdb.org/t/p/w500${item.poster_path}`)
+  const rutaPoster = item.poster_path;
+  const posterUrl = rutaPoster
+    ? (rutaPoster.startsWith('http') 
+        ? rutaPoster 
+        : `https://image.tmdb.org/t/p/w500${rutaPoster.startsWith('/') ? rutaPoster : `/${rutaPoster}`}`)
     : null;
 
   const handleClick = () => {
@@ -20,6 +22,17 @@ export default function TimelineItem({
     } else {
       onAbrirDetalle(item);
     }
+  };
+
+  // Formato local seguro
+  const formatearFecha = (fechaStr) => {
+    if (!fechaStr) return '';
+    const partes = String(fechaStr).split('T')[0].split('-');
+    if (partes.length === 3) {
+      const [anio, mes, dia] = partes;
+      return `${dia}/${mes}/${anio}`;
+    }
+    return new Date(fechaStr).toLocaleDateString();
   };
 
   return (
@@ -44,7 +57,12 @@ export default function TimelineItem({
 
         <div className="w-14 h-20 bg-neutral-200 dark:bg-neutral-800 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 shadow-inner group-hover:scale-105 transition-transform duration-200">
           {posterUrl ? (
-            <img src={posterUrl} alt={item.titulo} className="w-full h-full object-cover" />
+            <img 
+              src={posterUrl} 
+              alt={item.titulo} 
+              loading="lazy"
+              className="w-full h-full object-cover" 
+            />
           ) : (
             <span className="text-[10px] text-neutral-400 font-semibold">Sin foto</span>
           )}
@@ -55,14 +73,14 @@ export default function TimelineItem({
             <span className="text-[10px] font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-wider px-2 py-0.5 bg-rose-600/10 dark:bg-rose-600/20 rounded border border-rose-500/20">
               {item.tipo} {item.temporada ? `· T${item.temporada} E${item.episodio}` : ''}
             </span>
+
             {item.plataforma && (
-              <span className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
-                en {item.plataforma}
-              </span>
+              <LogoPlataforma nombre={item.plataforma} />
             )}
-            {item.calificacion && (
+
+            {item.calificacion && Number(item.calificacion) > 0 && (
               <span className="text-xs font-black text-amber-500 flex items-center gap-0.5">
-                ★ {item.calificacion}
+                ★ {Number(item.calificacion).toFixed(1)}
               </span>
             )}
           </div>
@@ -72,7 +90,7 @@ export default function TimelineItem({
           </h4>
           
           <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-            Visto el {new Date(item.fecha_visto).toLocaleDateString()}
+            Visto el {formatearFecha(item.fecha_visto)}
           </p>
 
           {item.resenia && (
@@ -85,6 +103,7 @@ export default function TimelineItem({
 
       {!modoSeleccion && (
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             onEliminar(item.visualizacion_id);

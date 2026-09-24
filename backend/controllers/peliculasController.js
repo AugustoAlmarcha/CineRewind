@@ -1,26 +1,54 @@
-// backend/controllers/peliculasController.js
+const pool = require('../config/db');
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
-// 1. Buscador de Películas y Series
+// Caché en memoria para evitar saturar TMDb (expira en 12 horas)
+const cacheTMDB = new Map();
+
+const fetchTMDBConTimeout = async (url, tiempoMs = 2500) => {
+  const ahora = Date.now();
+  if (cacheTMDB.has(url)) {
+    const { data, expira } = cacheTMDB.get(url);
+    if (ahora < expira) return data;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), tiempoMs);
+
+    const resp = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    cacheTMDB.set(url, { data, expira: ahora + 1000 * 60 * 60 * 12 });
+    return data;
+  } catch (err) {
+    return null;
+  }
+};
+
+// 1. Buscador (con timeout de 3s para respuesta rápida)
 const buscarPeliculas = async (req, res) => {
   const { query } = req.query;
 
-  if (!query) {
+  if (!query || !query.trim()) {
     return res.status(400).json({ error: 'Debes ingresar un término de búsqueda' });
   }
 
   try {
-    const url = `${TMDB_BASE_URL}/search/multi?api_key=${process.env.TMDB_API_KEY}&language=es-MX&query=${encodeURIComponent(query)}&page=1&include_adult=false`;
+    const url = `${TMDB_BASE_URL}/search/multi?api_key=${process.env.TMDB_API_KEY}&language=es-MX&query=${encodeURIComponent(query.trim())}&page=1&include_adult=false`;
+    const data = await fetchTMDBConTimeout(url, 3000);
 
-    const respuesta = await fetch(url);
-    const data = await respuesta.json();
+    if (!data || !data.results) {
+      return res.json([]);
+    }
 
-    const resultados = (data.results || [])
+    const resultados = data.results
       .filter((item) => item.media_type === 'movie' || item.media_type === 'tv')
       .map((item) => ({
         tmdb_id: item.id,
-        tipo: item.media_type === 'movie' ? 'pelicula' : 'serie', // Normalizado en minúsculas
+        tipo: item.media_type === 'movie' ? 'pelicula' : 'serie',
         titulo: item.title || item.name,
         anio: (item.release_date || item.first_air_date || '').substring(0, 4),
         sinopsis: item.overview || 'Sin descripción disponible.',
@@ -32,23 +60,31 @@ const buscarPeliculas = async (req, res) => {
     res.json(resultados);
   } catch (error) {
     console.error('Error al conectar con TMDb (buscar):', error.message);
-    res.status(500).json({ error: 'Error interno al consultar el catálogo de películas' });
+    res.status(500).json({ error: 'Error interno al consultar el catálogo' });
   }
 };
 
-// 2. Ficha y créditos de Película o Serie
+// 2. Detalle de Película o Serie
 const obtenerDetallePelicula = async (req, res) => {
   const { tipo, tmdb_id } = req.params;
-  const endpointTipo = tipo.toLowerCase() === 'serie' || tipo.toLowerCase() === 'tv' ? 'tv' : 'movie';
+  if (!tmdb_id || tmdb_id === 'undefined' || tmdb_id === 'null') {
+    return res.status(400).json({ error: 'Identificador tmdb_id no válido' });
+  }
+
+  const endpointTipo = tipo && (tipo.toLowerCase() === 'serie' || tipo.toLowerCase() === 'tv') ? 'tv' : 'movie';
 
   try {
-    const url = `https://api.themoviedb.org/3/${endpointTipo}/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}&language=es-MX&append_to_response=credits`;
-    const respuesta = await fetch(url);
-    if (!respuesta.ok) {
-      return res.status(respuesta.status).json({ error: 'Obra no encontrada en TMDb' });
+    const url = `${TMDB_BASE_URL}/${endpointTipo}/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}&language=es-MX&append_to_response=credits`;
+    let data = await fetchTMDBConTimeout(url, 3000);
+
+    if (!data) {
+      const urlFallback = `${TMDB_BASE_URL}/${endpointTipo}/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}&append_to_response=credits`;
+      data = await fetchTMDBConTimeout(urlFallback, 2500);
     }
 
-    const data = await respuesta.json();
+    if (!data) {
+      return res.status(404).json({ error: 'Obra no encontrada en TMDb' });
+    }
 
     const reparto = (data.credits?.cast || []).slice(0, 15).map((actor) => ({
       id: actor.id,
@@ -63,9 +99,7 @@ const obtenerDetallePelicula = async (req, res) => {
       titulo: data.title || data.name,
       anio: (data.release_date || data.first_air_date || '').substring(0, 4),
       sinopsis: data.overview,
-      poster_path: data.poster_path
-        ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
-        : null,
+      poster_path: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
       duracion_minutos: data.runtime || (data.episode_run_time ? data.episode_run_time[0] : null),
       generos: (data.genres || []).map((g) => g.name),
       total_temporadas: data.number_of_seasons || null,
@@ -75,29 +109,31 @@ const obtenerDetallePelicula = async (req, res) => {
 
     res.json(detalle);
   } catch (error) {
-    console.error('Error al obtener detalle de TMDb:', error.message);
+    console.error('Error al obtener detalle:', error.message);
     res.status(500).json({ error: 'Error al consultar detalles de la obra' });
   }
 };
 
-// 3. Detalle de Temporada
+// 3. Detalle de Temporada (resuelve esperas prolongadas)
 const obtenerDetalleTemporada = async (req, res) => {
   const { tmdb_id, season_number } = req.params;
 
+  if (!tmdb_id || tmdb_id === 'undefined' || season_number === undefined) {
+    return res.status(400).json({ error: 'Parámetros incompletos de temporada' });
+  }
+
   try {
-    let url = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${season_number}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
-    let respuesta = await fetch(url);
+    const url = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${season_number}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
+    let data = await fetchTMDBConTimeout(url, 2500);
 
-    if (!respuesta.ok) {
-      url = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${season_number}?api_key=${process.env.TMDB_API_KEY}`;
-      respuesta = await fetch(url);
+    if (!data) {
+      const urlSinIdioma = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${season_number}?api_key=${process.env.TMDB_API_KEY}`;
+      data = await fetchTMDBConTimeout(urlSinIdioma, 2000);
     }
 
-    if (!respuesta.ok) {
-      return res.status(respuesta.status).json({ error: 'Temporada no encontrada en TMDb' });
+    if (!data) {
+      return res.status(404).json({ error: 'Temporada no encontrada en TMDb' });
     }
-
-    const data = await respuesta.json();
 
     const episodios = (data.episodes || []).map((ep) => ({
       episodio_numero: ep.episode_number,
@@ -110,9 +146,7 @@ const obtenerDetalleTemporada = async (req, res) => {
     res.json({
       temporada_numero: data.season_number,
       nombre: data.name,
-      poster_temporada: data.poster_path 
-        ? `https://image.tmdb.org/t/p/w500${data.poster_path}` 
-        : null,
+      poster_temporada: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
       episodios,
     });
   } catch (error) {
@@ -121,29 +155,27 @@ const obtenerDetalleTemporada = async (req, res) => {
   }
 };
 
-// 4. Detalle Completo de Episodio (X-Ray / Reparto grande)
+// 4. Detalle de Episodio Completo
 const obtenerDetalleEpisodioCompleto = async (req, res) => {
   const { tmdb_id, temporada, episodio } = req.params;
   const apiKey = process.env.TMDB_API_KEY;
 
   if (!tmdb_id || tmdb_id === 'undefined' || !temporada || !episodio) {
-    return res.status(400).json({ error: 'Faltan parámetros de consulta del episodio' });
+    return res.status(400).json({ error: 'Faltan parámetros del episodio' });
   }
 
   try {
-    let url = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${temporada}/episode/${episodio}?api_key=${apiKey}&language=es-MX&append_to_response=credits`;
-    let respuesta = await fetch(url);
+    const url = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${temporada}/episode/${episodio}?api_key=${apiKey}&language=es-MX&append_to_response=credits`;
+    let data = await fetchTMDBConTimeout(url, 2500);
 
-    if (!respuesta.ok) {
-      url = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${temporada}/episode/${episodio}?api_key=${apiKey}&append_to_response=credits`;
-      respuesta = await fetch(url);
+    if (!data) {
+      const urlSinIdioma = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${temporada}/episode/${episodio}?api_key=${apiKey}&append_to_response=credits`;
+      data = await fetchTMDBConTimeout(urlSinIdioma, 2000);
     }
 
-    if (!respuesta.ok) {
-      return res.status(respuesta.status).json({ error: 'Episodio no encontrado en TMDb' });
+    if (!data) {
+      return res.status(404).json({ error: 'Episodio no encontrado en TMDb' });
     }
-
-    const data = await respuesta.json();
 
     const elencoTotal = [
       ...(data.credits?.cast || []),
@@ -163,29 +195,29 @@ const obtenerDetalleEpisodioCompleto = async (req, res) => {
       })),
     });
   } catch (error) {
-    console.error('Error al obtener detalle del episodio TMDb:', error.message);
+    console.error('Error al obtener detalle del episodio:', error.message);
     res.status(500).json({ error: 'Fallo al conectar con el servicio de TMDb' });
   }
 };
 
-// 5. Proveedores de streaming
-// 5. Obtener proveedores de streaming y última plataforma usada por el usuario
+// 5. Proveedores de Streaming (timeout estricto para evitar cuelgues)
 const obtenerProveedoresStreaming = async (req, res) => {
   const { tipo, tmdb_id } = req.params;
-  const { usuario_id } = req.query; // <-- Recibimos el usuario_id opcionalmente
-  const endpointTipo = tipo.toLowerCase() === 'serie' || tipo.toLowerCase() === 'tv' ? 'tv' : 'movie';
+  const usuario_id = req.usuario?.id || req.query.usuario_id;
+  const endpointTipo = tipo && (tipo.toLowerCase() === 'serie' || tipo.toLowerCase() === 'tv') ? 'tv' : 'movie';
   const apiKey = process.env.TMDB_API_KEY;
 
+  if (!tmdb_id || tmdb_id === 'undefined') {
+    return res.json({ plataformas: [], ultima_plataforma: null });
+  }
+
   try {
-    // 1. Consultar proveedores oficiales en TMDb / JustWatch
     const url = `${TMDB_BASE_URL}/${endpointTipo}/${tmdb_id}/watch/providers?api_key=${apiKey}`;
-    const respuesta = await fetch(url);
+    const data = await fetchTMDBConTimeout(url, 2000);
     let plataformasOficiales = [];
 
-    if (respuesta.ok) {
-      const data = await respuesta.json();
+    if (data) {
       const proveedoresAR = data.results?.AR?.flatrate || [];
-
       const nombresNormalizados = proveedoresAR.map((p) => {
         const nom = p.provider_name.toLowerCase();
         if (nom.includes('netflix')) return 'Netflix';
@@ -199,10 +231,8 @@ const obtenerProveedoresStreaming = async (req, res) => {
       plataformasOficiales = [...new Set(nombresNormalizados)];
     }
 
-    // 2. Si viene usuario_id, buscar si ya usaste una plataforma para esta obra en tu historial
     let ultimaPlataformaUsada = null;
     if (usuario_id) {
-      const pool = require('../config/db');
       const consultaUltima = `
         SELECT h.plataforma 
         FROM historial_visualizaciones h
@@ -217,13 +247,12 @@ const obtenerProveedoresStreaming = async (req, res) => {
       }
     }
 
-    // Devolvemos tanto la lista completa como tu última preferencia
     res.json({
       plataformas: plataformasOficiales,
       ultima_plataforma: ultimaPlataformaUsada,
     });
   } catch (error) {
-    console.error('Error al obtener proveedores TMDb:', error.message);
+    console.error('Error al obtener proveedores:', error.message);
     res.json({ plataformas: [], ultima_plataforma: null });
   }
 };
@@ -236,19 +265,16 @@ const obtenerTendencias = async (req, res) => {
 
   try {
     let url = '';
-
     if (pais === 'GLOBAL') {
       url = `${TMDB_BASE_URL}/trending/${endpointTipo}/week?api_key=${apiKey}&language=es-MX&page=${pagina}`;
     } else {
       url = `${TMDB_BASE_URL}/discover/${endpointTipo}?api_key=${apiKey}&language=es-MX&sort_by=popularity.desc&with_origin_country=${pais}&vote_count.gte=50&page=${pagina}&include_adult=false`;
     }
 
-    const respuesta = await fetch(url);
-    if (!respuesta.ok) {
-      return res.status(respuesta.status).json({ error: 'Error al consultar catálogo en TMDb' });
+    const data = await fetchTMDBConTimeout(url, 3000);
+    if (!data) {
+      return res.status(500).json({ error: 'Error al consultar catálogo en TMDb' });
     }
-
-    const data = await respuesta.json();
 
     const resultados = (data.results || []).slice(0, 20).map((item) => ({
       tmdb_id: item.id,
@@ -256,31 +282,29 @@ const obtenerTendencias = async (req, res) => {
       titulo: item.title || item.name,
       anio: (item.release_date || item.first_air_date || '').substring(0, 4),
       sinopsis: item.overview || 'Sin descripción disponible.',
-      poster_path: item.poster_path
-        ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
-        : null,
+      poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null,
       calificacion: item.vote_average ? item.vote_average.toFixed(1) : null,
     }));
 
     res.json(resultados);
   } catch (error) {
-    console.error('Error al obtener producciones:', error.message);
-    res.status(500).json({ error: 'Error interno al consultar catálogo' });
+    console.error('Error al obtener tendencias:', error.message);
+    res.status(500).json({ error: 'Error interno al consultar tendencias' });
   }
 };
 
-// 7. Filmografía combinada del Actor (Unificada y completa)
+// 7. Filmografía combinada del Actor
 const obtenerFilmografiaActor = async (req, res) => {
   const persona_id = req.params.persona_id || req.params.person_id;
   const apiKey = process.env.TMDB_API_KEY;
 
   try {
-    const url = `https://api.themoviedb.org/3/person/${persona_id}/combined_credits?api_key=${apiKey}&language=es-MX`;
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      return res.status(resp.status).json({ error: 'Error al consultar actor en TMDb' });
+    const url = `${TMDB_BASE_URL}/person/${persona_id}/combined_credits?api_key=${apiKey}&language=es-MX`;
+    const data = await fetchTMDBConTimeout(url, 3000);
+
+    if (!data) {
+      return res.status(404).json({ error: 'Actor no encontrado' });
     }
-    const data = await resp.json();
 
     const obras = (data.cast || [])
       .filter((it) => it.poster_path && (it.media_type === 'movie' || it.media_type === 'tv'))
@@ -313,5 +337,5 @@ module.exports = {
   obtenerProveedoresStreaming,
   obtenerTendencias,
   obtenerFilmografiaActor,
-  obtenerCreditosActor: obtenerFilmografiaActor, // Alias compatible para no romper ninguna ruta previa
+  obtenerCreditosActor: obtenerFilmografiaActor,
 };

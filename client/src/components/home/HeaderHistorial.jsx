@@ -17,6 +17,11 @@ export default function HeaderHistorial({
   setModoSeleccion,
   setSeleccionadosParaBorrar,
 }) {
+  // El botón de selección se muestra:
+  // 1. En Diario por Fechas cuando entras a un mes puntual
+  // 2. En Total Histórico cuando abres una serie
+  const puedeSeleccionar = (!vistaTotal && mesSeleccionado !== null) || (vistaTotal && serieSeleccionadaTotal !== null);
+
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-200 dark:border-white/10 pb-5">
       
@@ -28,6 +33,8 @@ export default function HeaderHistorial({
             onClick={() => {
               setVistaTotal(false);
               setSerieSeleccionadaTotal(null);
+              setModoSeleccion(false);
+              setSeleccionadosParaBorrar([]);
             }}
             className={`text-xs font-black px-4 py-2 rounded-xl transition cursor-pointer ${
               !vistaTotal
@@ -43,6 +50,8 @@ export default function HeaderHistorial({
             onClick={() => {
               setVistaTotal(true);
               setSerieSeleccionadaTotal(null);
+              setModoSeleccion(false);
+              setSeleccionadosParaBorrar([]);
               onVolverAnios();
             }}
             className={`text-xs font-black px-4 py-2 rounded-xl transition cursor-pointer ${
@@ -55,12 +64,16 @@ export default function HeaderHistorial({
           </button>
         </div>
 
-        {/* Migas de pan en Total Histórico si estás adentro de una serie */}
+        {/* Migas de pan en Total Histórico si estás dentro de una serie */}
         {vistaTotal && serieSeleccionadaTotal && (
           <div className="flex items-center gap-2 text-xs font-black">
             <button
               type="button"
-              onClick={() => setSerieSeleccionadaTotal(null)}
+              onClick={() => {
+                setSerieSeleccionadaTotal(null);
+                setModoSeleccion(false);
+                setSeleccionadosParaBorrar([]);
+              }}
               className="text-rose-600 dark:text-rose-500 hover:underline cursor-pointer"
             >
               ← Volver al catálogo de series
@@ -93,7 +106,7 @@ export default function HeaderHistorial({
         )}
       </div>
 
-      {/* Derecha: Buscador contextual + Filtro [ Todos | Películas | Series ] */}
+      {/* Derecha: Buscador contextual + Selección múltiple + Filtro tipo */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative">
           <input
@@ -107,14 +120,14 @@ export default function HeaderHistorial({
             <button
               type="button"
               onClick={() => setBusquedaHistorial('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 hover:text-white"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white cursor-pointer"
             >
               ✕
             </button>
           )}
         </div>
 
-        {!vistaTotal && mesSeleccionado !== null && (
+        {puedeSeleccionar && (
           <button
             type="button"
             onClick={() => {
@@ -138,7 +151,7 @@ export default function HeaderHistorial({
             className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
               filtroTipo === '' 
                 ? 'bg-rose-600 text-white shadow' 
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-white'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             Todos
@@ -149,7 +162,7 @@ export default function HeaderHistorial({
             className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
               filtroTipo === 'pelicula' 
                 ? 'bg-rose-600 text-white shadow' 
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-white'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             Películas
@@ -160,7 +173,7 @@ export default function HeaderHistorial({
             className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
               filtroTipo === 'serie' 
                 ? 'bg-rose-600 text-white shadow' 
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-white'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             Series

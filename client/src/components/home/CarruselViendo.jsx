@@ -1,5 +1,5 @@
 import React from 'react';
-import ViendoCard from '../ViendoCard';
+import ViendoCard from './ViendoCard';
 
 export default function CarruselViendo({ 
   seriesActivas = [], 
@@ -14,11 +14,11 @@ export default function CarruselViendo({
         Viendo Actualmente
       </h2>
 
-      <div className="flex gap-7 overflow-x-auto py-12 px-8 scrollbar-thin">
+      <div className="flex gap-4 overflow-x-auto scrollbar-elegante pb-2 scroll-smooth">
         {seriesActivas.length > 0 ? (
           seriesActivas.map((serie, index) => (
             <ViendoCard 
-              key={serie.obra_id} 
+              key={serie.obra_id || serie.tmdb_id} 
               index={index}
               totalSeries={seriesActivas.length}
               serie={serie} 

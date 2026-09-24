@@ -3,27 +3,33 @@ import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Tendencias from './pages/Tendencias';
-import ModalRegistrar from './components/ModalRegistrar';
+import ModalRegistrar from './components/modal/ModalRegistrar';
 
 export default function App() {
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => {
+    const guardado = localStorage.getItem('cinerewind_theme');
+    if (guardado !== null) return guardado === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
   const [obraSeleccionada, setObraSeleccionada] = useState(null);
   const [actualizarTrigger, setActualizarTrigger] = useState(0);
 
-  // Sincronizar tema oscuro global
   useEffect(() => {
     const root = document.documentElement;
     if (darkMode) {
       root.classList.add('dark');
+      localStorage.setItem('cinerewind_theme', 'dark');
     } else {
       root.classList.remove('dark');
+      localStorage.setItem('cinerewind_theme', 'light');
     }
   }, [darkMode]);
 
-  const toggleTheme = () => setDarkMode(!darkMode);
+  const toggleTheme = () => setDarkMode((prev) => !prev);
 
   return (
-    <div className="min-h-screen bg-[#f7f4ed] dark:bg-[#0f0f11] text-neutral-900 dark:text-neutral-100 font-sans transition-colors duration-300">
+    <div className="min-h-screen bg-[#f7f4ed] dark:bg-[#0f0f11] text-neutral-900 dark:text-neutral-100 font-sans transition-colors duration-200">
       <Navbar 
         darkMode={darkMode} 
         onToggleTheme={toggleTheme} 
@@ -31,7 +37,8 @@ export default function App() {
       />
 
       <Routes>
-        <Route path="/" element={<Home key={actualizarTrigger} />} />
+        {/* SE ELIMINÓ key={actualizarTrigger} para evitar destruir y reconstruir toda la página */}
+        <Route path="/" element={<Home actualizarTrigger={actualizarTrigger} />} />
         <Route 
           path="/tendencias" 
           element={

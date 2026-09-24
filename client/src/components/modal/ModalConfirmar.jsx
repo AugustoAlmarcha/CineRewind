@@ -4,6 +4,8 @@ export default function ModalConfirmar({
   isOpen, 
   titulo = '¿Estás seguro?', 
   mensaje = 'Esta acción no se puede deshacer.', 
+  textoConfirmar = 'Eliminar',
+  textoCancelar = 'Cancelar',
   onConfirm, 
   onCancel 
 }) {
@@ -35,14 +37,14 @@ export default function ModalConfirmar({
             onClick={onCancel}
             className="flex-1 px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/10 text-xs font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-white/5 transition cursor-pointer"
           >
-            Cancelar
+            {textoCancelar}
           </button>
           <button
             type="button"
             onClick={onConfirm}
             className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-xs font-bold text-white shadow-lg shadow-rose-600/20 transition cursor-pointer"
           >
-            Eliminar
+            {textoConfirmar}
           </button>
         </div>
 

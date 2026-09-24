@@ -1,24 +1,65 @@
 const pool = require('../config/db');
 
-// GET: Series activas para el carrusel "Viendo Actualmente"
+const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+
+// Caché en memoria para validaciones
+const cacheTMDB = new Map();
+
+const consultarTMDBConTimeout = async (url, tiempoMs = 1500) => {
+  const ahora = Date.now();
+  if (cacheTMDB.has(url)) {
+    const { data, expira } = cacheTMDB.get(url);
+    if (ahora < expira) return data;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), tiempoMs);
+
+    const resp = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    cacheTMDB.set(url, { data, expira: ahora + 1000 * 60 * 60 * 24 }); // 24 horas
+    return data;
+  } catch (err) {
+    return null;
+  }
+};
+
+const resolverUsuarioId = (req) => {
+  return req.usuario?.id || req.params?.usuario_id || req.body?.usuario_id;
+};
+
+// GET: Carga INSTANTÁNEA con detección real de fin de temporada
 const obtenerViendoActualmente = async (req, res) => {
-  const { usuario_id } = req.params;
-  const apiKey = process.env.TMDB_API_KEY;
+  const usuario_id = resolverUsuarioId(req);
+
+  if (!usuario_id) {
+    return res.status(400).json({ error: 'ID de usuario requerido' });
+  }
 
   try {
     const query = `
       WITH ultimos_vistos AS (
         SELECT 
           s.obra_id,
+          s.fecha_reinicio,
+          s.total_episodios_temporada,
           MAX(h.id) AS max_historial_id
         FROM seguimiento_series s
         INNER JOIN historial_visualizaciones h 
-          ON h.obra_id = s.obra_id AND h.usuario_id = s.usuario_id
+          ON h.obra_id = s.obra_id 
+          AND h.usuario_id = s.usuario_id
+          AND h.creado_en >= (COALESCE(s.fecha_reinicio, '1970-01-01'::timestamp) - INTERVAL '2 minutes')
         WHERE s.usuario_id = $1 AND s.activo = true
-        GROUP BY s.obra_id
+        GROUP BY s.obra_id, s.fecha_reinicio, s.total_episodios_temporada
       )
       SELECT 
         u.obra_id,
+        u.fecha_reinicio,
+        u.total_episodios_temporada,
         o.tmdb_id,
         o.titulo,
         o.poster_path,
@@ -26,6 +67,7 @@ const obtenerViendoActualmente = async (req, res) => {
         h.episodio AS episodio_actual,
         h.plataforma,
         h.fecha_visto,
+        h.foto_episodio,
         h.id AS ultimo_historial_id
       FROM ultimos_vistos u
       INNER JOIN historial_visualizaciones h ON h.id = u.max_historial_id
@@ -34,67 +76,37 @@ const obtenerViendoActualmente = async (req, res) => {
     `;
 
     const resultado = await pool.query(query, [usuario_id]);
-    const series = resultado.rows;
 
-    const seriesProcesadas = await Promise.all(
-      series.map(async (serie) => {
-        let sigTemp = serie.temporada_actual;
-        let sigEp = parseInt(serie.episodio_actual, 10) + 1;
-        let posterTemporada = null;
+    const seriesProcesadas = resultado.rows.map((serie) => {
+      let posterPrincipal = serie.poster_path;
+      if (posterPrincipal && !posterPrincipal.startsWith('http')) {
+        posterPrincipal = `https://image.tmdb.org/t/p/w500${posterPrincipal.startsWith('/') ? posterPrincipal : `/${posterPrincipal}`}`;
+      }
 
-        try {
-          const resp = await fetch(
-            `https://api.themoviedb.org/3/tv/${serie.tmdb_id}/season/${serie.temporada_actual}?api_key=${apiKey}&language=es-MX`
-          );
-          if (resp.ok) {
-            const data = await resp.json();
-            const totalCaps = data.episodes ? data.episodes.length : null;
-            if (data.poster_path) {
-              posterTemporada = `https://image.tmdb.org/t/p/w500${data.poster_path}`;
-            }
+      const tempActual = parseInt(serie.temporada_actual, 10);
+      const epActual = parseInt(serie.episodio_actual, 10);
+      const totalCaps = serie.total_episodios_temporada ? parseInt(serie.total_episodios_temporada, 10) : null;
 
-            if (totalCaps && sigEp > totalCaps) {
-              sigTemp = serie.temporada_actual + 1;
-              sigEp = 1;
-            }
-          }
-        } catch (err) {
-          console.warn('Error verificando límites en TMDb:', err.message);
-        }
+      let sigTemp = tempActual;
+      let sigEp = epActual + 1;
 
-        let fotoSiguiente = null;
-        try {
-          const respEp = await fetch(
-            `https://api.themoviedb.org/3/tv/${serie.tmdb_id}/season/${sigTemp}/episode/${sigEp}?api_key=${apiKey}&language=es-MX`
-          );
-          if (respEp.ok) {
-            const dataEp = await respEp.json();
-            if (dataEp.still_path) {
-              fotoSiguiente = `https://image.tmdb.org/t/p/w780${dataEp.still_path}`;
-            }
-          }
-        } catch (err) {
-          console.warn('Error trayendo foto del siguiente episodio:', err.message);
-        }
+      // Si alcanzó el final de la temporada, la tarjeta propone T+1 E1
+      if (totalCaps && epActual >= totalCaps) {
+        sigTemp = tempActual + 1;
+        sigEp = 1;
+      }
 
-        // Normalizar póster principal si viene en ruta relativa
-        let posterPrincipal = serie.poster_path;
-        if (posterPrincipal && !posterPrincipal.startsWith('http')) {
-          posterPrincipal = `https://image.tmdb.org/t/p/w500${posterPrincipal.startsWith('/') ? posterPrincipal : `/${posterPrincipal}`}`;
-        }
-
-        return {
-          ...serie,
-          poster_path: posterPrincipal,
-          poster_temporada: posterTemporada || posterPrincipal,
-          temporada: serie.temporada_actual,
-          episodio: serie.episodio_actual,
-          siguiente_temporada: sigTemp,
-          siguiente_episodio: sigEp,
-          foto_siguiente: fotoSiguiente || posterPrincipal,
-        };
-      })
-    );
+      return {
+        ...serie,
+        poster_path: posterPrincipal,
+        poster_temporada: posterPrincipal,
+        temporada: tempActual,
+        episodio: epActual,
+        siguiente_temporada: sigTemp,
+        siguiente_episodio: sigEp,
+        foto_siguiente: serie.foto_episodio || posterPrincipal,
+      };
+    });
 
     res.json(seriesProcesadas);
   } catch (error) {
@@ -103,16 +115,17 @@ const obtenerViendoActualmente = async (req, res) => {
   }
 };
 
-// POST: Avanzar capítulo verificando límites de temporada con TMDb
+// POST: Avanzar capítulo cacheando el total de episodios
 const avanzarCapitulo = async (req, res) => {
-  const { usuario_id, obra_id, temporada, episodio_actual, plataforma } = req.body;
+  const usuario_id = resolverUsuarioId(req);
+  const { obra_id, temporada, episodio_actual, plataforma } = req.body;
 
   if (!usuario_id || !obra_id || !temporada || episodio_actual === undefined) {
     return res.status(400).json({ error: 'Faltan parámetros obligatorios' });
   }
 
-  const tempNum = parseInt(temporada, 10);
-  const epNum = parseInt(episodio_actual, 10);
+  let tempNum = parseInt(temporada, 10);
+  let epNum = parseInt(episodio_actual, 10);
   const apiKey = process.env.TMDB_API_KEY;
 
   try {
@@ -120,91 +133,121 @@ const avanzarCapitulo = async (req, res) => {
     if (resObra.rowCount === 0) return res.status(404).json({ error: 'Obra no encontrada' });
     const { tmdb_id } = resObra.rows[0];
 
+    const resSeg = await pool.query(
+      `SELECT fecha_reinicio FROM seguimiento_series WHERE usuario_id = $1 AND obra_id = $2`,
+      [usuario_id, obra_id]
+    );
+    const fechaReinicio = resSeg.rows[0]?.fecha_reinicio || null;
+
+    // Obtener episodios ya vistos en este ciclo
+    const resVistos = await pool.query(
+      `SELECT DISTINCT episodio FROM historial_visualizaciones 
+       WHERE usuario_id = $1 
+         AND obra_id = $2 
+         AND temporada = $3
+         AND creado_en >= (COALESCE($4, '1970-01-01'::timestamp) - INTERVAL '2 minutes')`,
+      [usuario_id, obra_id, tempNum, fechaReinicio]
+    );
+    const setVistos = new Set(resVistos.rows.map((r) => parseInt(r.episodio, 10)));
+
     let totalCaps = null;
-    try {
-      const respTemp = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}/season/${tempNum}?api_key=${apiKey}&language=es-MX`);
-      if (respTemp.ok) {
-        const dataTemp = await respTemp.json();
-        totalCaps = dataTemp.episodes?.length || null;
-      }
-    } catch (e) {
-      console.warn('Error validando temporada:', e.message);
+    if (apiKey) {
+      const urlTemp = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${tempNum}?api_key=${apiKey}&language=es-MX`;
+      const dataTemp = await consultarTMDBConTimeout(urlTemp, 1500);
+      if (dataTemp) totalCaps = dataTemp.episodes?.length || null;
     }
 
     let proximaTemp = tempNum;
     let proximoEp = epNum + 1;
 
+    // Saltar huecos ya registrados
+    while (setVistos.has(proximoEp) && (!totalCaps || proximoEp <= totalCaps)) {
+      proximoEp++;
+    }
+
+    // Salto de temporada
     if (totalCaps && proximoEp > totalCaps) {
       let totalTemps = null;
-      try {
-        const respSerie = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${apiKey}&language=es-MX`);
-        if (respSerie.ok) {
-          const dataS = await respSerie.json();
-          totalTemps = dataS.number_of_seasons;
-        }
-      } catch (e) {
-        console.warn('Error validando temporadas totales:', e.message);
+      if (apiKey) {
+        const urlSerie = `${TMDB_BASE_URL}/tv/${tmdb_id}?api_key=${apiKey}&language=es-MX`;
+        const dataS = await consultarTMDBConTimeout(urlSerie, 1500);
+        if (dataS) totalTemps = dataS.number_of_seasons;
       }
 
       if (totalTemps && tempNum < totalTemps) {
         proximaTemp = tempNum + 1;
         proximoEp = 1;
+
+        // Consultamos el total de capítulos de la NUEVA temporada para cachearlo
+        if (apiKey) {
+          const urlNuevaTemp = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${proximaTemp}?api_key=${apiKey}&language=es-MX`;
+          const dataNueva = await consultarTMDBConTimeout(urlNuevaTemp, 1500);
+          totalCaps = dataNueva?.episodes?.length || null;
+        }
+
+        const resVistosNueva = await pool.query(
+          `SELECT DISTINCT episodio FROM historial_visualizaciones 
+           WHERE usuario_id = $1 
+             AND obra_id = $2 
+             AND temporada = $3
+             AND creado_en >= (COALESCE($4, '1970-01-01'::timestamp) - INTERVAL '2 minutes')`,
+          [usuario_id, obra_id, proximaTemp, fechaReinicio]
+        );
+        const setVistosNueva = new Set(resVistosNueva.rows.map((r) => parseInt(r.episodio, 10)));
+        while (setVistosNueva.has(proximoEp)) {
+          proximoEp++;
+        }
       } else {
-        await pool.query('UPDATE seguimiento_series SET activo = false WHERE usuario_id = $1 AND obra_id = $2;', [usuario_id, obra_id]);
+        await pool.query(
+          'UPDATE seguimiento_series SET activo = false, actualizado_en = CURRENT_TIMESTAMP WHERE usuario_id = $1 AND obra_id = $2;',
+          [usuario_id, obra_id]
+        );
         return res.json({ mensaje: 'Serie completada', serieFinalizada: true });
       }
     }
 
     let fotoEp = null;
-    try {
-      const respEp = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}/season/${proximaTemp}/episode/${proximoEp}?api_key=${apiKey}&language=es-MX`);
-      if (respEp.ok) {
-        const dataEp = await respEp.json();
-        if (dataEp.still_path) fotoEp = `https://image.tmdb.org/t/p/w780${dataEp.still_path}`;
+    if (apiKey) {
+      const urlEpisodio = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${proximaTemp}/episode/${proximoEp}?api_key=${apiKey}&language=es-MX`;
+      const dataEp = await consultarTMDBConTimeout(urlEpisodio, 1200);
+      if (dataEp?.still_path) {
+        fotoEp = `https://image.tmdb.org/t/p/w780${dataEp.still_path}`;
       }
-    } catch (e) {
-      console.warn('Error obteniendo foto del episodio:', e.message);
     }
 
-    // Evitar duplicar en la misma fecha
-    const existeHoy = await pool.query(
-      `SELECT id FROM historial_visualizaciones 
-       WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = CURRENT_DATE`,
-      [usuario_id, obra_id, proximaTemp, proximoEp]
-    );
+    const insertQuery = `
+      INSERT INTO historial_visualizaciones 
+        (usuario_id, obra_id, temporada, episodio, plataforma, fecha_visto, foto_episodio)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6)
+      RETURNING *;
+    `;
+    const resHistorial = await pool.query(insertQuery, [
+      usuario_id,
+      obra_id,
+      proximaTemp,
+      proximoEp,
+      plataforma || null,
+      fotoEp,
+    ]);
 
-    let registroVisualizacion = null;
-    if (existeHoy.rows.length === 0) {
-      const insertQuery = `
-        INSERT INTO historial_visualizaciones 
-          (usuario_id, obra_id, temporada, episodio, plataforma, fecha_visto, foto_episodio)
-        VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6)
-        RETURNING *;
-      `;
-      const resHistorial = await pool.query(insertQuery, [
-        usuario_id,
-        obra_id,
-        proximaTemp,
-        proximoEp,
-        plataforma || null,
-        fotoEp,
-      ]);
-      registroVisualizacion = resHistorial.rows[0];
-    } else {
-      registroVisualizacion = existeHoy.rows[0];
-    }
-
+    // Guardamos totalCaps en seguimiento_series para que las consultas posteriores no tengan que pedirlo a TMDb
     await pool.query(
-      `INSERT INTO seguimiento_series (usuario_id, obra_id, activo)
-       VALUES ($1, $2, true)
-       ON CONFLICT (usuario_id, obra_id) DO UPDATE SET activo = true;`,
-      [usuario_id, obra_id]
+      `INSERT INTO seguimiento_series (usuario_id, obra_id, activo, total_episodios_temporada, actualizado_en)
+       VALUES ($1, $2, true, $3, CURRENT_TIMESTAMP)
+       ON CONFLICT (usuario_id, obra_id) 
+       DO UPDATE SET 
+         activo = true, 
+         total_episodios_temporada = COALESCE($3, seguimiento_series.total_episodios_temporada),
+         actualizado_en = CURRENT_TIMESTAMP;`,
+      [usuario_id, obra_id, totalCaps]
     );
 
     res.json({
       mensaje: `Registrado T${proximaTemp} E${proximoEp}`,
       serieFinalizada: false,
-      visualizacion: registroVisualizacion,
+      temporada_guardada: proximaTemp,
+      episodio_guardado: proximoEp,
+      visualizacion: resHistorial.rows[0],
     });
   } catch (error) {
     console.error('Error al avanzar capítulo:', error.message);
@@ -212,16 +255,21 @@ const avanzarCapitulo = async (req, res) => {
   }
 };
 
-// DELETE / ARCHIVAR: Quita la serie de "Viendo Actualmente" sin borrar nada del historial
+// DELETE / ARCHIVAR: Quitar serie de "Viendo Actualmente"
 const descartarDeViendo = async (req, res) => {
-  const { usuario_id, obra_id } = req.params;
+  const usuario_id = resolverUsuarioId(req);
+  const { obra_id } = req.params;
+
+  if (!usuario_id || !obra_id) {
+    return res.status(400).json({ error: 'Usuario u obra no especificados' });
+  }
 
   try {
     const query = `
-      INSERT INTO seguimiento_series (usuario_id, obra_id, activo)
-      VALUES ($1, $2, false)
+      INSERT INTO seguimiento_series (usuario_id, obra_id, activo, actualizado_en)
+      VALUES ($1, $2, false, CURRENT_TIMESTAMP)
       ON CONFLICT (usuario_id, obra_id)
-      DO UPDATE SET activo = false;
+      DO UPDATE SET activo = false, actualizado_en = CURRENT_TIMESTAMP;
     `;
     await pool.query(query, [usuario_id, obra_id]);
 

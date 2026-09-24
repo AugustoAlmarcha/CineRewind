@@ -15,7 +15,7 @@ export default function TimelineScrubber({ puntos = [] }) {
   return (
     <div className="fixed right-3 top-1/2 -translate-y-1/2 z-40 flex items-center select-none group">
       
-      {/* Contenedor de la barra vertical interactiva */}
+      {/* Contenedor vertical interactivo */}
       <div className="relative py-4 px-2 flex flex-col items-center justify-between h-64 sm:h-80 bg-neutral-900/60 hover:bg-neutral-900/90 backdrop-blur-md border border-white/10 rounded-full transition-all duration-300">
         
         {/* Línea central guía */}
@@ -42,7 +42,7 @@ export default function TimelineScrubber({ puntos = [] }) {
                 }`}
               />
 
-              {/* Burbuja flotante estilo Google Fotos (Tooltip) */}
+              {/* Tooltip flotante */}
               {isHovered && (
                 <div className="absolute right-8 top-1/2 -translate-y-1/2 bg-neutral-900 border border-white/20 text-white text-xs font-black py-1.5 px-3 rounded-xl shadow-2xl whitespace-nowrap flex items-center gap-2 pointer-events-none animate-fadeIn">
                   <span className="text-rose-500">{punto.icono || '📅'}</span>
@@ -52,7 +52,6 @@ export default function TimelineScrubber({ puntos = [] }) {
                       ({punto.subtexto})
                     </span>
                   )}
-                  {/* Flechita del tooltip */}
                   <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-neutral-900 border-t border-r border-white/20 rotate-45" />
                 </div>
               )}

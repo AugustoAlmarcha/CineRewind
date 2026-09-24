@@ -1,29 +1,5 @@
 import React from 'react';
-
-function LogoPlataforma({ nombre }) {
-  const normalizado = (nombre || '').toLowerCase();
-
-  if (normalizado.includes('netflix')) {
-    return <span className="bg-[#E50914] text-white font-black text-[10px] px-2 py-0.5 rounded shadow tracking-tighter">NETFLIX</span>;
-  }
-  if (normalizado.includes('max') || normalizado.includes('hbo')) {
-    return <span className="bg-[#002BE7] text-white font-black text-[10px] px-2 py-0.5 rounded shadow tracking-wider">MAX</span>;
-  }
-  if (normalizado.includes('disney')) {
-    return <span className="bg-[#113CCF] text-white font-black text-[10px] px-2 py-0.5 rounded shadow tracking-tight">Disney+</span>;
-  }
-  if (normalizado.includes('prime') || normalizado.includes('amazon')) {
-    return <span className="bg-[#00A8E1] text-white font-black text-[10px] px-2 py-0.5 rounded shadow tracking-tight">prime</span>;
-  }
-  if (normalizado.includes('apple')) {
-    return <span className="bg-neutral-900 text-white font-bold text-[10px] px-2 py-0.5 rounded border border-white/20 shadow">tv+</span>;
-  }
-  return (
-    <span className="bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded border border-white/20">
-      {nombre || 'Streaming'}
-    </span>
-  );
-}
+import LogoPlataforma from '../common/LogoPlataforma';
 
 export default function ViendoCard({ 
   serie, 
@@ -51,10 +27,6 @@ export default function ViendoCard({
         : `https://image.tmdb.org/t/p/w780${rutaFotoSiguiente.startsWith('/') ? rutaFotoSiguiente : `/${rutaFotoSiguiente}`}`)
     : posterUrl;
 
-  // Alineación inteligente:
-  // - Si es la primera: anclada a la izquierda (left-0)
-  // - Si es la última (y hay más de 1): anclada a la derecha (right-0 left-auto)
-  // - Si está en el medio: centrada (left-1/2 -translate-x-1/2)
   let alineacionHorizontal = 'left-1/2 -translate-x-1/2';
   if (index === 0) {
     alineacionHorizontal = 'left-0 translate-x-0';
@@ -73,6 +45,7 @@ export default function ViendoCard({
           <img 
             src={posterUrl} 
             alt={serie.titulo} 
+            loading="lazy"
             className="w-full h-full object-cover brightness-[0.95]" 
           />
         ) : (
@@ -94,7 +67,7 @@ export default function ViendoCard({
         </div>
       </div>
 
-      {/* POP-UP GRANDE EN HOVER */}
+      {/* POP-UP PREVIEW EN HOVER */}
       <div className={`absolute top-1/2 -translate-y-1/2 ${alineacionHorizontal} w-96 rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] z-30 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-105 transition-all duration-300 ease-out flex flex-col`}>
         
         <div className="w-full aspect-video bg-neutral-900 relative overflow-hidden flex-shrink-0">
@@ -102,6 +75,7 @@ export default function ViendoCard({
             <img 
               src={fotoCapituloUrl} 
               alt={`Capítulo ${proximoEpisodio}`} 
+              loading="lazy"
               className="w-full h-full object-cover" 
             />
           ) : (

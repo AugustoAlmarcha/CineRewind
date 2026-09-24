@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { obtenerTendenciasAPI, obtenerTimelineAPI } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 const PAISES = [
   { codigo: 'AR', nombre: 'Argentina', banderaUrl: 'https://flagcdn.com/w40/ar.png' },
@@ -14,7 +15,8 @@ const PAISES = [
   { codigo: 'KR', nombre: 'Corea del Sur', banderaUrl: 'https://flagcdn.com/w40/kr.png' },
 ];
 
-export default function Tendencias({ onSeleccionarObra , actualizarTrigger = 0}) {
+export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 }) {
+  const { usuario } = useAuth();
   const [tipoTendencia, setTipoTendencia] = useState('movie'); // 'movie' | 'tv'
   const [modoGlobal, setModoGlobal] = useState(true);
   const [paisSeleccionado, setPaisSeleccionado] = useState(PAISES[0]);
@@ -26,16 +28,25 @@ export default function Tendencias({ onSeleccionarObra , actualizarTrigger = 0})
   const [cargandoMas, setCargandoMas] = useState(false);
 
   const menuPaisesRef = useRef(null);
-
-  // Conjunto de IDs de obras vistas para verificación rápida en O(1)
   const [idsVistos, setIdsVistos] = useState(new Set());
 
-  // Cargar historial del usuario para detectar qué títulos ya fueron vistos
+  // Helper para garantizar URL completa de carátula
+  const resolverPoster = useCallback((ruta) => {
+    if (!ruta) return null;
+    if (ruta.startsWith('http')) return ruta;
+    return `https://image.tmdb.org/t/p/w500${ruta.startsWith('/') ? ruta : `/${ruta}`}`;
+  }, []);
+
+  // Cargar historial para marcar obras ya vistas
   useEffect(() => {
     let cancelado = false;
     const cargarHistorial = async () => {
+      if (!usuario?.id) {
+        setIdsVistos(new Set());
+        return;
+      }
       try {
-        const historial = await obtenerTimelineAPI(1);
+        const historial = await obtenerTimelineAPI(usuario.id);
         if (!cancelado && Array.isArray(historial)) {
           const conjunto = new Set(historial.map((item) => Number(item.tmdb_id)));
           setIdsVistos(conjunto);
@@ -45,12 +56,10 @@ export default function Tendencias({ onSeleccionarObra , actualizarTrigger = 0})
       }
     };
     cargarHistorial();
-    return () => { 
-      cancelado = true;
-    };
-  }, [actualizarTrigger]);
+    return () => { cancelado = true; };
+  }, [usuario, actualizarTrigger]);
 
-  // Cerrar menú flotante de banderas al hacer clic afuera
+  // Cerrar menú flotante al hacer clic afuera
   useEffect(() => {
     const clickAfuera = (e) => {
       if (menuPaisesRef.current && !menuPaisesRef.current.contains(e.target)) {
@@ -61,7 +70,7 @@ export default function Tendencias({ onSeleccionarObra , actualizarTrigger = 0})
     return () => document.removeEventListener('mousedown', clickAfuera);
   }, []);
 
-  // Carga inicial o reinicio al cambiar tipo o país (vuelve a página 1)
+  // Carga inicial o reinicio al cambiar filtros (vuelve a página 1)
   useEffect(() => {
     let cancelado = false;
 
@@ -83,10 +92,7 @@ export default function Tendencias({ onSeleccionarObra , actualizarTrigger = 0})
     };
 
     cargarTendencias();
-
-    return () => {
-      cancelado = true;
-    };
+    return () => { cancelado = true; };
   }, [tipoTendencia, modoGlobal, paisSeleccionado]);
 
   // Cargar páginas adicionales acumulando resultados (hasta 100 obras)
@@ -98,8 +104,10 @@ export default function Tendencias({ onSeleccionarObra , actualizarTrigger = 0})
 
     try {
       const nuevasObras = await obtenerTendenciasAPI(tipoTendencia, codigoPais, siguientePagina);
-      setObras((prev) => [...prev, ...nuevasObras]);
-      setPagina(siguientePagina);
+      if (Array.isArray(nuevasObras)) {
+        setObras((prev) => [...prev, ...nuevasObras]);
+        setPagina(siguientePagina);
+      }
     } catch (err) {
       console.error('Error al cargar más títulos:', err);
     } finally {
@@ -130,12 +138,14 @@ export default function Tendencias({ onSeleccionarObra , actualizarTrigger = 0})
           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5">
             {modoGlobal
               ? `Las ${tipoTendencia === 'movie' ? 'películas' : 'series'} más vistas y comentadas esta semana en todo el mundo.`
-              : `Producciones destacadas y cine icónico originario de ${paisSeleccionado.nombre}.`} Mostrando {obras.length} títulos.
+              : `Producciones destacadas y cine icónico originario de ${paisSeleccionado.nombre}.`}{' '}
+            Mostrando {obras.length} títulos.
           </p>
         </div>
 
         {/* Filtros */}
         <div className="flex flex-wrap items-center gap-3">
+          {/* Tipo Película / Serie */}
           <div className="flex bg-neutral-200 dark:bg-white/5 p-1 rounded-xl border border-neutral-300 dark:border-white/10 shadow-sm">
             <button
               type="button"
@@ -161,6 +171,7 @@ export default function Tendencias({ onSeleccionarObra , actualizarTrigger = 0})
             </button>
           </div>
 
+          {/* Selector Mundo / Países */}
           <div className="flex items-center gap-2 relative" ref={menuPaisesRef}>
             <button
               type="button"
@@ -251,20 +262,21 @@ export default function Tendencias({ onSeleccionarObra , actualizarTrigger = 0})
             {obras.map((obra, index) => {
               const tmdbIdNum = Number(obra.tmdb_id || obra.id);
               const yaVista = idsVistos.has(tmdbIdNum);
+              const posterFinal = resolverPoster(obra.poster_path);
 
               return (
                 <div
                   key={`${obra.tmdb_id || obra.id}-${index}`}
                   onClick={() => onSeleccionarObra(obra)}
-                  className={`aspect-[2/3] relative rounded-3xl overflow-hidden shadow-lg border transition-all duration-300 cursor-pointer group bg-[#141418] hover:-translate-y-1.5 hover:shadow-2xl ${
+                  className={`aspect-[2/3] relative rounded-3xl overflow-hidden shadow-lg border transition-all duration-300 cursor-pointer group bg-[#141418] hover:-translate-y-1.5 hover:shadow-2xl select-none ${
                     yaVista 
                       ? 'ring-2 ring-emerald-500 border-emerald-500/40 shadow-emerald-500/20' 
                       : 'border-neutral-300/40 dark:border-white/10'
                   }`}
                 >
-                  {obra.poster_path ? (
+                  {posterFinal ? (
                     <img 
-                      src={obra.poster_path} 
+                      src={posterFinal} 
                       alt={obra.titulo} 
                       loading="lazy" 
                       className={`w-full h-full object-cover group-hover:scale-105 transition duration-300 ${
@@ -281,10 +293,10 @@ export default function Tendencias({ onSeleccionarObra , actualizarTrigger = 0})
                   <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-4 pointer-events-none">
                     <div className="flex justify-between items-start">
                       <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-rose-600 text-white rounded-md shadow">
-                        {obra.tipo}
+                        {obra.tipo || (tipoTendencia === 'movie' ? 'Película' : 'Serie')}
                       </span>
 
-                      {/* Insignia esmeralda si está en el historial */}
+                      {/* Insignia esmeralda si ya la vio */}
                       {yaVista && (
                         <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-emerald-600 text-white rounded-md shadow flex items-center gap-1 backdrop-blur-sm">
                           ✓ Vista
@@ -293,7 +305,7 @@ export default function Tendencias({ onSeleccionarObra , actualizarTrigger = 0})
 
                       {!yaVista && obra.calificacion && (
                         <span className="text-xs font-black text-amber-400 drop-shadow">
-                          ★ {obra.calificacion}
+                          ★ {Number(obra.calificacion).toFixed(1)}
                         </span>
                       )}
                     </div>
@@ -301,7 +313,7 @@ export default function Tendencias({ onSeleccionarObra , actualizarTrigger = 0})
                     <div>
                       <h4 className="text-sm font-black text-white truncate drop-shadow">{obra.titulo}</h4>
                       <p className="text-[11px] text-neutral-300 font-bold mt-0.5">
-                        {obra.anio} · Clic para registrar
+                        {obra.anio ? `${obra.anio} · ` : ''}Clic para registrar
                       </p>
                     </div>
                   </div>
