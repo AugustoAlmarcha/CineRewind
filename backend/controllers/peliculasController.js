@@ -20,7 +20,7 @@ const buscarPeliculas = async (req, res) => {
       .filter((item) => item.media_type === 'movie' || item.media_type === 'tv')
       .map((item) => ({
         tmdb_id: item.id,
-        tipo: item.media_type === 'movie' ? 'PELICULA' : 'SERIE',
+        tipo: item.media_type === 'movie' ? 'pelicula' : 'serie', // Normalizado en minúsculas
         titulo: item.title || item.name,
         anio: (item.release_date || item.first_air_date || '').substring(0, 4),
         sinopsis: item.overview || 'Sin descripción disponible.',
@@ -42,7 +42,6 @@ const obtenerDetallePelicula = async (req, res) => {
   const endpointTipo = tipo.toLowerCase() === 'serie' || tipo.toLowerCase() === 'tv' ? 'tv' : 'movie';
 
   try {
-    // Agregamos append_to_response=credits para traer el elenco en una sola llamada
     const url = `https://api.themoviedb.org/3/${endpointTipo}/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}&language=es-MX&append_to_response=credits`;
     const respuesta = await fetch(url);
     if (!respuesta.ok) {
@@ -51,8 +50,7 @@ const obtenerDetallePelicula = async (req, res) => {
 
     const data = await respuesta.json();
 
-    // Mapear los primeros 12 actores principales
-    const reparto = (data.credits?.cast || []).slice(0, 12).map((actor) => ({
+    const reparto = (data.credits?.cast || []).slice(0, 15).map((actor) => ({
       id: actor.id,
       nombre: actor.name,
       personaje: actor.character,
@@ -72,7 +70,7 @@ const obtenerDetallePelicula = async (req, res) => {
       generos: (data.genres || []).map((g) => g.name),
       total_temporadas: data.number_of_seasons || null,
       total_episodios: data.number_of_episodes || null,
-      reparto, // <-- agregado
+      reparto,
     };
 
     res.json(detalle);
@@ -82,7 +80,7 @@ const obtenerDetallePelicula = async (req, res) => {
   }
 };
 
-// 3. Detalle de Temporada (con portadas horizontales still_path por capítulo)
+// 3. Detalle de Temporada
 const obtenerDetalleTemporada = async (req, res) => {
   const { tmdb_id, season_number } = req.params;
 
@@ -123,7 +121,7 @@ const obtenerDetalleTemporada = async (req, res) => {
   }
 };
 
-// 4. Detalle Completo de Episodio (Con sinopsis, captura horizontal y elenco de actores)
+// 4. Detalle Completo de Episodio (X-Ray / Reparto grande)
 const obtenerDetalleEpisodioCompleto = async (req, res) => {
   const { tmdb_id, temporada, episodio } = req.params;
   const apiKey = process.env.TMDB_API_KEY;
@@ -136,7 +134,6 @@ const obtenerDetalleEpisodioCompleto = async (req, res) => {
     let url = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${temporada}/episode/${episodio}?api_key=${apiKey}&language=es-MX&append_to_response=credits`;
     let respuesta = await fetch(url);
 
-    // Si no responde en español, recurrir a idioma por defecto para no romper fotos ni actores
     if (!respuesta.ok) {
       url = `${TMDB_BASE_URL}/tv/${tmdb_id}/season/${temporada}/episode/${episodio}?api_key=${apiKey}&append_to_response=credits`;
       respuesta = await fetch(url);
@@ -158,7 +155,7 @@ const obtenerDetalleEpisodioCompleto = async (req, res) => {
       sinopsis: data.overview || 'Sin descripción disponible.',
       still_path: data.still_path ? `https://image.tmdb.org/t/p/w780${data.still_path}` : null,
       calificacion_tmdb: data.vote_average,
-      actores: elencoTotal.slice(0, 15).map((a) => ({
+      actores: elencoTotal.slice(0, 20).map((a) => ({
         id: a.id,
         nombre: a.name,
         personaje: a.character || 'Reparto',
@@ -170,7 +167,8 @@ const obtenerDetalleEpisodioCompleto = async (req, res) => {
     res.status(500).json({ error: 'Fallo al conectar con el servicio de TMDb' });
   }
 };
-// 5. Obtener proveedores de streaming en Argentina (TMDb / JustWatch)
+
+// 5. Proveedores de streaming
 const obtenerProveedoresStreaming = async (req, res) => {
   const { tipo, tmdb_id } = req.params;
   const endpointTipo = tipo.toLowerCase() === 'serie' || tipo.toLowerCase() === 'tv' ? 'tv' : 'movie';
@@ -182,10 +180,8 @@ const obtenerProveedoresStreaming = async (req, res) => {
     if (!respuesta.ok) return res.json([]);
 
     const data = await respuesta.json();
-    // Tomar las plataformas por suscripción plana (flatrate) disponibles en Argentina (AR)
     const proveedoresAR = data.results?.AR?.flatrate || [];
 
-    // Mapear los nombres de TMDb/JustWatch a los IDs exactos de nuestro sistema
     const nombresNormalizados = proveedoresAR.map((p) => {
       const nom = p.provider_name.toLowerCase();
       if (nom.includes('netflix')) return 'Netflix';
@@ -196,17 +192,14 @@ const obtenerProveedoresStreaming = async (req, res) => {
       return null;
     }).filter(Boolean);
 
-    // Retornar lista de plataformas únicas reconocidas
-    const unicas = [...new Set(nombresNormalizados)];
-    res.json(unicas);
+    res.json([...new Set(nombresNormalizados)]);
   } catch (error) {
     console.error('Error al obtener proveedores TMDb:', error.message);
     res.json([]);
   }
 };
 
-// 6. Obtener Tendencias Globales o Populares Disponibles en Streaming por País
-// 6. Obtener Tendencias Globales o Top Histórico por País de Origen
+// 6. Tendencias
 const obtenerTendencias = async (req, res) => {
   const { tipo = 'movie', pais = 'GLOBAL', pagina = 1 } = req.query;
   const endpointTipo = tipo.toLowerCase() === 'serie' || tipo.toLowerCase() === 'tv' ? 'tv' : 'movie';
@@ -216,10 +209,8 @@ const obtenerTendencias = async (req, res) => {
     let url = '';
 
     if (pais === 'GLOBAL') {
-      // Lo más popular y comentado en el mundo esta semana
       url = `${TMDB_BASE_URL}/trending/${endpointTipo}/week?api_key=${apiKey}&language=es-MX&page=${pagina}`;
     } else {
-      // Top de producciones originarias de ese país específico
       url = `${TMDB_BASE_URL}/discover/${endpointTipo}?api_key=${apiKey}&language=es-MX&sort_by=popularity.desc&with_origin_country=${pais}&vote_count.gte=50&page=${pagina}&include_adult=false`;
     }
 
@@ -249,42 +240,9 @@ const obtenerTendencias = async (req, res) => {
   }
 };
 
-// Obtener créditos combinados (películas y series) de un actor/actriz
-const obtenerCreditosActor = async (req, res) => {
-  const { person_id } = req.params;
-  const apiKey = process.env.TMDB_API_KEY;
-
-  try {
-    const url = `${TMDB_BASE_URL}/person/${person_id}/combined_credits?api_key=${apiKey}&language=es-MX`;
-    const r = await fetch(url);
-    if (!r.ok) return res.status(404).json({ error: 'Actor no encontrado en TMDb' });
-    const data = await r.json();
-
-    // Filtramos solo películas y series, ordenadas por popularidad
-    const obras = (data.cast || [])
-      .filter((item) => item.media_type === 'movie' || item.media_type === 'tv')
-      .sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0))
-      .slice(0, 24)
-      .map((item) => ({
-        tmdb_id: item.id,
-        tipo: item.media_type === 'tv' ? 'serie' : 'pelicula',
-        titulo: item.title || item.name,
-        personaje: item.character || 'Reparto',
-        anio: (item.release_date || item.first_air_date || '').substring(0, 4),
-        poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null,
-        calificacion: item.vote_average ? item.vote_average.toFixed(1) : null,
-      }));
-
-    res.json(obras);
-  } catch (error) {
-    console.error('Error al obtener filmografía:', error.message);
-    res.status(500).json({ error: 'Error interno al consultar filmografía' });
-  }
-};
-
-// GET: Obtener filmografía combinada de un actor
+// 7. Filmografía combinada del Actor (Unificada y completa)
 const obtenerFilmografiaActor = async (req, res) => {
-  const { persona_id } = req.params;
+  const persona_id = req.params.persona_id || req.params.person_id;
   const apiKey = process.env.TMDB_API_KEY;
 
   try {
@@ -308,6 +266,7 @@ const obtenerFilmografiaActor = async (req, res) => {
         poster_path: `https://image.tmdb.org/t/p/w500${it.poster_path}`,
         sinopsis: it.overview,
         personaje: it.character,
+        calificacion: it.vote_average ? it.vote_average.toFixed(1) : null,
       }));
 
     res.json(obras);
@@ -324,6 +283,6 @@ module.exports = {
   obtenerDetalleEpisodioCompleto,
   obtenerProveedoresStreaming,
   obtenerTendencias,
-  obtenerCreditosActor,
   obtenerFilmografiaActor,
+  obtenerCreditosActor: obtenerFilmografiaActor, // Alias compatible para no romper ninguna ruta previa
 };

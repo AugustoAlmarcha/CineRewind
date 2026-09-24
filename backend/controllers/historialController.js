@@ -40,11 +40,11 @@ const registrarVisualizacion = async (req, res) => {
     ]);
     const obra_id = resObra.rows[0].id;
 
-    // Si es serie, solo consideramos duplicado si intentas cargar el mismo capítulo en la MISMA fecha
+    // Control de duplicados considerando la fecha exacta (permite Rewatch en otras fechas)
     if (tipo.toLowerCase() === 'serie') {
       const existeCap = await pool.query(
         `SELECT id FROM historial_visualizaciones 
-        WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5`,
+         WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5`,
         [usuario_id, obra_id, temporada, episodio, fecha_visto]
       );
       if (existeCap.rows.length > 0) {
@@ -100,8 +100,7 @@ const registrarVisualizacion = async (req, res) => {
   }
 };
 
-// GET: Timeline cronológico con filtro opcional (?tipo=pelicula|serie)
-// GET: Timeline cronológico con detección precisa de Fin de Temporada
+// GET: Timeline cronológico con exportación limpia de id y poster oficial
 const obtenerTimeline = async (req, res) => {
   const { usuario_id } = req.params;
   const { tipo } = req.query;
@@ -110,6 +109,7 @@ const obtenerTimeline = async (req, res) => {
   try {
     let query = `
       SELECT 
+        h.id,                           -- << DEVUELVE 'id' DIRECTO (resuelve el bug de selección múltiple)
         h.id AS visualizacion_id,
         h.usuario_id,
         h.fecha_visto,
@@ -123,8 +123,9 @@ const obtenerTimeline = async (req, res) => {
         o.tmdb_id,
         o.tipo,
         o.titulo,
-        COALESCE(h.foto_episodio, o.poster_path, '') AS poster_path,
-        o.poster_path AS poster_obra
+        o.poster_path AS poster_serie,  -- << PÓSTER VERTICAL OFICIAL DE LA SERIE
+        o.poster_path AS poster_obra,
+        COALESCE(h.foto_episodio, o.poster_path, '') AS poster_path
       FROM historial_visualizaciones h
       INNER JOIN obras_catalogo o ON h.obra_id = o.id
       WHERE h.usuario_id = $1
@@ -142,7 +143,6 @@ const obtenerTimeline = async (req, res) => {
     const resultado = await pool.query(query, params);
     const registros = resultado.rows;
 
-    // Cache en memoria para no saturar TMDb
     const cacheSeries = new Map();
 
     const timelineConHitos = await Promise.all(
@@ -156,13 +156,11 @@ const obtenerTimeline = async (req, res) => {
 
           if (!infoTemp) {
             try {
-              // Consultar cuántos episodios tiene exactamente esta temporada
               const rTemp = await fetch(
                 `https://api.themoviedb.org/3/tv/${row.tmdb_id}/season/${row.temporada}?api_key=${apiKey}&language=es-MX`
               );
               const dTemp = rTemp.ok ? await rTemp.json() : null;
 
-              // Consultar cuántas temporadas tiene la serie completa
               const rSerie = await fetch(
                 `https://api.themoviedb.org/3/tv/${row.tmdb_id}?api_key=${apiKey}&language=es-MX`
               );
@@ -178,7 +176,6 @@ const obtenerTimeline = async (req, res) => {
             }
           }
 
-          // Validación numérica estricta para evitar falsos positivos
           const epActual = parseInt(row.episodio, 10);
           const tempActual = parseInt(row.temporada, 10);
           const totalEp = parseInt(infoTemp.totalEpisodios, 10);
@@ -192,21 +189,22 @@ const obtenerTimeline = async (req, res) => {
           }
         }
 
-        // Formatear imágenes con URL completa
+        // Normalizar URLs completas
         let poster = row.poster_path;
         if (poster && !poster.startsWith('http')) {
           poster = `https://image.tmdb.org/t/p/w500${poster.startsWith('/') ? poster : `/${poster}`}`;
         }
 
-        let posterObra = row.poster_obra;
-        if (posterObra && !posterObra.startsWith('http')) {
-          posterObra = `https://image.tmdb.org/t/p/w500${posterObra.startsWith('/') ? posterObra : `/${posterObra}`}`;
+        let posterSerie = row.poster_serie;
+        if (posterSerie && !posterSerie.startsWith('http')) {
+          posterSerie = `https://image.tmdb.org/t/p/w500${posterSerie.startsWith('/') ? posterSerie : `/${posterSerie}`}`;
         }
 
         return {
           ...row,
           poster_path: poster,
-          poster_obra: posterObra,
+          poster_serie: posterSerie,
+          poster_obra: posterSerie,
           es_final_temporada: esFinalTemporada,
           es_final_serie: esFinalSerie,
         };
@@ -238,7 +236,7 @@ const eliminarVisualizacion = async (req, res) => {
   }
 };
 
-// POST: Registrar lote de capítulos en masa (Batch Insert)
+// POST: Registrar lote de capítulos en masa
 const registrarLoteVisualizaciones = async (req, res) => {
   const { usuario_id, tmdb_id, titulo, poster_path, plataforma, temporada, episodios, fecha_visto, fotos_episodios } = req.body;
 
@@ -265,13 +263,21 @@ const registrarLoteVisualizaciones = async (req, res) => {
     for (const ep of episodios) {
       const fotoEp = fotos_episodios && fotos_episodios[ep] ? fotos_episodios[ep] : null;
 
-      await pool.query(
-        `INSERT INTO historial_visualizaciones 
-          (usuario_id, obra_id, fecha_visto, plataforma, temporada, episodio, foto_episodio)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT DO NOTHING;`,
-        [usuario_id, obra_id, fecha_visto, plataforma || null, temporada, ep, fotoEp]
+      // Evita registrar dos veces el mismo capítulo en la MISMA fecha
+      const existe = await pool.query(
+        `SELECT id FROM historial_visualizaciones 
+         WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5`,
+        [usuario_id, obra_id, temporada, ep, fecha_visto]
       );
+
+      if (existe.rows.length === 0) {
+        await pool.query(
+          `INSERT INTO historial_visualizaciones 
+             (usuario_id, obra_id, fecha_visto, plataforma, temporada, episodio, foto_episodio)
+           VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+          [usuario_id, obra_id, fecha_visto, plataforma || null, temporada, ep, fotoEp]
+        );
+      }
     }
 
     const ultimoEpisodio = Math.max(...episodios);
@@ -283,7 +289,7 @@ const registrarLoteVisualizaciones = async (req, res) => {
     );
 
     res.status(201).json({ 
-      mensaje: `Se guardaron ${episodios.length} capítulos exitosamente.`,
+      mensaje: `Se procesaron ${episodios.length} capítulos exitosamente.`,
       ultimo_capitulo: ultimoEpisodio 
     });
   } catch (error) {
@@ -312,7 +318,7 @@ const obtenerEpisodiosVistosTemporada = async (req, res) => {
   }
 };
 
-// PATCH: Guardar o actualizar la calificación y reseña de un registro del timeline
+// PATCH: Guardar o actualizar la calificación y reseña
 const actualizarReseniaYCalificacion = async (req, res) => {
   const { id } = req.params;
   const { calificacion, resenia } = req.body;

@@ -19,31 +19,31 @@ import {
 } from '../api';
 
 export default function Home() {
+  
+  // 1. Datos del backend
   const [seriesActivas, setSeriesActivas] = useState([]);
   const [timeline, setTimeline] = useState([]);
-  const [filtroTipo, setFiltroTipo] = useState('');
+
+  // 2. Filtros y Búsqueda
+  const [filtroTipo, setFiltroTipo] = useState(''); // '' (todos) | 'pelicula' | 'serie'
   const [busquedaHistorial, setBusquedaHistorial] = useState('');
-
-  // Modos de visualización avanzados
-  const [modoVistaGeneral, setModoVistaGeneral] = useState('timeline'); // 'timeline' | 'series_global'
-  const [verTodoElAnio, setVerTodoElAnio] = useState(false);
-  const [vistaAgrupada, setVistaAgrupada] = useState(false);
-
-  // Navegación temporal
+  const [vistaTotal, setVistaTotal] = useState(false); // true: Total Histórico | false: Diario por Fechas
+  const [serieSeleccionadaTotal, setSerieSeleccionadaTotal] = useState(null); // <-- Agregar este estado
+  // 3. Navegación temporal (para el Diario por Fechas)
   const [anioSeleccionado, setAnioSeleccionado] = useState(null);
   const [mesSeleccionado, setMesSeleccionado] = useState(null);
 
-  // Estados de modales
+  // 4. Modales
   const [serieParaEditar, setSerieParaEditar] = useState(null);
   const [itemDetalle, setItemDetalle] = useState(null);
   const [serieParaDetalleXRay, setSerieParaDetalleXRay] = useState(null);
   const [temporadaParaResumen, setTemporadaParaResumen] = useState(null);
 
-  // Selección múltiple y borrado en lote
+  // 5. Borrado masivo (Selección múltiple)
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [seleccionadosParaBorrar, setSeleccionadosParaBorrar] = useState([]);
 
-  // Diálogo de confirmación
+  // 6. Diálogo de confirmación
   const [dialogoConfirmar, setDialogoConfirmar] = useState({
     abierto: false,
     titulo: '',
@@ -82,12 +82,12 @@ export default function Home() {
   }, [timeline]);
 
   const listaAnios = Object.keys(arbolHistorial).sort((a, b) => b - a);
-
   const toggleSeleccionItem = (id) => {
-    setSeleccionadosParaBorrar((prev) => 
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
+      if (id === undefined || id === null) return;
+      setSeleccionadosParaBorrar((prev) => 
+        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+      );
+    };
 
   const handleAvanzar = async (serie) => {
     try {
@@ -157,46 +157,46 @@ export default function Home() {
         }}
       />
 
-      {/* 2. Mi Diario Cinemático y Biblioteca */}
+{/* 2. Mi Diario Cinemático y Total Histórico */}
       <section className="space-y-6">
-      <HeaderHistorial 
-        modoVistaGeneral={modoVistaGeneral}
-        setModoVistaGeneral={setModoVistaGeneral}
-        verTodoElAnio={verTodoElAnio}
-        setVerTodoElAnio={setVerTodoElAnio}
-        anioSeleccionado={anioSeleccionado}
-        mesSeleccionado={mesSeleccionado}
-        onVolverAnios={() => { setAnioSeleccionado(null); setMesSeleccionado(null); setVerTodoElAnio(false); }}
-        onVolverMeses={() => { setMesSeleccionado(null); setVerTodoElAnio(false); }}
-        modoSeleccion={modoSeleccion}
-        setModoSeleccion={setModoSeleccion}
-        setSeleccionadosParaBorrar={setSeleccionadosParaBorrar}
-        filtroTipo={filtroTipo}
-        setFiltroTipo={setFiltroTipo}
-        vistaAgrupada={vistaAgrupada}
-        setVistaAgrupada={setVistaAgrupada}
-        busquedaHistorial={busquedaHistorial}
-        setBusquedaHistorial={setBusquedaHistorial}
-      />
+        <HeaderHistorial 
+          vistaTotal={vistaTotal}
+          setVistaTotal={setVistaTotal}
+          serieSeleccionadaTotal={serieSeleccionadaTotal}
+          setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
+          anioSeleccionado={anioSeleccionado}
+          mesSeleccionado={mesSeleccionado}
+          onVolverAnios={() => { 
+            setAnioSeleccionado(null); 
+            setMesSeleccionado(null); 
+          }}
+          onVolverMeses={() => setMesSeleccionado(null)}
+          modoSeleccion={modoSeleccion}
+          setModoSeleccion={setModoSeleccion}
+          setSeleccionadosParaBorrar={setSeleccionadosParaBorrar}
+          filtroTipo={filtroTipo}
+          setFiltroTipo={setFiltroTipo}
+          busquedaHistorial={busquedaHistorial}
+          setBusquedaHistorial={setBusquedaHistorial}
+        />
 
-      <GrillaHistorial 
-        modoVistaGeneral={modoVistaGeneral}
-        verTodoElAnio={verTodoElAnio}
-        anioSeleccionado={anioSeleccionado}
-        mesSeleccionado={mesSeleccionado}
-        arbolHistorial={arbolHistorial}
-        listaAnios={listaAnios}
-        timelineCompleto={timeline}
-        onSeleccionarAnio={(anio) => { setAnioSeleccionado(anio); setVerTodoElAnio(false); }}
-        onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
-        modoSeleccion={modoSeleccion}
-        seleccionadosParaBorrar={seleccionadosParaBorrar}
-        onToggleItem={toggleSeleccionItem}
-        onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
-        vistaAgrupada={vistaAgrupada}
-        onAbrirResumenTemporada={(grupo) => setTemporadaParaResumen(grupo)}
-        busquedaHistorial={busquedaHistorial}
-      />
+        <GrillaHistorial 
+          vistaTotal={vistaTotal}
+          serieSeleccionadaTotal={serieSeleccionadaTotal}
+          setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
+          anioSeleccionado={anioSeleccionado}
+          mesSeleccionado={mesSeleccionado}
+          arbolHistorial={arbolHistorial}
+          listaAnios={listaAnios}
+          timelineCompleto={timeline}
+          onSeleccionarAnio={(anio) => setAnioSeleccionado(anio)}
+          onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
+          modoSeleccion={modoSeleccion}
+          seleccionadosParaBorrar={seleccionadosParaBorrar}
+          onToggleItem={toggleSeleccionItem}
+          onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
+          busquedaHistorial={busquedaHistorial}
+        />
       </section>
 
       {/* 3. Barra Flotante de Borrado Masivo */}

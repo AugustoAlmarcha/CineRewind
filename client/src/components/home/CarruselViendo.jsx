@@ -14,13 +14,13 @@ export default function CarruselViendo({
         Viendo Actualmente
       </h2>
 
-      {/* py-12 y px-8 dan suficiente espacio para la tarjeta ampliada */}
       <div className="flex gap-7 overflow-x-auto py-12 px-8 scrollbar-thin">
         {seriesActivas.length > 0 ? (
           seriesActivas.map((serie, index) => (
             <ViendoCard 
               key={serie.obra_id} 
               index={index}
+              totalSeries={seriesActivas.length}
               serie={serie} 
               onAvanzar={onAvanzar} 
               onDescartar={onDescartar}

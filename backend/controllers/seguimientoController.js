@@ -1,13 +1,11 @@
 const pool = require('../config/db');
 
 // GET: Series activas para el carrusel "Viendo Actualmente"
-// GET: Series activas para el carrusel ordenadas por la última vista recientemente
 const obtenerViendoActualmente = async (req, res) => {
   const { usuario_id } = req.params;
   const apiKey = process.env.TMDB_API_KEY;
 
   try {
-    // Obtenemos el último episodio de cada serie activa y ordenamos por el registro más nuevo
     const query = `
       WITH ultimos_vistos AS (
         SELECT 
@@ -38,11 +36,11 @@ const obtenerViendoActualmente = async (req, res) => {
     const resultado = await pool.query(query, [usuario_id]);
     const series = resultado.rows;
 
-    // Calculamos el episodio siguiente y traemos la miniatura correspondiente
     const seriesProcesadas = await Promise.all(
       series.map(async (serie) => {
         let sigTemp = serie.temporada_actual;
-        let sigEp = serie.episodio_actual + 1;
+        let sigEp = parseInt(serie.episodio_actual, 10) + 1;
+        let posterTemporada = null;
 
         try {
           const resp = await fetch(
@@ -51,6 +49,9 @@ const obtenerViendoActualmente = async (req, res) => {
           if (resp.ok) {
             const data = await resp.json();
             const totalCaps = data.episodes ? data.episodes.length : null;
+            if (data.poster_path) {
+              posterTemporada = `https://image.tmdb.org/t/p/w500${data.poster_path}`;
+            }
 
             if (totalCaps && sigEp > totalCaps) {
               sigTemp = serie.temporada_actual + 1;
@@ -69,20 +70,28 @@ const obtenerViendoActualmente = async (req, res) => {
           if (respEp.ok) {
             const dataEp = await respEp.json();
             if (dataEp.still_path) {
-              fotoSiguiente = `https://image.tmdb.org/t/p/w500${dataEp.still_path}`;
+              fotoSiguiente = `https://image.tmdb.org/t/p/w780${dataEp.still_path}`;
             }
           }
         } catch (err) {
           console.warn('Error trayendo foto del siguiente episodio:', err.message);
         }
 
+        // Normalizar póster principal si viene en ruta relativa
+        let posterPrincipal = serie.poster_path;
+        if (posterPrincipal && !posterPrincipal.startsWith('http')) {
+          posterPrincipal = `https://image.tmdb.org/t/p/w500${posterPrincipal.startsWith('/') ? posterPrincipal : `/${posterPrincipal}`}`;
+        }
+
         return {
           ...serie,
+          poster_path: posterPrincipal,
+          poster_temporada: posterTemporada || posterPrincipal,
           temporada: serie.temporada_actual,
           episodio: serie.episodio_actual,
           siguiente_temporada: sigTemp,
           siguiente_episodio: sigEp,
-          foto_siguiente: fotoSiguiente || serie.poster_path,
+          foto_siguiente: fotoSiguiente || posterPrincipal,
         };
       })
     );
@@ -151,26 +160,39 @@ const avanzarCapitulo = async (req, res) => {
       const respEp = await fetch(`https://api.themoviedb.org/3/tv/${tmdb_id}/season/${proximaTemp}/episode/${proximoEp}?api_key=${apiKey}&language=es-MX`);
       if (respEp.ok) {
         const dataEp = await respEp.json();
-        if (dataEp.still_path) fotoEp = `https://image.tmdb.org/t/p/w500${dataEp.still_path}`;
+        if (dataEp.still_path) fotoEp = `https://image.tmdb.org/t/p/w780${dataEp.still_path}`;
       }
     } catch (e) {
       console.warn('Error obteniendo foto del episodio:', e.message);
     }
 
-    const insertQuery = `
-      INSERT INTO historial_visualizaciones 
-        (usuario_id, obra_id, temporada, episodio, plataforma, fecha_visto, foto_episodio)
-      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6)
-      RETURNING *;
-    `;
-    const resHistorial = await pool.query(insertQuery, [
-      usuario_id,
-      obra_id,
-      proximaTemp,
-      proximoEp,
-      plataforma || null,
-      fotoEp,
-    ]);
+    // Evitar duplicar en la misma fecha
+    const existeHoy = await pool.query(
+      `SELECT id FROM historial_visualizaciones 
+       WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = CURRENT_DATE`,
+      [usuario_id, obra_id, proximaTemp, proximoEp]
+    );
+
+    let registroVisualizacion = null;
+    if (existeHoy.rows.length === 0) {
+      const insertQuery = `
+        INSERT INTO historial_visualizaciones 
+          (usuario_id, obra_id, temporada, episodio, plataforma, fecha_visto, foto_episodio)
+        VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6)
+        RETURNING *;
+      `;
+      const resHistorial = await pool.query(insertQuery, [
+        usuario_id,
+        obra_id,
+        proximaTemp,
+        proximoEp,
+        plataforma || null,
+        fotoEp,
+      ]);
+      registroVisualizacion = resHistorial.rows[0];
+    } else {
+      registroVisualizacion = existeHoy.rows[0];
+    }
 
     await pool.query(
       `INSERT INTO seguimiento_series (usuario_id, obra_id, activo)
@@ -182,7 +204,7 @@ const avanzarCapitulo = async (req, res) => {
     res.json({
       mensaje: `Registrado T${proximaTemp} E${proximoEp}`,
       serieFinalizada: false,
-      visualizacion: resHistorial.rows[0],
+      visualizacion: registroVisualizacion,
     });
   } catch (error) {
     console.error('Error al avanzar capítulo:', error.message);

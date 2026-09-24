@@ -28,6 +28,7 @@ function LogoPlataforma({ nombre }) {
 export default function ViendoCard({ 
   serie, 
   index = 0, 
+  totalSeries = 1,
   onAvanzar, 
   onDescartar, 
   onAbrirDetalle, 
@@ -36,7 +37,6 @@ export default function ViendoCard({
   const proximaTemporada = serie.siguiente_temporada ?? serie.temporada;
   const proximoEpisodio = serie.siguiente_episodio ?? (parseInt(serie.episodio, 10) + 1);
 
-  // 1. Póster para la tarjeta base en reposo
   const rutaPoster = serie.poster_temporada || serie.poster_path;
   const posterUrl = rutaPoster
     ? (rutaPoster.startsWith('http') 
@@ -44,7 +44,6 @@ export default function ViendoCard({
         : `https://image.tmdb.org/t/p/w500${rutaPoster.startsWith('/') ? rutaPoster : `/${rutaPoster}`}`)
     : null;
 
-  // 2. Foto horizontal panorámica para el pop-up emergente
   const rutaFotoSiguiente = serie.foto_siguiente;
   const fotoCapituloUrl = rutaFotoSiguiente
     ? (rutaFotoSiguiente.startsWith('http') 
@@ -52,17 +51,23 @@ export default function ViendoCard({
         : `https://image.tmdb.org/t/p/w780${rutaFotoSiguiente.startsWith('/') ? rutaFotoSiguiente : `/${rutaFotoSiguiente}`}`)
     : posterUrl;
 
-  // La primera tarjeta se ancla al borde izquierdo para que el pop-up no se corte
-  const alineacionHorizontal = index === 0 
-    ? 'left-0 translate-x-0' 
-    : 'left-1/2 -translate-x-1/2';
+  // Alineación inteligente:
+  // - Si es la primera: anclada a la izquierda (left-0)
+  // - Si es la última (y hay más de 1): anclada a la derecha (right-0 left-auto)
+  // - Si está en el medio: centrada (left-1/2 -translate-x-1/2)
+  let alineacionHorizontal = 'left-1/2 -translate-x-1/2';
+  if (index === 0) {
+    alineacionHorizontal = 'left-0 translate-x-0';
+  } else if (index === totalSeries - 1 && totalSeries > 1) {
+    alineacionHorizontal = 'right-0 left-auto translate-x-0';
+  }
 
   return (
     <div 
       onClick={() => onAbrirDetalle(serie)}
       className="relative w-56 h-84 flex-shrink-0 cursor-pointer group select-none"
     >
-      {/* TARJETA BASE: Dimensiones originales intactas (w-56 h-84) */}
+      {/* TARJETA BASE */}
       <div className="w-full h-full rounded-2xl overflow-hidden shadow-lg border border-neutral-300/40 dark:border-white/10 bg-[#141418] relative transition-opacity duration-200 group-hover:opacity-0">
         {posterUrl ? (
           <img 
@@ -89,10 +94,9 @@ export default function ViendoCard({
         </div>
       </div>
 
-      {/* POP-UP GRANDE EN HOVER: w-96 expansivo sin recortar márgenes */}
+      {/* POP-UP GRANDE EN HOVER */}
       <div className={`absolute top-1/2 -translate-y-1/2 ${alineacionHorizontal} w-96 rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] z-30 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-105 transition-all duration-300 ease-out flex flex-col`}>
         
-        {/* Captura panorámica 16:9 amplia */}
         <div className="w-full aspect-video bg-neutral-900 relative overflow-hidden flex-shrink-0">
           {fotoCapituloUrl ? (
             <img 
@@ -143,7 +147,6 @@ export default function ViendoCard({
           </span>
         </div>
 
-        {/* Panel informativo inferior */}
         <div className="p-5 space-y-3.5 bg-[#16161c]">
           <div>
             <h3 className="text-lg font-black text-white truncate" title={serie.titulo}>
