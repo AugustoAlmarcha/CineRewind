@@ -125,13 +125,14 @@ export const obtenerDetallePeliculaAPI = async (tipo, tmdb_id) => {
   return await res.json();
 };
 
-export const obtenerProveedoresAPI = async (tipo, tmdbId) => {
+export const obtenerProveedoresAPI = async (tipo, tmdbId, usuarioId) => {
   try {
-    const res = await fetch(`/api/peliculas/proveedores/${tipo}/${tmdbId}`);
-    if (!res.ok) return [];
+    const queryUser = usuarioId ? `?usuario_id=${usuarioId}` : '';
+    const res = await fetch(`/api/peliculas/proveedores/${tipo}/${tmdbId}${queryUser}`);
+    if (!res.ok) return { plataformas: [], ultima_plataforma: null };
     return await res.json();
   } catch {
-    return [];
+    return { plataformas: [], ultima_plataforma: null };
   }
 };
 

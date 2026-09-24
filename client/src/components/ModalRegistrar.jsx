@@ -114,19 +114,32 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     cargarEpisodios();
   }, [tmdbIdReal, temporadaSeleccionada, esSerie]);
 
-  // Autodetección de plataforma
+// Autodetección de plataforma con memoria de última usada
   useEffect(() => {
     if (!tmdbIdReal) return;
     let cancelado = false;
 
     const detectarPlataforma = async () => {
-      const tipoObra = esSerie ? 'serie' : 'pelicula';
-      const proveedores = await obtenerProveedoresAPI(tipoObra, tmdbIdReal);
+      try {
+        const tipoObra = esSerie ? 'serie' : 'pelicula';
+        // Pasamos usuario_id (1) para recuperar la última plataforma que usaste con esta obra
+        const data = await obtenerProveedoresAPI(tipoObra, tmdbIdReal, 1);
 
-      if (!cancelado && Array.isArray(proveedores)) {
-        if (proveedores.length === 1) {
-          setPlataforma(proveedores[0]);
+        if (cancelado) return;
+
+        // Soporte tanto para respuesta nueva { plataformas, ultima_plataforma } como para array directo
+        const listaPlataformas = Array.isArray(data) ? data : (data?.plataformas || []);
+        const ultimaUsada = data?.ultima_plataforma;
+
+        if (ultimaUsada) {
+          // 1. Prioridad: La plataforma que tú elegiste previamente para esta serie/película
+          setPlataforma(ultimaUsada);
+        } else if (listaPlataformas.length === 1) {
+          // 2. Si nunca la viste pero solo está en una plataforma disponible
+          setPlataforma(listaPlataformas[0]);
         }
+      } catch (err) {
+        console.error('Error al detectar proveedores:', err);
       }
     };
 

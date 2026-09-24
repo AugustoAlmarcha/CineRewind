@@ -169,33 +169,62 @@ const obtenerDetalleEpisodioCompleto = async (req, res) => {
 };
 
 // 5. Proveedores de streaming
+// 5. Obtener proveedores de streaming y última plataforma usada por el usuario
 const obtenerProveedoresStreaming = async (req, res) => {
   const { tipo, tmdb_id } = req.params;
+  const { usuario_id } = req.query; // <-- Recibimos el usuario_id opcionalmente
   const endpointTipo = tipo.toLowerCase() === 'serie' || tipo.toLowerCase() === 'tv' ? 'tv' : 'movie';
   const apiKey = process.env.TMDB_API_KEY;
 
   try {
+    // 1. Consultar proveedores oficiales en TMDb / JustWatch
     const url = `${TMDB_BASE_URL}/${endpointTipo}/${tmdb_id}/watch/providers?api_key=${apiKey}`;
     const respuesta = await fetch(url);
-    if (!respuesta.ok) return res.json([]);
+    let plataformasOficiales = [];
 
-    const data = await respuesta.json();
-    const proveedoresAR = data.results?.AR?.flatrate || [];
+    if (respuesta.ok) {
+      const data = await respuesta.json();
+      const proveedoresAR = data.results?.AR?.flatrate || [];
 
-    const nombresNormalizados = proveedoresAR.map((p) => {
-      const nom = p.provider_name.toLowerCase();
-      if (nom.includes('netflix')) return 'Netflix';
-      if (nom.includes('max') || nom.includes('hbo')) return 'Max';
-      if (nom.includes('disney')) return 'Disney+';
-      if (nom.includes('amazon') || nom.includes('prime')) return 'Prime Video';
-      if (nom.includes('apple')) return 'Apple TV+';
-      return null;
-    }).filter(Boolean);
+      const nombresNormalizados = proveedoresAR.map((p) => {
+        const nom = p.provider_name.toLowerCase();
+        if (nom.includes('netflix')) return 'Netflix';
+        if (nom.includes('max') || nom.includes('hbo')) return 'Max';
+        if (nom.includes('disney')) return 'Disney+';
+        if (nom.includes('amazon') || nom.includes('prime')) return 'Prime Video';
+        if (nom.includes('apple')) return 'Apple TV+';
+        return null;
+      }).filter(Boolean);
 
-    res.json([...new Set(nombresNormalizados)]);
+      plataformasOficiales = [...new Set(nombresNormalizados)];
+    }
+
+    // 2. Si viene usuario_id, buscar si ya usaste una plataforma para esta obra en tu historial
+    let ultimaPlataformaUsada = null;
+    if (usuario_id) {
+      const pool = require('../config/db');
+      const consultaUltima = `
+        SELECT h.plataforma 
+        FROM historial_visualizaciones h
+        INNER JOIN obras_catalogo o ON h.obra_id = o.id
+        WHERE h.usuario_id = $1 AND o.tmdb_id = $2 AND h.plataforma IS NOT NULL
+        ORDER BY h.fecha_visto DESC, h.id DESC
+        LIMIT 1;
+      `;
+      const resUltima = await pool.query(consultaUltima, [usuario_id, tmdb_id]);
+      if (resUltima.rows.length > 0) {
+        ultimaPlataformaUsada = resUltima.rows[0].plataforma;
+      }
+    }
+
+    // Devolvemos tanto la lista completa como tu última preferencia
+    res.json({
+      plataformas: plataformasOficiales,
+      ultima_plataforma: ultimaPlataformaUsada,
+    });
   } catch (error) {
     console.error('Error al obtener proveedores TMDb:', error.message);
-    res.json([]);
+    res.json({ plataformas: [], ultima_plataforma: null });
   }
 };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { buscarPeliculasAPI } from '../api';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 
 export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
   const [query, setQuery] = useState('');
@@ -46,17 +46,20 @@ export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
     <header className="sticky top-0 z-50 bg-[#f7f4ed]/90 dark:bg-[#0f0f12]/95 backdrop-blur-md border-b border-neutral-300/80 dark:border-white/10 px-8 py-4 transition-colors duration-300">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-8">
         
-        {/* Identidad con Logo ampliado */}
-        <div className="flex items-center gap-3 cursor-pointer select-none">
+{/* Identidad con Logo enlazado al inicio */}
+        <Link 
+          to="/" 
+          className="flex items-center gap-3 cursor-pointer select-none group"
+        >
           <img 
             src="/logo.png" 
             alt="CineRewind Logo" 
-            className="w-14 h-14 object-contain drop-shadow-[0_0_12px_rgba(225,29,72,0.4)] transition-transform hover:scale-105"
+            className="w-14 h-14 object-contain drop-shadow-[0_0_12px_rgba(225,29,72,0.4)] transition-transform group-hover:scale-105"
           />
           <span className="text-2xl font-black tracking-tight text-neutral-900 dark:text-white">
             Cine<span className="text-rose-600">Rewind</span>
           </span>
-        </div>
+        </Link>
 
         {/* Buscador Amplio */}
         <div className="flex-1 max-w-2xl relative" ref={containerRef}>
