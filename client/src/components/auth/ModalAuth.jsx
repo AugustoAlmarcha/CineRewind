@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function ModalAuth({ isOpen, onClose }) {
   const { iniciarSesion } = useAuth();
@@ -81,6 +82,33 @@ export default function ModalAuth({ isOpen, onClose }) {
     }
   };
 
+  // Manejador de Google OAuth
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      setEnviando(true);
+      setError(null);
+
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: credentialResponse.credential }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al autenticar con Google');
+      }
+
+      iniciarSesion(data.token, data.usuario);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Error al conectar con Google');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fadeIn">
       <div className="bg-[#fcfaf7] dark:bg-[#141418] border border-neutral-300 dark:border-white/10 rounded-3xl max-w-md w-full p-8 shadow-2xl relative text-neutral-900 dark:text-white">
@@ -133,15 +161,16 @@ export default function ModalAuth({ isOpen, onClose }) {
 
               <div>
                 <label className="block text-xs font-bold text-neutral-500 dark:text-neutral-400 mb-1">Nombre de Usuario (@)</label>
-                <input
-                  type="text"
-                  required
-                  autoComplete="username"
-                  placeholder="Elige un usuario único"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-neutral-100 dark:bg-[#1c1c22] border border-neutral-300 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-rose-500 text-neutral-900 dark:text-white transition"
-                />
+<input
+  type="text"
+  required
+  maxLength={15}
+  autoComplete="username"
+  placeholder="Elige un usuario único (máx 15)"
+  value={username}
+  onChange={(e) => setUsername(e.target.value)}
+  className="w-full bg-neutral-100 dark:bg-[#1c1c22] border border-neutral-300 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-rose-500 text-neutral-900 dark:text-white transition"
+/>
               </div>
 
               <div>
@@ -208,6 +237,27 @@ export default function ModalAuth({ isOpen, onClose }) {
             {enviando ? 'Cargando...' : (esRegistro ? 'Registrarse' : 'Entrar')}
           </button>
         </form>
+
+        {/* Separador "O" */}
+        <div className="relative my-5 flex items-center justify-center">
+          <div className="border-t border-neutral-300 dark:border-white/10 w-full" />
+          <span className="bg-[#fcfaf7] dark:bg-[#141418] px-3 text-[11px] text-neutral-400 font-bold uppercase tracking-wider absolute">
+            o
+          </span>
+        </div>
+
+        {/* Botón de Google OAuth */}
+        <div className="flex justify-center w-full min-h-[40px]">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() => setError('No se pudo conectar con los servidores de Google')}
+            theme="filled_black"
+            shape="pill"
+            text="continue_with"
+            locale="es"
+            width="320"
+          />
+        </div>
 
         {/* Alternar modo */}
         <div className="mt-6 text-center text-xs text-neutral-500 dark:text-neutral-400">

@@ -12,7 +12,7 @@ export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
   const userMenuRef = useRef(null);
 
-  // Cerrar menú de usuario al hacer clic afuera
+  // Cerrar menú del usuario al hacer clic afuera
   useEffect(() => {
     const handleClickAfuera = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
@@ -36,7 +36,7 @@ export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
             <img 
               src="/logo.png" 
               alt="CineRewind Logo" 
-              className="w-12 h-12 object-contain drop-shadow-[0_0_12px_rgba(225,29,72,0.4)] transition-transform group-hover:scale-105"
+              className="w-12 h-12 object-contain drop-shadow-[0_0_12px_rgba(225,29,72,0.4)] transition-transform group-hover:scale-105" 
             />
             <span className="text-2xl font-black tracking-tight text-neutral-900 dark:text-white">
               Cine<span className="text-rose-600">Rewind</span>
@@ -46,7 +46,7 @@ export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
           {/* Subcomponente de Búsqueda */}
           <BuscadorNavbar onSeleccionarObra={onSeleccionarObra} />
 
-          {/* Navegación y Perfil / Login */}
+          {/* Navegación y Login / Usuario */}
           <div className="flex items-center gap-6">
             <nav className="flex items-center gap-6 text-sm font-semibold">
               <NavLink 
@@ -90,34 +90,29 @@ export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setMenuUsuarioAbierto(!menuUsuarioAbierto)}
-                  className="flex items-center gap-3 p-1 rounded-full border border-neutral-300 dark:border-white/10 hover:border-rose-500 transition cursor-pointer select-none group"
+                  className="flex items-center gap-3 p-1.5 pl-2 pr-3 rounded-full border border-neutral-300 dark:border-white/10 hover:border-rose-500 bg-neutral-100/60 dark:bg-white/5 transition cursor-pointer select-none group"
                 >
                   <img
-                    src={usuario.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${usuario.username}`}
-                    alt={usuario.nombre}
-                    className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-800 object-cover"
+                    src={usuario.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'}
+                    alt={usuario.nombre || 'Usuario'}
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80';
+                    }}
+                    className="w-8 h-8 rounded-full object-cover shadow-sm ring-1 ring-white/10"
                   />
-                  <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 pr-2 group-hover:text-rose-600 transition">
-                    @{usuario.username}
+                  <span className="text-sm font-black text-neutral-800 dark:text-neutral-100 group-hover:text-rose-600 transition truncate max-w-[140px]">
+                    {usuario.nombre || usuario.username}
                   </span>
                 </button>
 
                 {menuUsuarioAbierto && (
-                  <div className="absolute right-0 mt-2 w-48 bg-[#fbf9f5] dark:bg-[#16161a] border border-neutral-300 dark:border-white/10 rounded-2xl shadow-xl py-2 z-50 animate-fadeIn">
+                  <div className="absolute right-0 mt-2 w-52 bg-[#fbf9f5] dark:bg-[#16161a] border border-neutral-300 dark:border-white/10 rounded-2xl shadow-2xl py-2 z-50 animate-fadeIn">
                     <div className="px-4 py-2 border-b border-neutral-200 dark:border-white/5">
-                      <p className="text-xs font-black text-neutral-900 dark:text-white truncate">{usuario.nombre}</p>
-                      <p className="text-[11px] text-neutral-500 truncate">@{usuario.username}</p>
+                      <p className="text-sm font-black text-neutral-900 dark:text-white truncate">{usuario.nombre}</p>
+                      <p className="text-xs text-neutral-400">@{usuario.username}</p>
                     </div>
-
-                    <button
-                      onClick={() => {
-                        setMenuUsuarioAbierto(false);
-                        navigate(`/perfil/${usuario.username}`);
-                      }}
-                      className="w-full text-left px-4 py-2 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 transition flex items-center gap-2 cursor-pointer text-neutral-700 dark:text-neutral-300"
-                    >
-                      <span>👤</span> Mi Perfil
-                    </button>
 
                     <button
                       onClick={() => {
@@ -125,9 +120,9 @@ export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
                         setMenuUsuarioAbierto(false);
                         navigate('/');
                       }}
-                      className="w-full text-left px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-500/10 transition flex items-center gap-2 cursor-pointer"
+                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-500/10 transition flex items-center gap-2 cursor-pointer mt-1"
                     >
-                      <span>🚪</span> Cerrar Sesión
+                      🚪 Cerrar Sesión
                     </button>
                   </div>
                 )}
@@ -135,7 +130,7 @@ export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
             ) : (
               <button
                 onClick={() => setModalAuthAbierto(true)}
-                className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-md transition cursor-pointer"
+                className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-black px-5 py-2.5 rounded-xl shadow-md transition cursor-pointer"
               >
                 Iniciar Sesión
               </button>

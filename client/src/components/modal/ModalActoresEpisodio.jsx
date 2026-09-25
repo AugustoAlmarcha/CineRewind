@@ -37,9 +37,9 @@ export default function ModalActoresEpisodio({ datos, onClose, onSeleccionarActo
             </p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {datos.actores.map((actor) => (
+              {datos.actores.map((actor, idx) => (
                 <div
-                  key={actor.id}
+                  key={`${actor.id || actor.actor_id}-${idx}`}
                   onClick={() => onSeleccionarActor(actor)}
                   className="bg-white dark:bg-neutral-900/90 rounded-2xl overflow-hidden border border-neutral-200 dark:border-white/10 shadow-xs hover:scale-105 hover:border-rose-500/50 transition-all duration-200 flex flex-col cursor-pointer group"
                 >

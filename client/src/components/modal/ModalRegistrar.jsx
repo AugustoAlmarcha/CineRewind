@@ -29,10 +29,10 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     setObraActual(obra);
   }, [obra]);
 
-  const esSerie = obraActual?.tipo?.toLowerCase() === 'serie';
+  const tipoNormalizado = obraActual?.tipo?.toLowerCase();
+  const esSerie = tipoNormalizado === 'serie' || tipoNormalizado === 'tv';
   const tmdbIdReal = Number(obraActual?.tmdb_id || obraActual?.id || obraActual?.obra_tmdb_id);
 
-  // Inicializar temporada de forma segura y numérica
   const [temporadaSeleccionada, setTemporadaSeleccionada] = useState(() => {
     const temp = Number(obraActual?.siguiente_temporada || obraActual?.temporada_actual || obraActual?.temporada);
     return !isNaN(temp) && temp > 0 ? temp : 1;
@@ -70,16 +70,15 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     }
   };
 
-  // 1. Obtener detalles de la obra y proveedores de streaming
+  // 1. Obtener detalles de la obra y proveedores
   useEffect(() => {
-    if (!tmdbIdReal || isNaN(tmdbIdReal)) return;
+    if (!tmdbIdReal || isNaN(tmdbIdReal) || tmdbIdReal <= 0) return;
     let cancelado = false;
 
     const cargarFichaYProveedores = async () => {
       try {
         const tipoConsulta = esSerie ? 'serie' : 'pelicula';
         
-        // Petición de ficha
         const detalle = await obtenerDetallePeliculaAPI(tipoConsulta, tmdbIdReal);
         if (!cancelado && detalle) {
           if (esSerie) {
@@ -90,7 +89,6 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           }
         }
 
-        // Petición de proveedores
         const dataProv = await obtenerProveedoresAPI(tipoConsulta, tmdbIdReal, usuario?.id || null);
         if (!cancelado && dataProv) {
           const lista = Array.isArray(dataProv) ? dataProv : (dataProv?.plataformas || []);
@@ -113,7 +111,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
 
   // 2. Obtener episodios de la temporada y capítulos vistos
   useEffect(() => {
-    if (!esSerie || !tmdbIdReal || isNaN(tmdbIdReal) || !temporadaSeleccionada) return;
+    if (!esSerie || !tmdbIdReal || isNaN(tmdbIdReal) || tmdbIdReal <= 0 || !temporadaSeleccionada) return;
 
     let cancelado = false;
 
@@ -127,6 +125,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           obtenerEpisodiosTemporadaAPI(tmdbIdReal, temporadaSeleccionada)
         ];
 
+        // Solo busca en el backend si el usuario está autenticado y con un ID numérico real
         if (usuario?.id) {
           promesas.push(
             obtenerEpisodiosVistosAPI(usuario.id, tmdbIdReal, temporadaSeleccionada).catch(() => [])
@@ -202,17 +201,18 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         }
       });
 
-      await registrarLoteAPI({
-        usuario_id: usuario.id,
-        tmdb_id: tmdbIdReal,
-        titulo: obraActual.titulo,
-        poster_path: datosTemporada?.poster_temporada || obraActual.poster_path,
-        plataforma: plataforma || null,
-        temporada: temporadaSeleccionada,
-        episodios: episodiosSeleccionados,
-        fecha_visto: fechaVisto,
-        fotos_episodios: fotosMapa,
-      });
+await registrarLoteAPI({
+  usuario_id: usuario.id,
+  tmdb_id: tmdbIdReal,
+  titulo: obraActual.titulo,
+  poster_path: datosTemporada?.poster_temporada || obraActual.poster_path,
+  plataforma: plataforma || null,
+  temporada: temporadaSeleccionada,
+  episodios: episodiosSeleccionados,
+  fecha_visto: fechaVisto,
+  fotos_episodios: fotosMapa,
+  total_episodios_temporada: datosTemporada?.episodios?.length || null, // <-- AQUÍ
+});
 
       if (plataforma && plataforma !== 'Sin plataforma') {
         try {

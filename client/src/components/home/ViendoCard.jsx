@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import LogoPlataforma from '../common/LogoPlataforma';
 
 export default function ViendoCard({ 
@@ -10,6 +10,9 @@ export default function ViendoCard({
   onAbrirDetalle, 
   onVerInfoEpisodio 
 }) {
+  // Estado para bloquear el botón contra clics rápidos simultáneos
+  const [avanzando, setAvanzando] = useState(false);
+
   const proximaTemporada = serie.siguiente_temporada ?? serie.temporada;
   const proximoEpisodio = serie.siguiente_episodio ?? (parseInt(serie.episodio, 10) + 1);
 
@@ -34,9 +37,22 @@ export default function ViendoCard({
     alineacionHorizontal = 'right-0 left-auto translate-x-0';
   }
 
+  const handleBotonAvanzar = async (e) => {
+    e.stopPropagation();
+    if (avanzando) return; // Freno anti-rebote inmediato
+    setAvanzando(true);
+    try {
+      if (onAvanzar) {
+        await onAvanzar(serie);
+      }
+    } finally {
+      setAvanzando(false);
+    }
+  };
+
   return (
     <div 
-      onClick={() => onAbrirDetalle(serie)}
+      onClick={() => onAbrirDetalle && onAbrirDetalle(serie)}
       className="relative w-56 h-84 flex-shrink-0 cursor-pointer group select-none hover:z-50"
     >
       {/* TARJETA BASE */}
@@ -106,7 +122,7 @@ export default function ViendoCard({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDescartar(serie.obra_id);
+                  onDescartar && onDescartar(serie.obra_id);
                 }}
                 className="w-7 h-7 rounded-full bg-black/70 hover:bg-rose-600 text-white flex items-center justify-center text-xs transition cursor-pointer border border-white/20 backdrop-blur-sm"
                 title="Quitar de Viendo Actualmente"
@@ -133,13 +149,13 @@ export default function ViendoCard({
 
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAvanzar(serie);
-            }}
-            className="w-full bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-black py-2.5 px-4 rounded-xl shadow-lg transition duration-200 cursor-pointer flex items-center justify-center gap-1.5"
+            disabled={avanzando}
+            onClick={handleBotonAvanzar}
+            className={`w-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-black py-2.5 px-4 rounded-xl shadow-lg transition duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
+              avanzando ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'
+            }`}
           >
-            <span>✓</span> Marcar T{proximaTemporada} E{proximoEpisodio} visto
+            <span>✓</span> {avanzando ? 'Guardando...' : `Marcar T${proximaTemporada} E${proximoEpisodio} visto`}
           </button>
         </div>
 

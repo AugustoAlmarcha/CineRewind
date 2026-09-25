@@ -37,7 +37,6 @@ export default function App() {
       />
 
       <Routes>
-        {/* SE ELIMINÓ key={actualizarTrigger} para evitar destruir y reconstruir toda la página */}
         <Route path="/" element={<Home actualizarTrigger={actualizarTrigger} />} />
         <Route 
           path="/tendencias" 

@@ -1,10 +1,10 @@
--- 1. Tabla de Usuarios
+-- 1. Tabla de Usuarios (Soporte Dual: Contraseña y Google OAuth)
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255),
     avatar_url TEXT,
     biografia TEXT,
     banner_url TEXT,
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS historial_visualizaciones (
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. Tabla de Estado de Seguimiento de Series (Con soporte para Rewatch y límite de temporada)
+-- 4. Tabla de Estado de Seguimiento de Series (Viendo Actualmente / Rewatch)
 CREATE TABLE IF NOT EXISTS seguimiento_series (
     usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     obra_id INTEGER NOT NULL REFERENCES obras_catalogo(id) ON DELETE CASCADE,
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS seguimiento_series (
 );
 
 -- ==========================================================
--- Índices para velocidad instantánea (Cero latencia en PostgreSQL)
+-- Índices de Rendimiento (PostgreSQL)
 -- ==========================================================
 
 CREATE INDEX IF NOT EXISTS idx_historial_usuario_fecha 

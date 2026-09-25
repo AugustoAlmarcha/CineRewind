@@ -166,16 +166,6 @@ export const eliminarLoteAPI = async (ids) => {
   return res.json();
 };
 
-/* =========================================================================
-   3. HELPERS DE IMAGEN
-   ========================================================================= */
-
-export const formatearImagenTMDb = (ruta, tamano = 'w500') => {
-  if (!ruta) return null;
-  if (ruta.startsWith('http')) return ruta;
-  return `https://image.tmdb.org/t/p/${tamano}${ruta.startsWith('/') ? ruta : `/${ruta}`}`;
-};
-
 export const actualizarPlataformaSerieAPI = async ({ obra_id, plataforma, solo_vacios = true }) => {
   const res = await fetch('/api/historial/actualizar-plataforma-serie', {
     method: 'PATCH',
@@ -187,4 +177,14 @@ export const actualizarPlataformaSerieAPI = async ({ obra_id, plataforma, solo_v
     throw new Error(errorData.error || 'Error al actualizar las plataformas de la serie');
   }
   return res.json();
+};
+
+/* =========================================================================
+   3. HELPERS DE IMAGEN
+   ========================================================================= */
+
+export const formatearImagenTMDb = (ruta, tamano = 'w500') => {
+  if (!ruta) return null;
+  if (ruta.startsWith('http')) return ruta;
+  return `https://image.tmdb.org/t/p/${tamano}${ruta.startsWith('/') ? ruta : `/${ruta}`}`;
 };

@@ -1,6 +1,8 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+const clientGoogle = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const generarToken = (usuario) => {
   return jwt.sign(
@@ -26,22 +28,23 @@ const registrarUsuario = async (req, res) => {
     return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
   }
 
-  // Sanitización de username: solo caracteres alfanuméricos, guiones y guiones bajos
   const usernameLimpio = username.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_.-]/g, '');
   const emailLimpio = email.toLowerCase().trim();
 
-  // Validación básica de formato de correo
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(emailLimpio)) {
     return res.status(400).json({ error: 'El formato del correo electrónico no es válido' });
   }
 
-  if (usernameLimpio.length < 3) {
-    return res.status(400).json({ error: 'El nombre de usuario debe contener al menos 3 caracteres válidos' });
+  if (usernameLimpio.length < 3 || usernameLimpio.length > 15) {
+    return res.status(400).json({ error: 'El nombre de usuario debe tener entre 3 y 15 caracteres' });
+  }
+
+  if (nombre.trim().length > 20) {
+    return res.status(400).json({ error: 'El nombre no puede superar los 20 caracteres' });
   }
 
   try {
-    // 1. Comprobar si ya existe el email o el username
     const existe = await pool.query(
       'SELECT id, email, username FROM usuarios WHERE email = $1 OR username = $2',
       [emailLimpio, usernameLimpio]
@@ -57,11 +60,9 @@ const registrarUsuario = async (req, res) => {
       }
     }
 
-    // 2. Hashear la contraseña con salt 10
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // 3. Crear usuario
     const nuevoUsuarioQuery = `
       INSERT INTO usuarios (nombre, username, email, password_hash, avatar_url)
       VALUES ($1, $2, $3, $4, $5)
@@ -85,7 +86,6 @@ const registrarUsuario = async (req, res) => {
       token,
     });
   } catch (error) {
-    // Código de violación de clave única en PostgreSQL (concurrencia)
     if (error.code === '23505') {
       return res.status(409).json({ error: 'El correo electrónico o nombre de usuario ya se encuentra registrado' });
     }
@@ -106,7 +106,7 @@ const iniciarSesion = async (req, res) => {
 
   try {
     const consulta = `
-      SELECT id, nombre, username, email, password_hash, avatar_url, biografia, banner_url, creado_en
+      SELECT id, nombre, username, email, password_hash, avatar_url, biografia, banner_url, rol, creado_en
       FROM usuarios 
       WHERE email = $1 OR username = $1;
     `;
@@ -117,6 +117,12 @@ const iniciarSesion = async (req, res) => {
     }
 
     const usuario = resultado.rows[0];
+
+    if (!usuario.password_hash) {
+      return res.status(400).json({ 
+        error: 'Esta cuenta fue creada con Google. Inicia sesión usando el botón "Continuar con Google".' 
+      });
+    }
 
     const passwordValida = await bcrypt.compare(password, usuario.password_hash);
     if (!passwordValida) {
@@ -138,7 +144,70 @@ const iniciarSesion = async (req, res) => {
   }
 };
 
-// GET: /api/auth/perfil
+// POST: /api/auth/google
+const loginGoogle = async (req, res) => {
+  const { credential } = req.body;
+
+  if (!credential) {
+    return res.status(400).json({ error: 'Token de Google requerido' });
+  }
+
+  try {
+    const ticket = await clientGoogle.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name, picture } = payload;
+    const emailLimpio = email.toLowerCase().trim();
+
+    let resultado = await pool.query(
+      'SELECT id, nombre, username, email, avatar_url, biografia, banner_url, rol FROM usuarios WHERE email = $1',
+      [emailLimpio]
+    );
+
+    let usuario;
+
+    if (resultado.rows.length > 0) {
+      usuario = resultado.rows[0];
+    } else {
+      let usernameBase = (emailLimpio.split('@')[0] || 'user').replace(/[^a-z0-9_.-]/g, '');
+      if (usernameBase.length < 3) usernameBase += '_user';
+
+      const existeUsername = await pool.query('SELECT id FROM usuarios WHERE username = $1', [usernameBase]);
+      const usernameFinal = existeUsername.rows.length > 0 
+        ? `${usernameBase}_${Math.floor(100 + Math.random() * 900)}` 
+        : usernameBase;
+
+      const insertQuery = `
+        INSERT INTO usuarios (nombre, username, email, password_hash, avatar_url)
+        VALUES ($1, $2, $3, NULL, $4)
+        RETURNING id, nombre, username, email, avatar_url, biografia, banner_url, rol;
+      `;
+      const nuevoRes = await pool.query(insertQuery, [
+        name || usernameFinal,
+        usernameFinal,
+        emailLimpio,
+        picture || `https://api.dicebear.com/7.x/bottts/svg?seed=${usernameFinal}`,
+      ]);
+      usuario = nuevoRes.rows[0];
+    }
+
+    const token = generarToken(usuario);
+
+    res.json({
+      mensaje: 'Autenticación con Google exitosa',
+      usuario,
+      token,
+    });
+  } catch (error) {
+    console.error('Error al autenticar con Google:', error.message);
+    res.status(401).json({ error: 'Token de Google inválido o expirado' });
+  }
+};
+
+// GET: /api/auth/perfil (Para validar si el token sigue activo al recargar la página)
 const obtenerPerfilActual = async (req, res) => {
   const usuarioId = req.usuario?.id;
   if (!usuarioId) {
@@ -167,5 +236,6 @@ const obtenerPerfilActual = async (req, res) => {
 module.exports = {
   registrarUsuario,
   iniciarSesion,
-  obtenerPerfilActual,
+  loginGoogle,
+  obtenerPerfilActual, // Es indispensable para que AuthContext sepa quién está logueado al refrescar F5
 };

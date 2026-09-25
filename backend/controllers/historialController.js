@@ -1,46 +1,5 @@
 const pool = require('../config/db');
 
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-
-// Caché global en memoria para no saturar TMDb al calcular hitos (expira en 24 horas)
-const cacheHitosTMDB = new Map();
-
-const obtenerInfoSerieHitos = async (tmdbId, temporada, apiKey) => {
-  const cacheKey = `${tmdbId}_t${temporada}`;
-  const ahora = Date.now();
-
-  if (cacheHitosTMDB.has(cacheKey)) {
-    const { data, expira } = cacheHitosTMDB.get(cacheKey);
-    if (ahora < expira) return data;
-  }
-
-  try {
-    // Timeout rápido de 1.5s para que si TMDb está lento, NO congele la app
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1500);
-
-    const [rTemp, rSerie] = await Promise.all([
-      fetch(`${TMDB_BASE_URL}/tv/${tmdbId}/season/${temporada}?api_key=${apiKey}&language=es-MX`, { signal: controller.signal }),
-      fetch(`${TMDB_BASE_URL}/tv/${tmdbId}?api_key=${apiKey}&language=es-MX`, { signal: controller.signal })
-    ]);
-
-    clearTimeout(timeoutId);
-
-    const dTemp = rTemp.ok ? await rTemp.json() : null;
-    const dSerie = rSerie.ok ? await rSerie.json() : null;
-
-    const info = {
-      totalEpisodios: dTemp?.episodes ? dTemp.episodes.length : null,
-      totalTemporadas: dSerie?.number_of_seasons || null,
-    };
-
-    cacheHitosTMDB.set(cacheKey, { data: info, expira: ahora + 1000 * 60 * 60 * 24 });
-    return info;
-  } catch (e) {
-    return { totalEpisodios: null, totalTemporadas: null };
-  }
-};
-
 // Helper para obtener el ID real desde el token JWT o respaldo en body/params
 const resolverUsuarioId = (req) => {
   return req.usuario?.id || req.body?.usuario_id || req.params?.usuario_id;
@@ -59,6 +18,7 @@ const registrarVisualizacion = async (req, res) => {
     pais,
     temporada,
     episodio,
+    es_final_temporada,
   } = req.body;
 
   if (!usuario_id || !tmdb_id || !tipo || !titulo || !fecha_visto) {
@@ -115,8 +75,8 @@ const registrarVisualizacion = async (req, res) => {
 
     const queryHistorial = `
       INSERT INTO historial_visualizaciones 
-        (usuario_id, obra_id, fecha_visto, plataforma, pais, temporada, episodio)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+        (usuario_id, obra_id, fecha_visto, plataforma, pais, temporada, episodio, es_final_temporada)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *;
     `;
     const resHistorial = await pool.query(queryHistorial, [
@@ -127,9 +87,9 @@ const registrarVisualizacion = async (req, res) => {
       pais || null,
       tempNum,
       epNum,
+      Boolean(es_final_temporada)
     ]);
 
-    // Actualización con reinicio de ciclo vinculado a la fecha real del registro
     if (tipo.toLowerCase() === 'serie') {
       const fechaRegistro = resHistorial.rows[0].creado_en;
 
@@ -158,8 +118,7 @@ const registrarVisualizacion = async (req, res) => {
   }
 };
 
-// GET: Timeline cronológico con cálculo de hitos (optimizado con caché)
-// GET: Timeline cronológico directo sin sobrecarga
+// GET: Timeline cronológico directo sin peticiones externas (0 ms)
 const obtenerTimeline = async (req, res) => {
   const usuario_id = req.params.usuario_id || req.usuario?.id;
   const { tipo } = req.query;
@@ -204,9 +163,8 @@ const obtenerTimeline = async (req, res) => {
     query += ` ORDER BY h.fecha_visto DESC, h.creado_en DESC, h.id DESC;`;
 
     const resultado = await pool.query(query, params);
-    const registros = resultado.rows;
 
-    const timelineProcesado = registros.map((row) => {
+    const timelineProcesado = resultado.rows.map((row) => {
       let poster = row.poster_path;
       if (poster && !poster.startsWith('http')) {
         poster = `https://image.tmdb.org/t/p/w500${poster.startsWith('/') ? poster : `/${poster}`}`;
@@ -222,8 +180,7 @@ const obtenerTimeline = async (req, res) => {
         poster_path: poster,
         poster_serie: posterSerie,
         poster_obra: posterSerie,
-        es_final_temporada: row.es_final_temporada || false,
-        es_final_serie: false,
+        es_final_temporada: Boolean(row.es_final_temporada),
       };
     });
 
@@ -257,10 +214,11 @@ const eliminarVisualizacion = async (req, res) => {
   }
 };
 
-// POST: Registrar lote de capítulos en masa
+// POST: Registrar lote de capítulos en masa con detección de final de temporada
+// POST: Registrar lote de capítulos en masa con detección de final de temporada
 const registrarLoteVisualizaciones = async (req, res) => {
   const usuario_id = resolverUsuarioId(req);
-  const { tmdb_id, titulo, poster_path, plataforma, temporada, episodios, fecha_visto, fotos_episodios } = req.body;
+  const { tmdb_id, titulo, poster_path, plataforma, temporada, episodios, fecha_visto, fotos_episodios, total_episodios_temporada } = req.body;
 
   if (!usuario_id || !tmdb_id || !titulo || !temporada || !Array.isArray(episodios) || episodios.length === 0) {
     return res.status(400).json({ error: 'Faltan datos requeridos para el registro múltiple' });
@@ -272,6 +230,10 @@ const registrarLoteVisualizaciones = async (req, res) => {
 
   const tempNum = parseInt(temporada, 10);
   const episodiosNumeros = episodios.map((e) => parseInt(e, 10));
+  
+  // Total real de la temporada recibido del cliente
+  const totalRealTemp = total_episodios_temporada ? parseInt(total_episodios_temporada, 10) : null;
+  const maxEpisodioEnviado = Math.max(...episodiosNumeros);
 
   try {
     const queryObra = `
@@ -287,6 +249,9 @@ const registrarLoteVisualizaciones = async (req, res) => {
 
     for (const ep of episodiosNumeros) {
       const fotoEp = fotos_episodios && fotos_episodios[ep] ? fotos_episodios[ep] : null;
+      
+      // Solo es fin de temporada si el cliente mandó el total real comprobado y coincide
+      const esFinTemp = Boolean(totalRealTemp && ep === totalRealTemp);
 
       const existe = await pool.query(
         `SELECT id FROM historial_visualizaciones 
@@ -297,35 +262,35 @@ const registrarLoteVisualizaciones = async (req, res) => {
       if (existe.rows.length === 0) {
         await pool.query(
           `INSERT INTO historial_visualizaciones 
-             (usuario_id, obra_id, fecha_visto, plataforma, temporada, episodio, foto_episodio)
-           VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-          [usuario_id, obra_id, fecha_visto, plataforma || null, tempNum, ep, fotoEp]
+             (usuario_id, obra_id, fecha_visto, plataforma, temporada, episodio, foto_episodio, es_final_temporada)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+          [usuario_id, obra_id, fecha_visto, plataforma || null, tempNum, ep, fotoEp, esFinTemp]
         );
       }
     }
 
-    const ultimoEpisodio = Math.max(...episodiosNumeros);
     const incluyePrimerCapitulo = tempNum === 1 && episodiosNumeros.includes(1);
     const fechaLote = new Date();
 
     // Sincronización del lote con fecha_reinicio
     await pool.query(
-      `INSERT INTO seguimiento_series (usuario_id, obra_id, activo, fecha_reinicio, actualizado_en)
-       VALUES ($1, $2, true, $4, CURRENT_TIMESTAMP)
+      `INSERT INTO seguimiento_series (usuario_id, obra_id, activo, fecha_reinicio, total_episodios_temporada, actualizado_en)
+       VALUES ($1, $2, true, $4, $5, CURRENT_TIMESTAMP)
        ON CONFLICT (usuario_id, obra_id) DO UPDATE SET 
          activo = true,
+         total_episodios_temporada = COALESCE($5, seguimiento_series.total_episodios_temporada),
          fecha_reinicio = CASE 
            WHEN seguimiento_series.activo = false THEN $4
            WHEN $3 = true THEN $4
            ELSE COALESCE(seguimiento_series.fecha_reinicio, $4)
          END,
          actualizado_en = CURRENT_TIMESTAMP;`,
-      [usuario_id, obra_id, incluyePrimerCapitulo, fechaLote]
+      [usuario_id, obra_id, incluyePrimerCapitulo, fechaLote, totalRealTemp]
     );
 
     res.status(201).json({ 
       mensaje: `Se procesaron ${episodios.length} capítulos exitosamente.`,
-      ultimo_capitulo: ultimoEpisodio 
+      ultimo_capitulo: maxEpisodioEnviado 
     });
   } catch (error) {
     console.error('Error al registrar lote de episodios:', error.message);

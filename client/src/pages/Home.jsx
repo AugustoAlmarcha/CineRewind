@@ -193,23 +193,32 @@ const solicitarEliminarLote = () => {
     });
   };
 
-  // Bienvenida limpia si no ha iniciado sesión
+// Bienvenida limpia y centrada si no ha iniciado sesión
   if (!usuario) {
     return (
-      <main className="max-w-7xl mx-auto px-8 py-10 space-y-12">
-        <div className="flex justify-center">
-          <img 
-            src="/logo.png" 
-            alt="CineRewind Logo" 
-            className="w-24 h-24 object-contain drop-shadow-[0_0_20px_rgba(225,29,72,0.45)] transition-transform duration-300 hover:scale-105" 
-          />
+      <main className="min-h-[75vh] flex items-center justify-center px-4 py-12">
+        <div className="max-w-lg w-full flex flex-col items-center text-center space-y-5 bg-neutral-100/50 dark:bg-white/[0.02] border border-neutral-300/60 dark:border-white/10 rounded-3xl p-8 sm:p-10 shadow-xl backdrop-blur-md animate-fadeIn">
+          
+          {/* Logo con resplandor */}
+          <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 mb-2">
+            <img 
+              src="/logo.png" 
+              alt="CineRewind Logo" 
+              className="w-20 h-20 object-contain drop-shadow-[0_0_20px_rgba(225,29,72,0.45)] transition-transform duration-300 hover:scale-105" 
+            />
+          </div>
+
+          {/* Título principal centrado */}
+          <h1 className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white tracking-tight">
+            Lleva el registro de tus series y películas
+          </h1>
+
+          {/* Descripción */}
+          <p className="text-neutral-600 dark:text-neutral-400 text-sm leading-relaxed max-w-sm">
+            Inicia sesión o crea una cuenta para registrar lo que vas viendo, calcular tus horas totales y descubrir tendencias globales.
+          </p>
+
         </div>
-        <h1 className="text-3xl font-black text-neutral-900 dark:text-white">
-          Lleva tu diario de cine y series
-        </h1>
-        <p className="text-neutral-500 dark:text-neutral-400 text-sm max-w-md mx-auto">
-          Inicia sesión o crea una cuenta para registrar lo que vas viendo, calcular tus horas totales y descubrir tendencias globales.
-        </p>
       </main>
     );
   }
