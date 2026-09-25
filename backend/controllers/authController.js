@@ -233,9 +233,109 @@ const obtenerPerfilActual = async (req, res) => {
   }
 };
 
+// PUT: /api/auth/perfil
+const actualizarPerfil = async (req, res) => {
+  const usuarioId = req.usuario?.id;
+  const { nombre, username, biografia, avatar_url } = req.body;
+
+  if (!usuarioId) {
+    return res.status(401).json({ error: 'Sesión no autorizada' });
+  }
+
+  if (!nombre || !nombre.trim()) {
+    return res.status(400).json({ error: 'El nombre visible es obligatorio' });
+  }
+
+  const nombreLimpio = nombre.trim();
+  if (nombreLimpio.length > 20) {
+    return res.status(400).json({ error: 'El nombre no puede superar los 20 caracteres' });
+  }
+
+  let usernameLimpio = undefined;
+  if (username) {
+    usernameLimpio = username.toLowerCase().trim().replace(/[^a-z0-9_.-]/g, '');
+    if (usernameLimpio.length < 3 || usernameLimpio.length > 20) {
+      return res.status(400).json({ error: 'El usuario debe tener entre 3 y 20 caracteres' });
+    }
+
+    // Verificar si el nuevo username ya lo usa otra persona
+    const existe = await pool.query(
+      'SELECT id FROM usuarios WHERE username = $1 AND id != $2',
+      [usernameLimpio, usuarioId]
+    );
+    if (existe.rows.length > 0) {
+      return res.status(409).json({ error: 'Ese nombre de usuario ya está en uso' });
+    }
+  }
+
+  try {
+    const query = `
+      UPDATE usuarios
+      SET 
+        nombre = $1,
+        username = COALESCE($2, username),
+        biografia = $3,
+        avatar_url = $4
+      WHERE id = $5
+      RETURNING id, nombre, username, email, avatar_url, biografia, banner_url, creado_en;
+    `;
+
+    const resultado = await pool.query(query, [
+      nombreLimpio,
+      usernameLimpio || null,
+      biografia ? biografia.trim() : null,
+      avatar_url || null,
+      usuarioId
+    ]);
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.json({
+      mensaje: 'Perfil actualizado con éxito',
+      usuario: resultado.rows[0]
+    });
+  } catch (error) {
+    console.error('Error al actualizar perfil:', error.message);
+    res.status(500).json({ error: 'Error del servidor al actualizar perfil' });
+  }
+};
+// GET: /api/auth/comprobar-username?username=augusto
+const comprobarDisponibilidadUsername = async (req, res) => {
+  const { username } = req.query;
+  const usuarioActualId = req.usuario?.id; // Si está logueado, excluimos su propio id
+
+  if (!username) {
+    return res.status(400).json({ error: 'Username requerido' });
+  }
+
+  const limpio = username.toLowerCase().trim().replace(/[^a-z0-9_.-]/g, '');
+
+  if (limpio.length < 3) {
+    return res.json({ disponible: false, motivo: 'Mínimo 3 caracteres' });
+  }
+
+  try {
+    const consulta = `
+      SELECT id FROM usuarios 
+      WHERE username = $1 AND id != COALESCE($2, -1);
+    `;
+    const resultado = await pool.query(consulta, [limpio, usuarioActualId || -1]);
+    
+    // Si resultado.rows.length === 0 significa que NADIE lo está usando
+    res.json({ disponible: resultado.rows.length === 0, username: limpio });
+  } catch (error) {
+    console.error('Error al comprobar username:', error.message);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+};
+
 module.exports = {
   registrarUsuario,
   iniciarSesion,
   loginGoogle,
+  comprobarDisponibilidadUsername,
+  actualizarPerfil,
   obtenerPerfilActual, // Es indispensable para que AuthContext sepa quién está logueado al refrescar F5
 };

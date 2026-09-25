@@ -19,6 +19,11 @@ export const AuthProvider = ({ children }) => {
     setUsuario(usuarioRecibido);
   }, []);
 
+  // Actualiza el perfil activo en memoria al guardar cambios
+  const actualizarUsuario = useCallback((nuevosDatos) => {
+    setUsuario((prev) => (prev ? { ...prev, ...nuevosDatos } : nuevosDatos));
+  }, []);
+
   // Al montar o cambiar el token, validamos la sesión con el backend
   useEffect(() => {
     let cancelado = false;
@@ -64,7 +69,7 @@ export const AuthProvider = ({ children }) => {
   }, [token, cerrarSesion]);
 
   return (
-    <AuthContext.Provider value={{ usuario, token, cargandoAuth, iniciarSesion, cerrarSesion }}>
+    <AuthContext.Provider value={{ usuario, token, cargandoAuth, iniciarSesion, cerrarSesion, actualizarUsuario }}>
       {children}
     </AuthContext.Provider>
   );

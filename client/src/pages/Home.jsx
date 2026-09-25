@@ -3,7 +3,7 @@ import CarruselViendo from '../components/home/CarruselViendo';
 import HeaderHistorial from '../components/home/HeaderHistorial';
 import GrillaHistorial from '../components/home/GrillaHistorial';
 import BarraAccionLote from '../components/home/BarraAccionLote';
-
+import { useLocation } from 'react-router-dom';
 // Modales modulares
 import ModalRegistrar from '../components/modal/ModalRegistrar';
 import ModalConfirmar from '../components/modal/ModalConfirmar';
@@ -53,6 +53,17 @@ export default function Home({ actualizarTrigger }) {
     mensaje: '',
     onConfirm: null,
   });
+
+  const location = useLocation();
+
+useEffect(() => {
+  if (location.state?.vistaTotal !== undefined) {
+    setVistaTotal(location.state.vistaTotal);
+  }
+  if (location.state?.filtroTipo !== undefined) {
+    setFiltroTipo(location.state.filtroTipo);
+  }
+}, [location.state]);
 
 const cargarDatos = useCallback(async () => {
     if (!usuario?.id) {
@@ -169,8 +180,7 @@ const solicitarEliminarLote = () => {
           await cargarDatos();
         } catch (err) {
           console.error('Error al eliminar en lote:', err);
-          alert('Hubo un problema al eliminar los registros en el servidor.');
-          cargarDatos(); // Restaurar el estado real si falló la red
+          cargarDatos();
         }
       },
     });

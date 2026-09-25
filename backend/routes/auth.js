@@ -4,7 +4,9 @@ const {
   registrarUsuario, 
   iniciarSesion, 
   loginGoogle,
-  obtenerPerfilActual 
+  obtenerPerfilActual,
+  actualizarPerfil,
+  comprobarDisponibilidadUsername
 } = require('../controllers/authController');
 const { verificarToken } = require('../middlewares/authMiddleware');
 
@@ -12,8 +14,10 @@ const { verificarToken } = require('../middlewares/authMiddleware');
 router.post('/registro', registrarUsuario);
 router.post('/login', iniciarSesion);
 router.post('/google', loginGoogle);
+router.get('/comprobar-username', comprobarDisponibilidadUsername);
 
-// Verificación de sesión activa (JWT)
+// Verificación y actualización de sesión activa (JWT)
 router.get('/perfil', verificarToken, obtenerPerfilActual);
+router.put('/perfil', verificarToken, actualizarPerfil);
 
 module.exports = router;

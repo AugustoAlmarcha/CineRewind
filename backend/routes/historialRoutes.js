@@ -14,6 +14,8 @@ const {
   actualizarReseniaYCalificacion,
   eliminarLoteVisualizaciones,
   actualizarPlataformaSerie,
+  obtenerCatalogoUsuario,
+  obtenerEstadisticasUsuario,
 } = require('../controllers/historialController');
 
 // Controlador de Seguimiento de Series (Carrusel)
@@ -35,7 +37,8 @@ router.delete('/viendo-actualmente/:usuario_id/:obra_id', verificarToken, descar
    ========================================================================= */
 router.get('/timeline/:usuario_id', obtenerTimeline);
 router.get('/vistos/:usuario_id/:tmdb_id/:temporada', obtenerEpisodiosVistosTemporada);
-
+router.get('/catalogo-usuario', verificarToken, obtenerCatalogoUsuario);
+router.get('/estadisticas', verificarToken, obtenerEstadisticasUsuario);
 /* =========================================================================
    3. RUTAS DE ESCRITURA Y REGISTRO (Protegidas con JWT)
    ========================================================================= */

@@ -6,6 +6,7 @@ const pool = require('./config/db');
 // Rutas
 const peliculasRoutes = require('./routes/peliculasRoutes');
 const historialRoutes = require('./routes/historialRoutes');
+const favoritosRoutes = require('./routes/favoritosRoutes'); 
 const authRutas = require('./routes/auth');
 
 const app = express();
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use('/api/peliculas', peliculasRoutes);
 app.use('/api/historial', historialRoutes);
 app.use('/api/auth', authRutas);
+app.use('/api/favoritos', favoritosRoutes);
 
 // Endpoint de prueba rápida para la base de datos
 app.get('/api/test-db', async (req, res) => {

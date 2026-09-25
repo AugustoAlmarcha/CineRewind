@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Tendencias from './pages/Tendencias';
 import ModalRegistrar from './components/modal/ModalRegistrar';
+import Perfil from './pages/Perfil';
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(() => {
@@ -47,6 +48,8 @@ export default function App() {
             />
           } 
         />
+        {/* Ruta para el nuevo perfil */}
+        <Route path="/perfil/:username" element={<Perfil />} />
       </Routes>
 
       {obraSeleccionada && (

@@ -431,10 +431,97 @@ const actualizarPlataformaSerie = async (req, res) => {
   }
 };
 
+// GET: /api/historial/catalogo-usuario?tipo=serie
+const obtenerCatalogoUsuario = async (req, res) => {
+  const usuarioId = req.usuario?.id;
+  const { tipo } = req.query;
+
+  if (!usuarioId) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+
+  try {
+    const consulta = `
+      SELECT DISTINCT 
+        o.id, 
+        o.tmdb_id, 
+        o.tipo, 
+        o.titulo, 
+        o.poster_path
+      FROM obras_catalogo o
+      INNER JOIN historial_visualizaciones h ON h.obra_id = o.id
+      WHERE h.usuario_id = $1 ${tipo ? 'AND o.tipo = $2' : ''}
+      ORDER BY o.titulo ASC;
+    `;
+    const params = tipo ? [usuarioId, tipo] : [usuarioId];
+    const resultado = await pool.query(consulta, params);
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('Error al obtener catálogo guardado del usuario:', error.message);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+};
+
+// GET: /api/historial/estadisticas
+const obtenerEstadisticasUsuario = async (req, res) => {
+  const usuarioId = req.usuario?.id;
+  if (!usuarioId) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+
+  try {
+    // 1. Total de series distintas con al menos un episodio visto
+    const seriesRes = await pool.query(`
+      SELECT COUNT(DISTINCT o.id) AS total_series
+      FROM historial_visualizaciones h
+      INNER JOIN obras_catalogo o ON h.obra_id = o.id
+      WHERE h.usuario_id = $1 AND o.tipo = 'serie';
+    `, [usuarioId]);
+
+    // 2. Total de episodios vistos
+    const episodiosRes = await pool.query(`
+      SELECT COUNT(h.id) AS total_episodios
+      FROM historial_visualizaciones h
+      INNER JOIN obras_catalogo o ON h.obra_id = o.id
+      WHERE h.usuario_id = $1 AND o.tipo = 'serie';
+    `, [usuarioId]);
+
+    // 3. Total de películas vistas
+    const peliculasRes = await pool.query(`
+      SELECT COUNT(h.id) AS total_peliculas
+      FROM historial_visualizaciones h
+      INNER JOIN obras_catalogo o ON h.obra_id = o.id
+      WHERE h.usuario_id = $1 AND o.tipo = 'pelicula';
+    `, [usuarioId]);
+
+    const totalSeries = parseInt(seriesRes.rows[0].total_series, 10) || 0;
+    const totalEpisodios = parseInt(episodiosRes.rows[0].total_episodios, 10) || 0;
+    const totalPeliculas = parseInt(peliculasRes.rows[0].total_peliculas, 10) || 0;
+
+    // 4. Estimación de Horas Totales:
+    // Promedio: ~105 min (1.75h) por película y ~45 min (0.75h) por episodio
+    const horasPeliculas = totalPeliculas * 1.75;
+    const horasSeries = totalEpisodios * 0.75;
+    const horasTotales = Math.round(horasPeliculas + horasSeries);
+
+    res.json({
+      total_series: totalSeries,
+      total_episodios: totalEpisodios,
+      total_peliculas: totalPeliculas,
+      horas_totales: horasTotales,
+    });
+  } catch (error) {
+    console.error('Error al calcular estadísticas:', error.message);
+    res.status(500).json({ error: 'Error del servidor al calcular estadísticas' });
+  }
+};
+
 module.exports = {
   registrarVisualizacion,
   obtenerTimeline,
   eliminarVisualizacion,
+  obtenerEstadisticasUsuario,
+  obtenerCatalogoUsuario,
   registrarLoteVisualizaciones,
   obtenerEpisodiosVistosTemporada,
   actualizarReseniaYCalificacion,

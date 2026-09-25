@@ -1,3 +1,5 @@
+-- CineRewind: Esquema Definitivo de Base de Datos
+
 -- 1. Tabla de Usuarios (Soporte Dual: Contraseña y Google OAuth)
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
@@ -50,6 +52,16 @@ CREATE TABLE IF NOT EXISTS seguimiento_series (
     PRIMARY KEY (usuario_id, obra_id)
 );
 
+-- 5. Tabla de Favoritos Destacados (Top 4 del Perfil)
+CREATE TABLE IF NOT EXISTS favoritos_top4 (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    posicion INTEGER NOT NULL CHECK (posicion BETWEEN 1 AND 4),
+    obra_id INTEGER NOT NULL REFERENCES obras_catalogo(id) ON DELETE CASCADE,
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_usuario_posicion UNIQUE (usuario_id, posicion)
+);
+
 -- ==========================================================
 -- Índices de Rendimiento (PostgreSQL)
 -- ==========================================================
@@ -71,3 +83,6 @@ ON seguimiento_series (usuario_id, activo);
 
 CREATE INDEX IF NOT EXISTS idx_seguimiento_reinicio
 ON seguimiento_series (usuario_id, obra_id, fecha_reinicio);
+
+CREATE INDEX IF NOT EXISTS idx_favoritos_usuario_posicion 
+ON favoritos_top4 (usuario_id, posicion ASC);

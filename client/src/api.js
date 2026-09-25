@@ -188,3 +188,80 @@ export const formatearImagenTMDb = (ruta, tamano = 'w500') => {
   if (ruta.startsWith('http')) return ruta;
   return `https://image.tmdb.org/t/p/${tamano}${ruta.startsWith('/') ? ruta : `/${ruta}`}`;
 };
+
+// Actualizar datos del perfil de usuario
+export const actualizarPerfilAPI = async (datos) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/auth/perfil', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(datos),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Error al actualizar el perfil');
+  }
+
+  return data;
+};
+
+// Comprobar disponibilidad de username en tiempo real
+export const comprobarUsernameAPI = async (username) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch(`/api/auth/comprobar-username?username=${encodeURIComponent(username)}`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
+  });
+  if (!res.ok) return { disponible: false };
+  return res.json();
+};
+
+// Obtener los favoritos del Top 4 de un usuario
+export const obtenerFavoritosAPI = async (username) => {
+  const res = await fetch(`/api/favoritos/${username}`);
+  if (!res.ok) return [];
+  return res.json();
+};
+
+// Guardar o reemplazar una posición (1 al 4)
+export const guardarFavoritoAPI = async (datos) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/favoritos', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(datos)
+  });
+  if (!res.ok) throw new Error('Error al guardar el favorito');
+  return res.json();
+};
+
+// Quitar un favorito de una ranura
+export const eliminarFavoritoAPI = async (posicion) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch(`/api/favoritos/${posicion}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (!res.ok) throw new Error('Error al eliminar el favorito');
+  return res.json();
+};
+
+// Obtener las estadísticas acumuladas del usuario
+export const obtenerEstadisticasAPI = async () => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/historial/estadisticas', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!res.ok) return { total_series: 0, total_episodios: 0, total_peliculas: 0, horas_totales: 0 };
+  return res.json();
+};

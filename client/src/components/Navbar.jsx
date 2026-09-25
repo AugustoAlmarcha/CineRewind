@@ -107,25 +107,37 @@ export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
                   </span>
                 </button>
 
-                {menuUsuarioAbierto && (
-                  <div className="absolute right-0 mt-2 w-52 bg-[#fbf9f5] dark:bg-[#16161a] border border-neutral-300 dark:border-white/10 rounded-2xl shadow-2xl py-2 z-50 animate-fadeIn">
-                    <div className="px-4 py-2 border-b border-neutral-200 dark:border-white/5">
-                      <p className="text-sm font-black text-neutral-900 dark:text-white truncate">{usuario.nombre}</p>
-                      <p className="text-xs text-neutral-400">@{usuario.username}</p>
-                    </div>
+{menuUsuarioAbierto && (
+  <div className="absolute right-0 mt-2 w-48 bg-[#fbf9f5] dark:bg-[#16161a] border border-neutral-300 dark:border-white/10 rounded-2xl shadow-xl py-2 z-50 animate-fadeIn">
+    <div className="px-4 py-2 border-b border-neutral-200 dark:border-white/5">
+      <p className="text-xs font-black text-neutral-900 dark:text-white truncate">{usuario.nombre}</p>
+      <p className="text-[11px] text-neutral-500 truncate">@{usuario.username}</p>
+    </div>
 
-                    <button
-                      onClick={() => {
-                        cerrarSesion();
-                        setMenuUsuarioAbierto(false);
-                        navigate('/');
-                      }}
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-500/10 transition flex items-center gap-2 cursor-pointer mt-1"
-                    >
-                      🚪 Cerrar Sesión
-                    </button>
-                  </div>
-                )}
+    {/* Botón para entrar a tu perfil */}
+<button
+  onClick={() => {
+    setMenuUsuarioAbierto(false);
+    navigate(`/perfil/${usuario.username}`); // <-- Así con comillas invertidas y ${usuario.username}
+  }}
+  className="w-full text-left px-4 py-2 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 transition flex items-center gap-2 cursor-pointer text-neutral-700 dark:text-neutral-300"
+>
+  <span>👤</span> Mi Perfil
+</button>
+
+    {/* Botón Cerrar Sesión */}
+    <button
+      onClick={() => {
+        cerrarSesion();
+        setMenuUsuarioAbierto(false);
+        navigate('/');
+      }}
+      className="w-full text-left px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-500/10 transition flex items-center gap-2 cursor-pointer border-t border-neutral-200 dark:border-white/5 mt-1"
+    >
+      <span>🚪</span> Cerrar Sesión
+    </button>
+  </div>
+)}
               </div>
             ) : (
               <button
