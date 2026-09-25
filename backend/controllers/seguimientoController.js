@@ -215,10 +215,13 @@ const avanzarCapitulo = async (req, res) => {
       }
     }
 
+// Es final de temporada si el capítulo guardado es igual al total de capítulos de esa temporada
+    const esFinTemporada = Boolean(totalCaps && proximoEp === totalCaps);
+
     const insertQuery = `
       INSERT INTO historial_visualizaciones 
-        (usuario_id, obra_id, temporada, episodio, plataforma, fecha_visto, foto_episodio)
-      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6)
+        (usuario_id, obra_id, temporada, episodio, plataforma, fecha_visto, foto_episodio, es_final_temporada)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7)
       RETURNING *;
     `;
     const resHistorial = await pool.query(insertQuery, [
@@ -228,6 +231,7 @@ const avanzarCapitulo = async (req, res) => {
       proximoEp,
       plataforma || null,
       fotoEp,
+      esFinTemporada,
     ]);
 
     // Guardamos totalCaps en seguimiento_series para que las consultas posteriores no tengan que pedirlo a TMDb

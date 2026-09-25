@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS historial_visualizaciones (
     calificacion NUMERIC(2, 1),
     resenia TEXT,
     foto_episodio TEXT,
+    es_final_temporada BOOLEAN DEFAULT false,
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -53,22 +54,18 @@ CREATE TABLE IF NOT EXISTS seguimiento_series (
 -- Índices para velocidad instantánea (Cero latencia en PostgreSQL)
 -- ==========================================================
 
--- Acelera el Timeline general y por fechas
 CREATE INDEX IF NOT EXISTS idx_historial_usuario_fecha 
 ON historial_visualizaciones (usuario_id, fecha_visto DESC);
 
--- Acelera el filtrado de ciclos/rewatch en Viendo Actualmente
 CREATE INDEX IF NOT EXISTS idx_historial_ciclo_viendo 
 ON historial_visualizaciones (usuario_id, obra_id, creado_en DESC);
 
--- Claves foráneas y búsquedas de catálogo
 CREATE INDEX IF NOT EXISTS idx_historial_obra 
 ON historial_visualizaciones (obra_id);
 
 CREATE INDEX IF NOT EXISTS idx_obras_tmdb_id 
 ON obras_catalogo (tmdb_id);
 
--- Acelera el carrusel de series activas
 CREATE INDEX IF NOT EXISTS idx_seguimiento_usuario_activo 
 ON seguimiento_series (usuario_id, activo);
 

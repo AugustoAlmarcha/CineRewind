@@ -233,7 +233,7 @@ const solicitarEliminarLote = () => {
       />
 
       {/* 2. Mi Diario Cinemático y Total Histórico */}
-      <section className="space-y-6">
+      <section className="!mt-[65px] space-y-3">
         <HeaderHistorial 
           vistaTotal={vistaTotal}
           setVistaTotal={setVistaTotal}

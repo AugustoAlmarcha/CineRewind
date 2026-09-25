@@ -37,7 +37,7 @@ export default function ViendoCard({
   return (
     <div 
       onClick={() => onAbrirDetalle(serie)}
-      className="relative w-56 h-84 flex-shrink-0 cursor-pointer group select-none"
+      className="relative w-56 h-84 flex-shrink-0 cursor-pointer group select-none hover:z-50"
     >
       {/* TARJETA BASE */}
       <div className="w-full h-full rounded-2xl overflow-hidden shadow-lg border border-neutral-300/40 dark:border-white/10 bg-[#141418] relative transition-opacity duration-200 group-hover:opacity-0">

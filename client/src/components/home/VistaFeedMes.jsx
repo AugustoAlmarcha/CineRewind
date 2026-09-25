@@ -82,6 +82,15 @@ export default function VistaFeedMes({
                 const itemIdReal = item.id !== undefined ? item.id : item.historial_id;
                 const seleccionado = itemIdReal !== undefined && seleccionadosParaBorrar.includes(itemIdReal);
 
+                // Detección directa desde PostgreSQL (0 ms)
+                const esFinTemporada = Boolean(item.es_final_temporada);
+
+                // Borde estándar vs Marco Plateado
+              // Borde estándar vs Marco Plateado Adaptativo
+                const estiloBorde = esFinTemporada
+                  ? 'border-2 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.45)] ring-1 ring-amber-400/60 dark:border-slate-200 dark:shadow-[0_0_15px_rgba(226,232,240,0.45)] dark:ring-1 dark:ring-white/50'
+                  : 'border-neutral-200 dark:border-white/10 hover:border-rose-500/60';
+
                 return (
                   <div
                     key={itemIdReal || `${item.titulo}-${item.temporada}-${item.episodio}`}
@@ -93,10 +102,10 @@ export default function VistaFeedMes({
                         onAbrirDetalleTimeline(item);
                       }
                     }}
-                    className={`aspect-square relative rounded-3xl overflow-hidden cursor-pointer border transition-all duration-200 select-none shadow-sm ${
+                    className={`aspect-square relative rounded-3xl overflow-hidden cursor-pointer transition-all duration-200 select-none shadow-sm ${
                       seleccionado
                         ? 'ring-4 ring-rose-600 border-transparent scale-95'
-                        : 'border-neutral-200 dark:border-white/10 bg-neutral-900 hover:border-rose-500/60 hover:scale-[1.02]'
+                        : `bg-neutral-900 hover:scale-[1.02] ${estiloBorde}`
                     }`}
                   >
                     {imagenUrl ? (
@@ -113,16 +122,28 @@ export default function VistaFeedMes({
                     )}
 
                     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-transparent flex flex-col justify-between p-4 pointer-events-none">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/70 text-white border border-white/10">
+                      <div className="flex justify-between items-center gap-1">
+                        <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                          esFinTemporada
+                            ? 'bg-slate-200 text-neutral-900 border-white shadow-sm font-extrabold'
+                            : 'bg-black/70 text-white border-white/10'
+                        }`}>
                           {esCapitulo ? `T${item.temporada} · E${item.episodio}` : 'Película'}
                         </span>
 
-                        {item.calificacion && (
-                          <span className="text-[11px] font-black text-amber-400 bg-black/70 px-2 py-0.5 rounded-md border border-white/10 flex items-center gap-1">
-                            ★ {Number(item.calificacion).toFixed(1)}
+                        <div className="flex items-center gap-1">
+                        {esFinTemporada && (
+                          <span className="text-[9px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded bg-amber-500 text-white border border-amber-300 shadow dark:bg-slate-300/90 dark:text-neutral-900 dark:border-white">
+                            FIN TEMP
                           </span>
                         )}
+
+                          {item.calificacion && (
+                            <span className="text-[11px] font-black text-amber-400 bg-black/70 px-2 py-0.5 rounded-md border border-white/10 flex items-center gap-1">
+                              ★ {Number(item.calificacion).toFixed(1)}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div>

@@ -178,6 +178,7 @@ const obtenerTimeline = async (req, res) => {
         h.plataforma,
         h.temporada,
         h.episodio,
+        h.es_final_temporada,
         h.calificacion,
         h.resenia,
         h.foto_episodio,
@@ -221,7 +222,7 @@ const obtenerTimeline = async (req, res) => {
         poster_path: poster,
         poster_serie: posterSerie,
         poster_obra: posterSerie,
-        es_final_temporada: false,
+        es_final_temporada: row.es_final_temporada || false,
         es_final_serie: false,
       };
     });

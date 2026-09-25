@@ -9,12 +9,13 @@ export default function CarruselViendo({
   onVerInfoEpisodio 
 }) {
   return (
-    <section className="space-y-4">
+    <section className="relative z-20 space-y-4">
       <h2 className="text-xl font-extrabold tracking-tight text-neutral-900 dark:text-white">
         Viendo Actualmente
       </h2>
 
-      <div className="flex gap-4 overflow-x-auto scrollbar-elegante pb-2 scroll-smooth">
+      {/* Se agrega px-6 -mx-6 para darle margen lateral al pop-up de la primera y última tarjeta */}
+      <div className="flex gap-4 overflow-x-auto scrollbar-elegante py-10 -my-10 pb-7 px-6 -mx-6 scroll-smooth items-center">
         {seriesActivas.length > 0 ? (
           seriesActivas.map((serie, index) => (
             <ViendoCard 
