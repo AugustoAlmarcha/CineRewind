@@ -9,7 +9,9 @@ import {
   obtenerEpisodiosVistosAPI,
   obtenerDetalleEpisodioAPI,
   obtenerProveedoresAPI,
-  actualizarPlataformaSerieAPI
+  actualizarPlataformaSerieAPI,
+  obtenerPendientesAPI,   
+  alternarPendienteAPI    
 } from '../../api';
 import { obtenerFechaHoyLocal } from '../../utils/fechas';
 import SelectorPlataformaFecha from './SelectorPlataformaFecha';
@@ -51,6 +53,54 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
 
   const [errorRegistro, setErrorRegistro] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [esPendiente, setEsPendiente] = useState(false);
+  const [cargandoPendiente, setCargandoPendiente] = useState(false);
+
+  // Comprobar si la obra ya está guardada en la lista de pendientes
+  useEffect(() => {
+    if (!usuario?.id || !tmdbIdReal) return;
+    let cancelado = false;
+
+    const verificarPendiente = async () => {
+      try {
+        const pendientes = await obtenerPendientesAPI();
+        if (!cancelado && Array.isArray(pendientes)) {
+          const existe = pendientes.some(
+            (p) => Number(p.tmdb_id) === tmdbIdReal
+          );
+          setEsPendiente(existe);
+        }
+      } catch (err) {
+        console.error('Error comprobando estado de pendiente:', err);
+      }
+    };
+
+    verificarPendiente();
+    return () => { cancelado = true; };
+  }, [tmdbIdReal, usuario?.id]);
+
+  // Manejar el clic del botón Guardar/Quitar de pendientes
+  const handleTogglePendiente = async () => {
+    if (!usuario) {
+      setErrorRegistro('Debes iniciar sesión para guardar títulos en tus pendientes.');
+      return;
+    }
+    setCargandoPendiente(true);
+    try {
+      const res = await alternarPendienteAPI({
+        tmdb_id: tmdbIdReal,
+        tipo: esSerie ? 'serie' : 'pelicula',
+        titulo: obraActual.titulo,
+        poster_path: obraActual.poster_path || null,
+      });
+      setEsPendiente(Boolean(res?.guardado));
+    } catch (err) {
+      console.error('Error al alternar pendiente:', err);
+      setErrorRegistro('No se pudo actualizar la lista de pendientes.');
+    } finally {
+      setCargandoPendiente(false);
+    }
+  };
   const [repartoActores, setRepartoActores] = useState([]);
   const [mostrarActores, setMostrarActores] = useState(false);
   const [actorParaFilmografia, setActorParaFilmografia] = useState(null);
@@ -288,13 +338,32 @@ await registrarLoteAPI({
               <p className="text-xs text-neutral-500 dark:text-neutral-400">{obraActual?.anio}</p>
             </div>
           </div>
-          <button 
-            type="button" 
-            onClick={onClose} 
-            className="w-9 h-9 rounded-full bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white flex items-center justify-center transition cursor-pointer"
-          >
-            ✕
-          </button>
+<div className="flex items-center gap-3">
+            {/* Botón Guardar en Pendientes */}
+            <button
+              type="button"
+              disabled={cargandoPendiente}
+              onClick={handleTogglePendiente}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50 ${
+                esPendiente
+                  ? 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-600/30'
+                  : 'bg-neutral-200 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-white/20'
+              }`}
+              title={esPendiente ? 'Quitar de mi lista de pendientes' : 'Guardar para ver más tarde'}
+            >
+              <span>{esPendiente ? '✓' : '🔖'}</span>
+              <span>{esPendiente ? 'En Pendientes' : 'Ver Más Tarde'}</span>
+            </button>
+
+            {/* Botón Cerrar */}
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="w-9 h-9 rounded-full bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white flex items-center justify-center transition cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Selector Plataforma y Fecha */}

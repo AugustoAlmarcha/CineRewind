@@ -26,6 +26,11 @@ const {
   descartarDeViendo,
 } = require('../controllers/seguimientoController');
 
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
+const { importarNetflixCSV, importarLoteCSV } = require('../controllers/importarController');
+
+router.post('/importar-lote-csv', verificarToken, importarLoteCSV);
 /* =========================================================================
    1. RUTAS DE SEGUIMIENTO (Carrusel "Viendo Actualmente")
    ========================================================================= */

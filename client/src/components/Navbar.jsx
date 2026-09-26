@@ -3,10 +3,15 @@ import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ModalAuth from './auth/ModalAuth';
 import BuscadorNavbar from './navbar/BuscadorNavbar';
+import ModalImportarNetflix from './modal/ModalImportarNetflix'; // Ajusta la ruta a tu carpeta de componentes
+
+
 
 export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
   const { usuario, cerrarSesion } = useAuth();
   const navigate = useNavigate();
+  // Dentro de tu componente Navbar:
+const [modalNetflixAbierto, setModalNetflixAbierto] = useState(false);
 
   const [modalAuthAbierto, setModalAuthAbierto] = useState(false);
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
@@ -125,6 +130,18 @@ export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
   <span>👤</span> Mi Perfil
 </button>
 
+{/* Opción 2: Importar Historial (NUEVO) */}
+<button
+  type="button"
+  onClick={() => {
+    setMenuUsuarioAbierto(false); 
+    setModalNetflixAbierto(true);
+  }}
+  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-red-500/10 hover:text-red-500 transition-colors text-left cursor-pointer"
+>
+  <span>📥</span> Importar Netflix
+</button>
+
     {/* Botón Cerrar Sesión */}
     <button
       onClick={() => {
@@ -151,7 +168,14 @@ export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
           </div>
 
         </div>
+
       </header>
+
+{/* AQUÍ AFUERA DEL HEADER */}
+      <ModalImportarNetflix
+        abierto={modalNetflixAbierto}
+        alCerrar={() => setModalNetflixAbierto(false)}
+      />
 
       <ModalAuth
         isOpen={modalAuthAbierto}

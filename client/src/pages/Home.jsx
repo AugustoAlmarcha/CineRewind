@@ -326,9 +326,10 @@ const solicitarEliminarLote = () => {
         />
       )}
 
-      {itemDetalle && (
+{itemDetalle && (
         <ModalDetalleTimeline 
           item={itemDetalle}
+          todasLasVisualizaciones={timeline} 
           onClose={() => setItemDetalle(null)}
           onActualizado={() => { cargarDatos(); setItemDetalle(null); }} 
         />

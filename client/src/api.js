@@ -265,3 +265,72 @@ export const obtenerEstadisticasAPI = async () => {
   if (!res.ok) return { total_series: 0, total_episodios: 0, total_peliculas: 0, horas_totales: 0 };
   return res.json();
 };
+
+// Obtener lista de pendientes
+export const obtenerPendientesAPI = async () => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/pendientes', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!res.ok) return [];
+  return res.json();
+};
+
+// Alternar obra en pendientes (guardar / quitar)
+export const alternarPendienteAPI = async (obra) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/pendientes', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(obra)
+  });
+  if (!res.ok) throw new Error('Error al actualizar pendientes');
+  return res.json();
+};
+
+// Eliminar obra de pendientes
+export const eliminarPendienteAPI = async (tmdb_id) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch(`/api/pendientes/${tmdb_id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (!res.ok) throw new Error('Error al eliminar de pendientes');
+  return res.json();
+};
+
+// Obtener récords personales (Maratón y Rewatch)
+export const obtenerRecordsAPI = async () => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/historial/records', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!res.ok) return { maratonSerie: null, rewatchPelicula: null };
+  return res.json();
+};
+
+// Importar historial desde CSV de Netflix
+export const importarNetflixAPI = async (archivoCSV) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const formData = new FormData();
+  formData.append('archivo', archivoCSV);
+
+  const res = await fetch('/api/historial/importar-netflix', {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al importar el archivo CSV');
+  }
+
+  return res.json();
+};
+
