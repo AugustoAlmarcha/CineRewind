@@ -62,6 +62,15 @@ CREATE TABLE IF NOT EXISTS favoritos_top4 (
     CONSTRAINT uq_usuario_posicion UNIQUE (usuario_id, posicion)
 );
 
+-- 6. Tabla de Obras Pendientes (Watchlist / Ver más tarde)
+CREATE TABLE IF NOT EXISTS obras_pendientes (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    obra_id INTEGER NOT NULL REFERENCES obras_catalogo(id) ON DELETE CASCADE,
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_usuario_obra_pendiente UNIQUE (usuario_id, obra_id)
+);
+
 -- ==========================================================
 -- Índices de Rendimiento (PostgreSQL)
 -- ==========================================================
@@ -86,3 +95,6 @@ ON seguimiento_series (usuario_id, obra_id, fecha_reinicio);
 
 CREATE INDEX IF NOT EXISTS idx_favoritos_usuario_posicion 
 ON favoritos_top4 (usuario_id, posicion ASC);
+
+CREATE INDEX IF NOT EXISTS idx_pendientes_usuario 
+ON obras_pendientes (usuario_id, creado_en DESC);

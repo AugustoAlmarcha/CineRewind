@@ -16,6 +16,7 @@ const {
   actualizarPlataformaSerie,
   obtenerCatalogoUsuario,
   obtenerEstadisticasUsuario,
+  obtenerRecordsUsuario
 } = require('../controllers/historialController');
 
 // Controlador de Seguimiento de Series (Carrusel)
@@ -39,6 +40,7 @@ router.get('/timeline/:usuario_id', obtenerTimeline);
 router.get('/vistos/:usuario_id/:tmdb_id/:temporada', obtenerEpisodiosVistosTemporada);
 router.get('/catalogo-usuario', verificarToken, obtenerCatalogoUsuario);
 router.get('/estadisticas', verificarToken, obtenerEstadisticasUsuario);
+router.get('/records', verificarToken, obtenerRecordsUsuario);
 /* =========================================================================
    3. RUTAS DE ESCRITURA Y REGISTRO (Protegidas con JWT)
    ========================================================================= */

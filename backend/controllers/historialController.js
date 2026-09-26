@@ -515,12 +515,65 @@ const obtenerEstadisticasUsuario = async (req, res) => {
     res.status(500).json({ error: 'Error del servidor al calcular estadísticas' });
   }
 };
+// GET: /api/historial/records
+const obtenerRecordsUsuario = async (req, res) => {
+  const usuarioId = req.usuario?.id;
+  if (!usuarioId) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+
+  try {
+    // 1. Serie Maratón (la serie con mayor cantidad de episodios vistos)
+    const serieQuery = `
+      SELECT 
+        o.id,
+        o.tmdb_id,
+        o.titulo,
+        o.poster_path,
+        COUNT(h.id) AS total_capitulos
+      FROM historial_visualizaciones h
+      INNER JOIN obras_catalogo o ON h.obra_id = o.id
+      WHERE h.usuario_id = $1 AND o.tipo = 'serie'
+      GROUP BY o.id, o.tmdb_id, o.titulo, o.poster_path
+      ORDER BY total_capitulos DESC
+      LIMIT 1;
+    `;
+    const serieRes = await pool.query(serieQuery, [usuarioId]);
+
+    // 2. Película Rewatch (la película registrada más veces, mínimo 2)
+    const peliQuery = `
+      SELECT 
+        o.id,
+        o.tmdb_id,
+        o.titulo,
+        o.poster_path,
+        COUNT(h.id) AS veces_vista
+      FROM historial_visualizaciones h
+      INNER JOIN obras_catalogo o ON h.obra_id = o.id
+      WHERE h.usuario_id = $1 AND o.tipo = 'pelicula'
+      GROUP BY o.id, o.tmdb_id, o.titulo, o.poster_path
+      HAVING COUNT(h.id) > 1
+      ORDER BY veces_vista DESC
+      LIMIT 1;
+    `;
+    const peliRes = await pool.query(peliQuery, [usuarioId]);
+
+    res.json({
+      maratonSerie: serieRes.rows[0] || null,
+      rewatchPelicula: peliRes.rows[0] || null,
+    });
+  } catch (error) {
+    console.error('Error al calcular récords del usuario:', error.message);
+    res.status(500).json({ error: 'Error del servidor al obtener récords' });
+  }
+};
 
 module.exports = {
   registrarVisualizacion,
   obtenerTimeline,
   eliminarVisualizacion,
   obtenerEstadisticasUsuario,
+  obtenerRecordsUsuario,
   obtenerCatalogoUsuario,
   registrarLoteVisualizaciones,
   obtenerEpisodiosVistosTemporada,
