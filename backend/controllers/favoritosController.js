@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 
-// GET: /api/favoritos/:username (Obtener el Top 4 de un usuario)
+// GET: /api/favoritos/:username (Obtener los favoritos de un usuario)
 const obtenerFavoritosPorUsername = async (req, res) => {
   const { username } = req.params;
 
@@ -19,8 +19,8 @@ const obtenerFavoritosPorUsername = async (req, res) => {
     const consulta = `
       SELECT 
         f.posicion,
+        COALESCE(f.tipo, c.tipo) AS tipo,
         c.tmdb_id,
-        c.tipo,
         c.titulo,
         c.poster_path
       FROM favoritos_top4 f
@@ -37,7 +37,7 @@ const obtenerFavoritosPorUsername = async (req, res) => {
   }
 };
 
-// POST: /api/favoritos (Guardar o actualizar una posición del 1 al 4)
+// POST: /api/favoritos (Guardar o actualizar posición del 1 al 4 para CADA tipo)
 const guardarFavorito = async (req, res) => {
   const usuarioId = req.usuario?.id;
   const { posicion, tmdb_id, tipo, titulo, poster_path } = req.body;
@@ -54,6 +54,9 @@ const guardarFavorito = async (req, res) => {
     return res.status(400).json({ error: 'Datos de la obra incompletos' });
   }
 
+  // Normalizar tipo ('serie' o 'pelicula')
+  const tipoNormalizado = (tipo.toLowerCase() === 'tv' || tipo.toLowerCase() === 'serie') ? 'serie' : 'pelicula';
+
   try {
     // 1. Asegurar la obra en obras_catalogo
     const obraQuery = `
@@ -67,25 +70,25 @@ const guardarFavorito = async (req, res) => {
     `;
     const obraRes = await pool.query(obraQuery, [
       tmdb_id,
-      tipo,
+      tipoNormalizado,
       titulo.trim(),
       poster_path || null
     ]);
     const obraId = obraRes.rows[0].id;
 
-    // 2. Guardar o reemplazar en favoritos_top4 en esa posicion
+    // 2. Guardar en favoritos_top4 sin pisar el otro tipo
     const favQuery = `
-      INSERT INTO favoritos_top4 (usuario_id, posicion, obra_id)
-      VALUES ($1, $2, $3)
-      ON CONFLICT (usuario_id, posicion)
+      INSERT INTO favoritos_top4 (usuario_id, posicion, tipo, obra_id)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (usuario_id, posicion, tipo)
       DO UPDATE SET obra_id = EXCLUDED.obra_id
-      RETURNING posicion, obra_id;
+      RETURNING posicion, tipo, obra_id;
     `;
-    await pool.query(favQuery, [usuarioId, posicion, obraId]);
+    await pool.query(favQuery, [usuarioId, posicion, tipoNormalizado, obraId]);
 
     res.json({
       mensaje: 'Favorito guardado correctamente',
-      favorito: { posicion, tmdb_id, tipo, titulo, poster_path }
+      favorito: { posicion, tipo: tipoNormalizado, tmdb_id, titulo, poster_path }
     });
   } catch (error) {
     console.error('Error al guardar favorito:', error.message);
@@ -93,20 +96,29 @@ const guardarFavorito = async (req, res) => {
   }
 };
 
-// DELETE: /api/favoritos/:posicion (Quitar una obra de una ranura)
+// DELETE: /api/favoritos/:posicion?tipo=pelicula (Eliminar distinguiendo tipo)
 const eliminarFavorito = async (req, res) => {
   const usuarioId = req.usuario?.id;
   const { posicion } = req.params;
+  const { tipo } = req.query; // Puede venir por query param: ?tipo=serie o ?tipo=pelicula
 
   if (!usuarioId) {
     return res.status(401).json({ error: 'Sesión no autorizada' });
   }
 
   try {
-    await pool.query(
-      'DELETE FROM favoritos_top4 WHERE usuario_id = $1 AND posicion = $2',
-      [usuarioId, posicion]
-    );
+    if (tipo) {
+      const tipoNormalizado = (tipo.toLowerCase() === 'tv' || tipo.toLowerCase() === 'serie') ? 'serie' : 'pelicula';
+      await pool.query(
+        'DELETE FROM favoritos_top4 WHERE usuario_id = $1 AND posicion = $2 AND tipo = $3',
+        [usuarioId, posicion, tipoNormalizado]
+      );
+    } else {
+      await pool.query(
+        'DELETE FROM favoritos_top4 WHERE usuario_id = $1 AND posicion = $2',
+        [usuarioId, posicion]
+      );
+    }
 
     res.json({ mensaje: 'Favorito eliminado con éxito' });
   } catch (error) {

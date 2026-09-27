@@ -327,13 +327,19 @@ const solicitarEliminarLote = () => {
       )}
 
 {itemDetalle && (
-        <ModalDetalleTimeline 
-          item={itemDetalle}
-          todasLasVisualizaciones={timeline} 
-          onClose={() => setItemDetalle(null)}
-          onActualizado={() => { cargarDatos(); setItemDetalle(null); }} 
-        />
-      )}
+  <ModalDetalleTimeline 
+    item={itemDetalle}
+    todasLasVisualizaciones={timeline} 
+    onClose={() => setItemDetalle(null)}
+    onActualizado={() => { cargarDatos(); setItemDetalle(null); }} 
+    onSeleccionarObra={(obraDelActor) => {
+      // 1. Cierra el modal de detalle del timeline
+      setItemDetalle(null);
+      // 2. Abre ModalRegistrar con la película/serie seleccionada
+      setSerieParaEditar(obraDelActor);
+    }}
+  />
+)}
 
       <ModalConfirmar
         isOpen={dialogoConfirmar.abierto}

@@ -52,14 +52,15 @@ CREATE TABLE IF NOT EXISTS seguimiento_series (
     PRIMARY KEY (usuario_id, obra_id)
 );
 
--- 5. Tabla de Favoritos Destacados (Top 4 del Perfil)
+-- 5. Tabla de Favoritos Destacados (Top 4 Series y Top 4 Películas del Perfil)
 CREATE TABLE IF NOT EXISTS favoritos_top4 (
     id SERIAL PRIMARY KEY,
     usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     posicion INTEGER NOT NULL CHECK (posicion BETWEEN 1 AND 4),
+    tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('pelicula', 'serie')),
     obra_id INTEGER NOT NULL REFERENCES obras_catalogo(id) ON DELETE CASCADE,
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_usuario_posicion UNIQUE (usuario_id, posicion)
+    CONSTRAINT uq_usuario_posicion_tipo UNIQUE (usuario_id, posicion, tipo)
 );
 
 -- 6. Tabla de Obras Pendientes (Watchlist / Ver más tarde)
@@ -93,8 +94,8 @@ ON seguimiento_series (usuario_id, activo);
 CREATE INDEX IF NOT EXISTS idx_seguimiento_reinicio
 ON seguimiento_series (usuario_id, obra_id, fecha_reinicio);
 
-CREATE INDEX IF NOT EXISTS idx_favoritos_usuario_posicion 
-ON favoritos_top4 (usuario_id, posicion ASC);
+CREATE INDEX IF NOT EXISTS idx_favoritos_usuario_posicion_tipo 
+ON favoritos_top4 (usuario_id, tipo, posicion ASC);
 
 CREATE INDEX IF NOT EXISTS idx_pendientes_usuario 
 ON obras_pendientes (usuario_id, creado_en DESC);

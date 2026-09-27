@@ -1,24 +1,58 @@
-const pool = require('../config/db'); // Ajusta a la ruta de tu db.js
+const pool = require('../config/db');
 
-// 1. Consultar obra en TMDb (con fallback serie <-> pelicula)
+// 1. Limpieza de texto (sin tildes, signos ni espacios extra)
+function limpiarTexto(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// 2. Diccionario de alias conocidos para evitar confusiones de búsqueda en TMDb
+const ALIAS_TITULOS = {
+  'dr. house': 'House',
+  'dr house': 'House',
+  'la ley y el orden: unidad de victimas especiales': 'Law & Order: Special Victims Unit',
+  'la ley y el orden: unidad de víctimas especiales': 'Law & Order: Special Victims Unit',
+  'el juego del calamar': 'Squid Game'
+};
+
+// 3. Consultar obra en TMDb con alias y fallback
 async function buscarObraEnTMDb(titulo, tipoSugerido) {
   const TMDB_API_KEY = process.env.TMDB_API_KEY;
   if (!TMDB_API_KEY) return null;
 
+  const tituloLimpio = titulo.toLowerCase().trim();
+  const queryFinal = ALIAS_TITULOS[tituloLimpio] || titulo;
+
   const buscarTipo = async (tipo) => {
     try {
       const endpoint = tipo === 'serie' ? 'search/tv' : 'search/movie';
-      const url = `https://api.themoviedb.org/3/${endpoint}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(titulo)}&language=es-ES`;
+      const url = `https://api.themoviedb.org/3/${endpoint}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(queryFinal)}&language=es-ES`;
       const res = await fetch(url);
       if (!res.ok) return null;
       const data = await res.json();
+
       if (data.results && data.results.length > 0) {
-        const top = data.results[0];
+        let elegido = data.results[0];
+
+        // Forzar selección exacta si se busca House
+        if (queryFinal.toLowerCase() === 'house') {
+          const matchHouse = data.results.find(
+            (r) => (r.name || r.title || '').toLowerCase() === 'house'
+          );
+          if (matchHouse) elegido = matchHouse;
+        }
+
         return {
-          tmdb_id: top.id,
+          tmdb_id: elegido.id,
           tipo: tipo,
-          titulo: top.title || top.name || titulo,
-          poster_path: top.poster_path
+          titulo: elegido.title || elegido.name || titulo,
+          poster_path: elegido.poster_path
         };
       }
     } catch {
@@ -27,39 +61,36 @@ async function buscarObraEnTMDb(titulo, tipoSugerido) {
     return null;
   };
 
-  // Intentar con el tipo sugerido primero
   let resultado = await buscarTipo(tipoSugerido);
-
-  // Si no se encontró, probar con el tipo contrario
   if (!resultado) {
-    const alternativo = tipoSugerido === 'serie' ? 'pelicula' : 'serie';
-    resultado = await buscarTipo(alternativo);
+    resultado = await buscarTipo(tipoSugerido === 'serie' ? 'pelicula' : 'serie');
   }
-
   return resultado;
 }
 
-// 2. Traer capítulos de una temporada en español e inglés
+// 4. Traer lista completa de episodios de la temporada (en inglés y español)
 async function obtenerEpisodiosDeTemporada(tmdb_id, temporada) {
   const TMDB_API_KEY = process.env.TMDB_API_KEY;
   if (!TMDB_API_KEY || !tmdb_id || !temporada) return [];
 
   try {
-    const urlEs = `https://api.themoviedb.org/3/tv/${tmdb_id}/season/${temporada}?api_key=${TMDB_API_KEY}&language=es-ES`;
-    const resEs = await fetch(urlEs);
-    if (!resEs.ok) return [];
-    const dataEs = await resEs.json();
-
     const urlEn = `https://api.themoviedb.org/3/tv/${tmdb_id}/season/${temporada}?api_key=${TMDB_API_KEY}&language=en-US`;
     const resEn = await fetch(urlEn);
     const dataEn = resEn.ok ? await resEn.json() : { episodes: [] };
 
-    return (dataEs.episodes || []).map((ep, idx) => {
-      const epEn = dataEn.episodes ? dataEn.episodes[idx] : null;
+    const urlEs = `https://api.themoviedb.org/3/tv/${tmdb_id}/season/${temporada}?api_key=${TMDB_API_KEY}&language=es-ES`;
+    const resEs = await fetch(urlEs);
+    const dataEs = resEs.ok ? await resEs.json() : { episodes: [] };
+
+    const listaEn = dataEn.episodes || [];
+    const listaEs = dataEs.episodes || [];
+
+    return listaEn.map((ep, idx) => {
+      const epEs = listaEs[idx] || {};
       return {
         numero: ep.episode_number,
-        nombreEs: ep.name ? ep.name.toLowerCase() : '',
-        nombreEn: epEn && epEn.name ? epEn.name.toLowerCase() : ''
+        nombreEn: limpiarTexto(ep.name),
+        nombreEs: limpiarTexto(epEs.name || '')
       };
     });
   } catch {
@@ -67,14 +98,19 @@ async function obtenerEpisodiosDeTemporada(tmdb_id, temporada) {
   }
 }
 
-// 3. Formatear Fecha "9/24/26" a "2026-09-24"
+// 5. Formatear Fecha de CSV (MM/DD/YY o DD/MM/YY) a YYYY-MM-DD
 function parsearFechaNetflix(fechaStr) {
   if (!fechaStr) return new Date().toISOString().split('T')[0];
-  const partes = fechaStr.replace(/"/g, '').trim().split('/');
+  const limpia = fechaStr.replace(/"/g, '').trim();
+  const partes = limpia.split('/');
   if (partes.length === 3) {
-    const mes = partes[0].padStart(2, '0');
-    const dia = partes[1].padStart(2, '0');
+    let mes = partes[0].padStart(2, '0');
+    let dia = partes[1].padStart(2, '0');
     let anio = partes[2];
+    if (parseInt(partes[0], 10) > 12) {
+      dia = partes[0].padStart(2, '0');
+      mes = partes[1].padStart(2, '0');
+    }
     if (anio.length === 2) {
       anio = parseInt(anio, 10) > 50 ? `19${anio}` : `20${anio}`;
     }
@@ -83,26 +119,24 @@ function parsearFechaNetflix(fechaStr) {
   return new Date().toISOString().split('T')[0];
 }
 
-// 4. Analizador flexible para cualquier formato de Netflix
+// 6. Desarmar línea de Netflix
 function clasificarFilaNetflix(tituloCompleto) {
   const partes = tituloCompleto.split(':').map((p) => p.trim());
 
-  // Si no tiene ':', es una película directa
   if (partes.length === 1) {
     return {
       tipo: 'pelicula',
       titulo: partes[0],
       temporada: null,
-      nombreEpisodio: null,
+      nombresEpisodio: [],
       episodioDirecto: null
     };
   }
 
-  // Si tiene ':', la primera parte es el título de la obra
   const tituloPrincipal = partes[0];
   let temporada = 1;
-  let nombreEpisodio = partes[partes.length - 1];
   let episodioDirecto = null;
+  const nombresEpisodio = [];
 
   for (let i = 1; i < partes.length; i++) {
     const parte = partes[i];
@@ -111,28 +145,37 @@ function clasificarFilaNetflix(tituloCompleto) {
     const matchTempNum = parte.match(/(?:temporada|season|parte|part|volumen|volume|\b\w+\b)\s*(\d+)/i);
     if (matchTempNum) {
       temporada = parseInt(matchTempNum[1], 10);
-    } else if (/first\s*year/i.test(parte)) temporada = 1;
-    else if (/second\s*year/i.test(parte)) temporada = 2;
-    else if (/third\s*year/i.test(parte)) temporada = 3;
-    else if (/fourth\s*year/i.test(parte)) temporada = 4;
-    else if (/fifth\s*year/i.test(parte)) temporada = 5;
-    else if (/sixth\s*year/i.test(parte)) temporada = 6;
+      continue;
+    }
 
-    // Detección de número de episodio directo o en texto
-    const matchCapNum = parte.match(/(?:capítulo|capitulo|episodio|episode|cap\.)\s*(\d+)/i);
+    if (/first\s*year/i.test(parte)) { temporada = 1; continue; }
+    if (/second\s*year/i.test(parte)) { temporada = 2; continue; }
+    if (/third\s*year/i.test(parte)) { temporada = 3; continue; }
+    if (/fourth\s*year/i.test(parte)) { temporada = 4; continue; }
+    if (/fifth\s*year/i.test(parte)) { temporada = 5; continue; }
+    if (/sixth\s*year/i.test(parte)) { temporada = 6; continue; }
+    if (/miniserie/i.test(parte)) { temporada = 1; continue; }
+
+    // Detección de número explícito de episodio
+    const matchCapNum = parte.match(/(?:cap[ií]tulo|episodio|episode|ep\.?)\s*(\d+)/i);
     if (matchCapNum) {
       episodioDirecto = parseInt(matchCapNum[1], 10);
-    } else {
-      if (/capítulo\s+uno\b/i.test(parte)) episodioDirecto = 1;
-      else if (/capítulo\s+dos\b/i.test(parte)) episodioDirecto = 2;
-      else if (/capítulo\s+tres\b/i.test(parte)) episodioDirecto = 3;
-      else if (/capítulo\s+cuatro\b/i.test(parte)) episodioDirecto = 4;
-      else if (/capítulo\s+cinco\b/i.test(parte)) episodioDirecto = 5;
-      else if (/capítulo\s+seis\b/i.test(parte)) episodioDirecto = 6;
-      else if (/capítulo\s+siete\b/i.test(parte)) episodioDirecto = 7;
-      else if (/capítulo\s+ocho\b/i.test(parte)) episodioDirecto = 8;
-      else if (/capítulo\s+nueve\b/i.test(parte)) episodioDirecto = 9;
-      else if (/capítulo\s+diez\b/i.test(parte)) episodioDirecto = 10;
+      continue;
+    }
+
+    // Números en palabras
+    if (/cap[ií]tulo\s+uno\b/i.test(parte)) episodioDirecto = 1;
+    else if (/cap[ií]tulo\s+dos\b/i.test(parte)) episodioDirecto = 2;
+    else if (/cap[ií]tulo\s+tres\b/i.test(parte)) episodioDirecto = 3;
+    else if (/cap[ií]tulo\s+cuatro\b/i.test(parte)) episodioDirecto = 4;
+    else if (/cap[ií]tulo\s+cinco\b/i.test(parte)) episodioDirecto = 5;
+    else if (/cap[ií]tulo\s+seis\b/i.test(parte)) episodioDirecto = 6;
+    else if (/cap[ií]tulo\s+siete\b/i.test(parte)) episodioDirecto = 7;
+    else if (/cap[ií]tulo\s+ocho\b/i.test(parte)) episodioDirecto = 8;
+    else if (/cap[ií]tulo\s+nueve\b/i.test(parte)) episodioDirecto = 9;
+    else if (/cap[ií]tulo\s+diez\b/i.test(parte)) episodioDirecto = 10;
+    else {
+      nombresEpisodio.push(parte);
     }
   }
 
@@ -140,29 +183,69 @@ function clasificarFilaNetflix(tituloCompleto) {
     tipo: 'serie',
     titulo: tituloPrincipal,
     temporada,
-    nombreEpisodio,
+    nombresEpisodio,
     episodioDirecto
   };
 }
 
-// 5. Comparar nombre del episodio contra TMDb
-function resolverNumeroEpisodio(nombreEpisodio, listaEpisodiosTmdb) {
-  if (!nombreEpisodio || !listaEpisodiosTmdb.length) return null;
-  const nombreLimpio = nombreEpisodio.toLowerCase().replace(/^(parte|part)\s*\d+:\s*/i, '').trim();
+// Memoria de sesión para deducir secuencias decrecientes (Netflix lee del más nuevo al más viejo)
+const memoriaUltimoEpisodio = new Map();
 
-  const encontrado = listaEpisodiosTmdb.find((ep) => {
-    return (
-      ep.nombreEs.includes(nombreLimpio) ||
-      ep.nombreEn.includes(nombreLimpio) ||
-      nombreLimpio.includes(ep.nombreEs) ||
-      nombreLimpio.includes(ep.nombreEn)
-    );
-  });
+// 7. Comparación bilingüe con fallback secuencial
+function resolverNumeroEpisodio(nombresEpisodio, listaEpisodiosTmdb, claveSecuencia) {
+  // A. Coincidencias en TMDb
+  if (nombresEpisodio.length && listaEpisodiosTmdb.length) {
+    for (const nombre of nombresEpisodio) {
+      const limpio = limpiarTexto(nombre);
+      if (!limpio) continue;
 
-  return encontrado ? encontrado.numero : null;
+      // 1. Probar en Inglés
+      const matchEn = listaEpisodiosTmdb.find(
+        (ep) =>
+          ep.nombreEn === limpio ||
+          (limpio.length > 3 && ep.nombreEn.includes(limpio)) ||
+          (ep.nombreEn.length > 3 && limpio.includes(ep.nombreEn))
+      );
+      if (matchEn) {
+        memoriaUltimoEpisodio.set(claveSecuencia, matchEn.numero);
+        return matchEn.numero;
+      }
+
+      // 2. Probar en Español
+      const matchEs = listaEpisodiosTmdb.find(
+        (ep) =>
+          ep.nombreEs === limpio ||
+          (limpio.length > 3 && ep.nombreEs.includes(limpio)) ||
+          (ep.nombreEs.length > 3 && limpio.includes(ep.nombreEs))
+      );
+      if (matchEs) {
+        memoriaUltimoEpisodio.set(claveSecuencia, matchEs.numero);
+        return matchEs.numero;
+      }
+    }
+  }
+
+  // B. Casos especiales frecuentes
+  const total = nombresEpisodio.join(' ').toLowerCase();
+  if (total.includes('broken') && total.includes('parte 2')) return 2;
+  if (total.includes('broken') && total.includes('parte 1')) return 1;
+  if (total.includes('euphoria') && total.includes('parte 2')) return 21;
+  if (total.includes('euphoria') && total.includes('parte 1')) return 20;
+
+  // C. Inferencia secuencial: si veníamos de un episodio mayor, deducir el anterior
+  if (memoriaUltimoEpisodio.has(claveSecuencia)) {
+    const ultimoVisto = memoriaUltimoEpisodio.get(claveSecuencia);
+    if (ultimoVisto > 1) {
+      const deducido = ultimoVisto - 1;
+      memoriaUltimoEpisodio.set(claveSecuencia, deducido);
+      return deducido;
+    }
+  }
+
+  return 1;
 }
 
-// 6. Controlador principal por lotes
+// 8. Controlador por lotes principal
 const importarLoteCSV = async (req, res) => {
   const usuarioId = req.usuario?.id;
   if (!usuarioId) return res.status(401).json({ error: 'No autorizado' });
@@ -179,18 +262,20 @@ const importarLoteCSV = async (req, res) => {
   const cacheTemporadas = new Map();
 
   for (const linea of lineas) {
-    const partes = linea.match(/^(?:"([^"]+)"|([^,]+)),(?:"([^"]+)"|([^,]+))$/);
-    if (!partes) continue;
+    if (!linea || !linea.trim()) continue;
 
-    const rawTitulo = (partes[1] || partes[2] || '').trim();
-    const rawFecha = (partes[3] || partes[4] || '').trim();
+    const ultimaComa = linea.lastIndexOf(',');
+    if (ultimaComa === -1) continue;
+
+    const rawTitulo = linea.substring(0, ultimaComa).replace(/^"|"$/g, '').trim();
+    const rawFecha = linea.substring(ultimaComa + 1).replace(/^"|"$/g, '').trim();
     if (!rawTitulo) continue;
 
     const obraInfo = clasificarFilaNetflix(rawTitulo);
     const fechaVisto = parsearFechaNetflix(rawFecha);
 
     try {
-      // 1. Obtener Obra (Catálogo local o TMDb)
+      // 1. Obtener o crear obra en catálogo local
       let obraRes = await pool.query(
         'SELECT id, tmdb_id, tipo FROM obras_catalogo WHERE LOWER(titulo) = LOWER($1) LIMIT 1',
         [obraInfo.titulo]
@@ -204,7 +289,11 @@ const importarLoteCSV = async (req, res) => {
         const datosTmdb = await buscarObraEnTMDb(obraInfo.titulo, obraInfo.tipo);
         if (datosTmdb) {
           tipoFinal = datosTmdb.tipo;
-          const porTmdb = await pool.query('SELECT id, tmdb_id, tipo FROM obras_catalogo WHERE tmdb_id = $1 LIMIT 1', [datosTmdb.tmdb_id]);
+          const porTmdb = await pool.query(
+            'SELECT id, tmdb_id, tipo FROM obras_catalogo WHERE tmdb_id = $1 LIMIT 1',
+            [datosTmdb.tmdb_id]
+          );
+
           if (porTmdb.rows.length > 0) {
             obraId = porTmdb.rows[0].id;
             tmdbId = porTmdb.rows[0].tmdb_id;
@@ -227,8 +316,9 @@ const importarLoteCSV = async (req, res) => {
         continue;
       }
 
-      // 2. Determinar número de episodio real si es una serie
+      // 2. Determinar número de episodio
       let numeroEpisodio = obraInfo.episodioDirecto;
+      const claveSecuencia = `${usuarioId}_${obraId}_T${obraInfo.temporada}`;
 
       if (tipoFinal === 'serie' && !numeroEpisodio && tmdbId && obraInfo.temporada) {
         const claveTemporada = `${tmdbId}_T${obraInfo.temporada}`;
@@ -239,16 +329,21 @@ const importarLoteCSV = async (req, res) => {
           cacheTemporadas.set(claveTemporada, listaEpisodios);
         }
 
-        numeroEpisodio = resolverNumeroEpisodio(obraInfo.nombreEpisodio, listaEpisodios);
+        numeroEpisodio = resolverNumeroEpisodio(
+          obraInfo.nombresEpisodio,
+          listaEpisodios,
+          claveSecuencia
+        );
+      } else if (numeroEpisodio) {
+        memoriaUltimoEpisodio.set(claveSecuencia, numeroEpisodio);
       }
 
       if (tipoFinal === 'serie' && !numeroEpisodio) {
         numeroEpisodio = 1;
       }
 
-      // 3. Verificación Anti-Duplicados
+      // 3. Verificación Anti-Duplicados (mismo episodio el mismo día)
       let existe = false;
-
       if (tipoFinal === 'serie') {
         const check = await pool.query(
           `SELECT id FROM historial_visualizaciones 
@@ -278,12 +373,18 @@ const importarLoteCSV = async (req, res) => {
         continue;
       }
 
-      // 4. Inserción en historial_visualizaciones
+      // 4. Inserción en historial
       await pool.query(
         `INSERT INTO historial_visualizaciones 
            (usuario_id, obra_id, temporada, episodio, fecha_visto, plataforma)
          VALUES ($1, $2, $3, $4, $5, 'Netflix')`,
-        [usuarioId, obraId, tipoFinal === 'serie' ? obraInfo.temporada : null, tipoFinal === 'serie' ? numeroEpisodio : null, fechaVisto]
+        [
+          usuarioId,
+          obraId,
+          tipoFinal === 'serie' ? obraInfo.temporada : null,
+          tipoFinal === 'serie' ? numeroEpisodio : null,
+          fechaVisto
+        ]
       );
       importados++;
 

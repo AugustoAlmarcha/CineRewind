@@ -174,15 +174,15 @@ export default function Perfil() {
     }
   };
 
-  const handleEliminarFavorito = async (e, posicion) => {
-    e.stopPropagation();
-    try {
-      await eliminarFavoritoAPI(posicion);
-      await cargarFavoritos();
-    } catch (err) {
-      console.error('Error al eliminar favorito:', err);
-    }
-  };
+const handleEliminarFavorito = async (e, posicion, tipo) => {
+  e.stopPropagation();
+  try {
+    await eliminarFavoritoAPI(posicion, tipo); // <-- Ahora sí viaja el tipo
+    await cargarFavoritos();
+  } catch (err) {
+    console.error('Error al eliminar favorito:', err);
+  }
+};
 
   // 5. Manejador de Pendientes
   const handleQuitarPendiente = async (e, tmdb_id) => {
@@ -456,7 +456,7 @@ export default function Perfil() {
                             <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
                                 type="button"
-                                onClick={(e) => handleEliminarFavorito(e, slot)}
+                                onClick={(e) => handleEliminarFavorito(e, fav.posicion, 'serie')}
                                 className="w-7 h-7 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center text-xs font-bold transition shadow"
                                 title="Quitar de favoritos"
                               >
@@ -535,7 +535,7 @@ export default function Perfil() {
                             <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
                                 type="button"
-                                onClick={(e) => handleEliminarFavorito(e, slot)}
+                                onClick={(e) => handleEliminarFavorito(e, slot, 'pelicula')}
                                 className="w-7 h-7 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center text-xs font-bold transition shadow"
                                 title="Quitar de favoritos"
                               >

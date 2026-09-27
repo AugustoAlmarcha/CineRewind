@@ -19,6 +19,10 @@ export default function ModalDetalleTimeline({
   onActualizado, 
   onSeleccionarObra 
 }) {
+  const [obraActual, setObraActual] = useState(item);
+  useEffect(() => {
+    setObraActual(item);
+  }, [item]);
   const visualizacionId = item.visualizacion_id || item.id;
   const esSerie = item.tipo?.toLowerCase() === 'serie';
   const obraIdReal = item.obra_id;
@@ -49,6 +53,7 @@ export default function ModalDetalleTimeline({
       return fechaStr;
     }
   };
+  
 
   // FILTRO INTELIGENTE DE FECHAS:
   // - En Series: Solo fechas en que viste ESTE capítulo exacto (temporada + episodio)
@@ -76,25 +81,31 @@ export default function ModalDetalleTimeline({
   }, [todasLasVisualizaciones, obraIdReal, esSerie, item]);
 
 // 2. CARGAR DETALLE Y ACTORES (TMDb)
-  useEffect(() => {
+useEffect(() => {
     let cancelado = false;
 
-    // Detectar el ID de TMDb sin importar cómo venga bautizado en el item
-    const idParaTMDb = item.tmdb_id || 
-                       item.obra_tmdb_id || 
-                       item.id_tmdb || 
-                       (item.tipo?.toLowerCase() === 'pelicula' && !item.temporada ? item.tmdb_id || item.obra_id : null);
+    // Resetear estados al cambiar de obra
+    setDetalle(null);
+    setActores([]);
+    setSinopsisTexto(obraActual.sinopsis || '');
+    setCalificacion(obraActual.calificacion ? Number(obraActual.calificacion) : 0);
+    setResenia(obraActual.resenia || '');
+    setPlataforma(obraActual.plataforma || '');
 
-    if (!idParaTMDb && !item.tmdb_id) return;
+    const idParaTMDb = obraActual.tmdb_id || 
+                       obraActual.obra_tmdb_id || 
+                       obraActual.id_tmdb || 
+                       (obraActual.tipo?.toLowerCase() === 'pelicula' && !obraActual.temporada ? obraActual.tmdb_id || obraActual.obra_id : null) ||
+                       obraActual.id;
 
-    const idFinal = item.tmdb_id || item.obra_tmdb_id || idParaTMDb;
+    if (!idParaTMDb) return;
 
     const cargar = async () => {
       setCargandoActores(true);
       try {
         if (esSerie) {
-          if (item.temporada && item.episodio) {
-            const dataEp = await obtenerDetalleEpisodioAPI(idFinal, item.temporada, item.episodio);
+          if (obraActual.temporada && obraActual.episodio) {
+            const dataEp = await obtenerDetalleEpisodioAPI(idParaTMDb, obraActual.temporada, obraActual.episodio);
             if (!cancelado && dataEp) {
               setDetalle(dataEp);
               if (dataEp.sinopsis) setSinopsisTexto(dataEp.sinopsis);
@@ -102,13 +113,11 @@ export default function ModalDetalleTimeline({
             }
           }
         } else {
-          // PELÍCULA: probamos primero con 'movie'
           let dataPeli = null;
           try {
-            dataPeli = await obtenerDetallePeliculaAPI('movie', idFinal);
+            dataPeli = await obtenerDetallePeliculaAPI('movie', idParaTMDb);
           } catch {
-            // Si el backend espera 'pelicula' en español en la ruta
-            dataPeli = await obtenerDetallePeliculaAPI('pelicula', idFinal);
+            dataPeli = await obtenerDetallePeliculaAPI('pelicula', idParaTMDb);
           }
 
           if (!cancelado && dataPeli) {
@@ -117,7 +126,6 @@ export default function ModalDetalleTimeline({
               setSinopsisTexto(dataPeli.overview || dataPeli.sinopsis);
             }
 
-            // Buscar el array de actores donde sea que venga
             const castCrudo = dataPeli.actores || 
                               dataPeli.reparto || 
                               dataPeli.cast || 
@@ -145,7 +153,7 @@ export default function ModalDetalleTimeline({
 
     cargar();
     return () => { cancelado = true; };
-  }, [item, esSerie]);
+  }, [obraActual, esSerie]);
 
   const handleGuardar = async () => {
     if (!visualizacionId) return;
@@ -439,17 +447,20 @@ export default function ModalDetalleTimeline({
         </div>
       </div>
 
-      {actorSeleccionado && (
-        <ModalFilmografiaActor 
-          actor={actorSeleccionado}
-          onClose={() => setActorSeleccionado(null)}
-          onSeleccionarObra={(obra) => {
-            setActorSeleccionado(null);
-            onClose();
-            if (onSeleccionarObra) onSeleccionarObra(obra);
-          }}
-        />
-      )}
+{actorSeleccionado && (
+  <ModalFilmografiaActor 
+    actor={actorSeleccionado}
+    onClose={() => setActorSeleccionado(null)}
+    onSeleccionarObra={(obra) => {
+      setActorSeleccionado(null);
+      if (onSeleccionarObra) {
+        onSeleccionarObra(obra);
+      } else {
+        onClose();
+      }
+    }}
+  />
+)}
     </>
   );
 }

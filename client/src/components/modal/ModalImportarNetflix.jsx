@@ -5,6 +5,11 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
   const [procesando, setProcesando] = useState(false);
   const [progreso, setProgreso] = useState(0);
   const [itemActual, setItemActual] = useState('');
+  
+  // Contadores en vivo para la pantalla de carga
+  const [contadorImportados, setContadorImportados] = useState(0);
+  const [contadorOmitidos, setContadorOmitidos] = useState(0);
+
   const [resumen, setResumen] = useState(null);
   const [error, setError] = useState(null);
   const inputRef = useRef(null);
@@ -26,6 +31,8 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
     if (!archivo) return;
     setProcesando(true);
     setProgreso(0);
+    setContadorImportados(0);
+    setContadorOmitidos(0);
     setError(null);
 
     try {
@@ -34,7 +41,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
       const datos = lineas[0].toLowerCase().includes('title') ? lineas.slice(1) : lineas;
 
       const token = localStorage.getItem('cinerewind_token');
-      const tamanoLote = 15; // Lotes de 15 para actualización fluida de la barra
+      const tamanoLote = 15;
       const totalLotes = Math.ceil(datos.length / tamanoLote);
 
       let totalImportados = 0;
@@ -59,6 +66,11 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
           const data = await res.json();
           totalImportados += data.importados || 0;
           totalOmitidos += data.omitidos || 0;
+
+          // Se actualizan los casilleros en tiempo real
+          setContadorImportados(totalImportados);
+          setContadorOmitidos(totalOmitidos);
+
           if (data.fallidos) noEncontrados.push(...data.fallidos);
         }
 
@@ -72,7 +84,6 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
         noEncontrados
       });
 
-      // if (alCompletar) alCompletar();
     } catch (err) {
       setError('Error durante la importación: ' + err.message);
     } finally {
@@ -97,7 +108,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
           {!procesando && (
             <button
               onClick={alCerrar}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
             >
               ✕
             </button>
@@ -154,18 +165,18 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
             <button
               onClick={procesarCSV}
               disabled={!archivo}
-              className="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-sm transition-all shadow-lg shadow-red-600/20"
+              className="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-sm transition-all shadow-lg shadow-red-600/20 cursor-pointer"
             >
               Iniciar Importación
             </button>
           </div>
         )}
 
-        {/* Estado 2: Barra de Progreso en Vivo */}
+        {/* Estado 2: Barra de Progreso y Contadores en Vivo */}
         {procesando && (
-          <div className="py-6 space-y-4 text-center">
+          <div className="py-4 space-y-4 text-center">
             <div className="flex items-center justify-between text-xs font-mono text-neutral-400">
-              <span className="truncate max-w-[200px] text-left">Procesando: {itemActual}</span>
+              <span className="truncate max-w-[220px] text-left">Procesando: {itemActual}</span>
               <span className="font-bold text-red-500">{progreso}%</span>
             </div>
 
@@ -176,11 +187,28 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
                 style={{ width: `${progreso}%` }}
               />
             </div>
-            <p className="text-xs text-neutral-500">Consultando catálogos y registrando fechas...</p>
+
+            {/* Marcadores en tiempo real lote a lote */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 transition-all">
+                <span className="text-2xl font-black text-emerald-500">{contadorImportados}</span>
+                <span className="block text-[10px] font-mono text-neutral-400 uppercase font-bold mt-1">
+                  ✓ Guardados
+                </span>
+              </div>
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 transition-all">
+                <span className="text-2xl font-black text-amber-500">{contadorOmitidos}</span>
+                <span className="block text-[10px] font-mono text-neutral-400 uppercase font-bold mt-1">
+                  ⚠ Omitidos
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-neutral-500 font-mono">Sincronizando con catálogo TMDb...</p>
           </div>
         )}
 
-        {/* Estado 3: Resumen Detallado */}
+        {/* Estado 3: Resumen Final */}
         {resumen && (
           <div className="py-2 space-y-4">
             <div className="grid grid-cols-2 gap-3 text-center">
@@ -205,18 +233,17 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
               </div>
             )}
 
-<button
-  onClick={() => {
-    alCerrar();
-    // Recarga recién cuando tú haces clic en cerrar
-    if (window.location.pathname.includes('/perfil') || window.location.pathname.includes('/historial')) {
-      window.location.reload();
-    }
-  }}
-  className="w-full py-3 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold text-xs uppercase tracking-wider transition-opacity hover:opacity-90 cursor-pointer"
->
-  Cerrar y ver historial
-</button>
+            <button
+              onClick={() => {
+                alCerrar();
+                if (window.location.pathname.includes('/perfil') || window.location.pathname.includes('/historial')) {
+                  window.location.reload();
+                }
+              }}
+              className="w-full py-3 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold text-xs uppercase tracking-wider transition-opacity hover:opacity-90 cursor-pointer"
+            >
+              Cerrar y ver historial
+            </button>
           </div>
         )}
 

@@ -244,16 +244,17 @@ export const guardarFavoritoAPI = async (datos) => {
 };
 
 // Quitar un favorito de una ranura
-export const eliminarFavoritoAPI = async (posicion) => {
+export const eliminarFavoritoAPI = async (posicion, tipo) => {
   const token = localStorage.getItem('cinerewind_token');
-  const res = await fetch(`/api/favoritos/${posicion}`, {
+  const res = await fetch(`/api/favoritos/${posicion}?tipo=${tipo}`, {
     method: 'DELETE',
     headers: {
-      Authorization: `Bearer ${token}`
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
     }
   });
-  if (!res.ok) throw new Error('Error al eliminar el favorito');
-  return res.json();
+  if (!res.ok) throw new Error('Error al eliminar favorito');
+  return await res.json();
 };
 
 // Obtener las estadísticas acumuladas del usuario
