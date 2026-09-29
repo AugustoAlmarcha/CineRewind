@@ -32,7 +32,9 @@ export default function Home({ actualizarTrigger }) {
   const [busquedaHistorial, setBusquedaHistorial] = useState('');
   const [vistaTotal, setVistaTotal] = useState(false);
   const [serieSeleccionadaTotal, setSerieSeleccionadaTotal] = useState(null);
-
+  // Filtro social: lista de amigo_ids para filtrar (si está vacío pero activo = cualquiera)
+  const [soloConAmigos, setSoloConAmigos] = useState(false);
+  const [amigosFiltro, setAmigosFiltro] = useState([]);
   // 3. Navegación temporal
   const [anioSeleccionado, setAnioSeleccionado] = useState(null);
   const [mesSeleccionado, setMesSeleccionado] = useState(null);
@@ -130,7 +132,7 @@ useEffect(() => {
     );
   };
 
-const handleAvanzar = async (serie) => {
+const handleAvanzar = async (serie, amigos = []) => {
     if (!usuario?.id) return;
     try {
       // Determinamos si la tarjeta ya está proponiendo una nueva temporada
@@ -142,6 +144,7 @@ const handleAvanzar = async (serie) => {
         temporada: serie.siguiente_temporada ?? serie.temporada,
         episodio_actual: pasaDeTemporada ? 0 : (serie.episodio_actual ?? serie.episodio),
         plataforma: serie.plataforma,
+        amigos_etiquetados: amigos, // <--- ÚNICO CAMBIO: pasamos los amigos elegidos
       });
       await cargarDatos();
     } catch (err) {
@@ -253,48 +256,54 @@ const solicitarEliminarLote = () => {
 
       {/* 2. Mi Diario Cinemático y Total Histórico */}
       <section className="!mt-[65px] space-y-3">
-        <HeaderHistorial 
-          vistaTotal={vistaTotal}
-          setVistaTotal={setVistaTotal}
-          serieSeleccionadaTotal={serieSeleccionadaTotal}
-          setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
-          anioSeleccionado={anioSeleccionado}
-          mesSeleccionado={mesSeleccionado}
-          onVolverAnios={() => { 
-            setAnioSeleccionado(null); 
-            setMesSeleccionado(null); 
-            setSerieSeleccionadaTotal(null);
-          }}
-          onVolverMeses={() => {
-            setMesSeleccionado(null);
-            setSerieSeleccionadaTotal(null);
-          }}
-          modoSeleccion={modoSeleccion}
-          setModoSeleccion={setModoSeleccion}
-          setSeleccionadosParaBorrar={setSeleccionadosParaBorrar}
-          filtroTipo={filtroTipo}
-          setFiltroTipo={setFiltroTipo}
-          busquedaHistorial={busquedaHistorial}
-          setBusquedaHistorial={setBusquedaHistorial}
-        />
+<HeaderHistorial 
+      vistaTotal={vistaTotal}
+      setVistaTotal={setVistaTotal}
+      serieSeleccionadaTotal={serieSeleccionadaTotal}
+      setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
+      anioSeleccionado={anioSeleccionado}
+      mesSeleccionado={mesSeleccionado}
+      onVolverAnios={() => { 
+        setAnioSeleccionado(null); 
+        setMesSeleccionado(null); 
+        setSerieSeleccionadaTotal(null);
+      }}
+      onVolverMeses={() => {
+        setMesSeleccionado(null);
+        setSerieSeleccionadaTotal(null);
+      }}
+      modoSeleccion={modoSeleccion}
+      setModoSeleccion={setModoSeleccion}
+      setSeleccionadosParaBorrar={setSeleccionadosParaBorrar}
+      filtroTipo={filtroTipo}
+      setFiltroTipo={setFiltroTipo}
+      busquedaHistorial={busquedaHistorial}
+      setBusquedaHistorial={setBusquedaHistorial}
+      soloConAmigos={soloConAmigos}               // <--- NUEVO
+      setSoloConAmigos={setSoloConAmigos}         // <--- NUEVO
+      amigosFiltro={amigosFiltro}                 // <--- NUEVO
+      setAmigosFiltro={setAmigosFiltro}           // <--- NUEVO
+    />
 
-        <GrillaHistorial 
-          vistaTotal={vistaTotal}
-          serieSeleccionadaTotal={serieSeleccionadaTotal}
-          setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
-          anioSeleccionado={anioSeleccionado}
-          mesSeleccionado={mesSeleccionado}
-          arbolHistorial={arbolHistorial}
-          listaAnios={listaAnios}
-          timelineCompleto={timeline}
-          onSeleccionarAnio={(anio) => setAnioSeleccionado(anio)}
-          onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
-          modoSeleccion={modoSeleccion}
-          seleccionadosParaBorrar={seleccionadosParaBorrar}
-          onToggleItem={toggleSeleccionItem}
-          onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
-          busquedaHistorial={busquedaHistorial}
-        />
+<GrillaHistorial 
+      vistaTotal={vistaTotal}
+      serieSeleccionadaTotal={serieSeleccionadaTotal}
+      setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
+      anioSeleccionado={anioSeleccionado}
+      mesSeleccionado={mesSeleccionado}
+      arbolHistorial={arbolHistorial}
+      listaAnios={listaAnios}
+      timelineCompleto={timeline}
+      onSeleccionarAnio={(anio) => setAnioSeleccionado(anio)}
+      onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
+      modoSeleccion={modoSeleccion}
+      seleccionadosParaBorrar={seleccionadosParaBorrar}
+      onToggleItem={toggleSeleccionItem}
+      onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
+      busquedaHistorial={busquedaHistorial}
+      soloConAmigos={soloConAmigos}               // <--- NUEVO
+      amigosFiltro={amigosFiltro}                 // <--- NUEVO
+    />
       </section>
 
       {/* 3. Barra Flotante de Borrado Masivo */}
@@ -318,13 +327,17 @@ const solicitarEliminarLote = () => {
         />
       )}
 
-      {serieParaDetalleXRay && (
-        <ModalDetalleEpisodioViendo 
-          serie={serieParaDetalleXRay}
-          onClose={() => setSerieParaDetalleXRay(null)}
-          onMarcarVisto={handleAvanzar}
-        />
-      )}
+{serieParaDetalleXRay && (
+    <ModalDetalleEpisodioViendo 
+      serie={serieParaDetalleXRay}
+      onClose={() => setSerieParaDetalleXRay(null)}
+      onMarcarVisto={handleAvanzar}
+      onSeleccionarObra={(obraDelActor) => {
+        setSerieParaDetalleXRay(null);
+        setSerieParaEditar(obraDelActor); // Abre inmediatamente la ficha para registrarla
+      }}
+    />
+  )}
 
 {itemDetalle && (
   <ModalDetalleTimeline 

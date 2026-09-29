@@ -3,7 +3,7 @@ import { obtenerDetalleEpisodioAPI } from '../../api';
 import LogoPlataforma from '../common/LogoPlataforma';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
 
-export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVisto }) {
+export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVisto, onSeleccionarObra }) {
   const [detalle, setDetalle] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [actorParaFilmografia, setActorParaFilmografia] = useState(null);
@@ -175,17 +175,20 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
         </div>
       </div>
 
-      {/* Modal interactivo de filmografía al tocar un actor */}
-      {actorParaFilmografia && (
-        <ModalFilmografiaActor 
-          actor={actorParaFilmografia}
-          onClose={() => setActorParaFilmografia(null)}
-          onSeleccionarObra={() => {
-            setActorParaFilmografia(null);
-            onClose();
-          }}
-        />
-      )}
+{/* Modal interactivo de filmografía al tocar un actor */}
+  {actorParaFilmografia && (
+    <ModalFilmografiaActor 
+      actor={actorParaFilmografia}
+      onClose={() => setActorParaFilmografia(null)}
+      onSeleccionarObra={(nuevaObra) => {
+        setActorParaFilmografia(null);
+        onClose(); // Cierra este modal de detalle
+        if (onSeleccionarObra) {
+          onSeleccionarObra(nuevaObra); // Abre ModalRegistrar con la nueva película
+        }
+      }}
+    />
+  )}
     </>
   );
 }

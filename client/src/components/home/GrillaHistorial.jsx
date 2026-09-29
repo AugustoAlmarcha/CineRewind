@@ -25,8 +25,23 @@ export default function GrillaHistorial({
   onToggleItem,
   onAbrirDetalleTimeline,
   busquedaHistorial = '',
+  // Props del filtro social
+  soloConAmigos = false,
+  amigosFiltro = [],
 }) {
-  // 1. Catálogo unificado Total Histórico
+
+  // Helper para verificar si un registro cumple con el filtro de amigos
+  const pasaFiltroAmigos = (item) => {
+    if (!soloConAmigos) return true;
+    const amigos = Array.isArray(item.amigos_covision) ? item.amigos_covision : [];
+    if (amigos.length === 0) return false;
+    // Si no seleccionó amigos específicos, pasa cualquiera que tenga amigos
+    if (!amigosFiltro || amigosFiltro.length === 0) return true;
+    // Lógica OR: si lo vio con Pepe O con Lucas O con ambos
+    return amigos.some((a) => amigosFiltro.includes(a.amigo_id));
+  };
+
+  // 1. Catálogo unificado Total Histórico (con filtro de búsqueda y amigos)
   const obrasTotalesUnificadas = useMemo(() => {
     if (!vistaTotal) return [];
     const mapaObras = {};
@@ -35,6 +50,11 @@ export default function GrillaHistorial({
       if (busquedaHistorial && !item.titulo?.toLowerCase().includes(busquedaHistorial.toLowerCase())) {
         return;
       }
+      // Filtro social: descarta si no cumple con la co-visualización
+      if (!pasaFiltroAmigos(item)) {
+        return;
+      }
+
       const clave = item.obra_id || item.tmdb_id || item.titulo;
       if (!mapaObras[clave]) {
         mapaObras[clave] = {
@@ -54,28 +74,31 @@ export default function GrillaHistorial({
     });
 
     return Object.values(mapaObras).sort((a, b) => b.registros.length - a.registros.length);
-  }, [vistaTotal, timelineCompleto, busquedaHistorial]);
+  }, [vistaTotal, timelineCompleto, busquedaHistorial, soloConAmigos, amigosFiltro]);
 
   // 2. Agrupación por días de una serie en Total Histórico
   const gruposSerieTotalPorDia = useMemo(() => {
     if (!serieSeleccionadaTotal) return [];
     const mapa = {};
     serieSeleccionadaTotal.registros.forEach((item) => {
+      if (!pasaFiltroAmigos(item)) return;
       const fecha = item.fecha_visto ? item.fecha_visto.split('T')[0] : 'Sin Fecha';
       if (!mapa[fecha]) mapa[fecha] = [];
       mapa[fecha].push(item);
     });
     return Object.entries(mapa).sort((a, b) => new Date(b[0]) - new Date(a[0]));
-  }, [serieSeleccionadaTotal]);
+  }, [serieSeleccionadaTotal, soloConAmigos, amigosFiltro]);
 
-  // 3. Items filtrados del mes
+  // 3. Items filtrados del mes en Diario por Fechas
   const itemsDelMes = useMemo(() => {
     if (anioSeleccionado === null || mesSeleccionado === null) return [];
     return (arbolHistorial[anioSeleccionado]?.[mesSeleccionado] || []).filter((item) => {
-      if (!busquedaHistorial.trim()) return true;
-      return item.titulo?.toLowerCase().includes(busquedaHistorial.trim().toLowerCase());
+      if (busquedaHistorial.trim() && !item.titulo?.toLowerCase().includes(busquedaHistorial.trim().toLowerCase())) {
+        return false;
+      }
+      return pasaFiltroAmigos(item);
     });
-  }, [arbolHistorial, anioSeleccionado, mesSeleccionado, busquedaHistorial]);
+  }, [arbolHistorial, anioSeleccionado, mesSeleccionado, busquedaHistorial, soloConAmigos, amigosFiltro]);
 
   // 4. Grupos diarios del mes
   const gruposPorDia = useMemo(() => {
@@ -126,7 +149,7 @@ export default function GrillaHistorial({
   if (!anioSeleccionado) {
     const carpetasAnios = listaAnios.map((anio) => {
       const meses = arbolHistorial[anio] || {};
-      const items = Object.values(meses).flat();
+      const items = Object.values(meses).flat().filter(pasaFiltroAmigos);
       return {
         id: anio,
         valor: anio,
@@ -134,12 +157,12 @@ export default function GrillaHistorial({
         subtexto: `${items.length} ${items.length === 1 ? 'obra' : 'obras'}`,
         items
       };
-    });
+    }).filter((c) => c.items.length > 0 || !soloConAmigos);
 
     return (
       <VistaSelectorCarpetas 
         carpetas={carpetasAnios}
-        tituloVacio="No hay registros en tu historial todavía."
+        tituloVacio={soloConAmigos ? "No tienes registros compartidos con esos amigos." : "No hay registros en tu historial todavía."}
         onSeleccionar={onSeleccionarAnio}
       />
     );
@@ -150,7 +173,7 @@ export default function GrillaHistorial({
     const mesesDelAnio = arbolHistorial[anioSeleccionado] || {};
     const mesesIndices = Object.keys(mesesDelAnio).sort((a, b) => b - a);
     const carpetasMeses = mesesIndices.map((mesIdx) => {
-      const items = mesesDelAnio[mesIdx] || [];
+      const items = (mesesDelAnio[mesIdx] || []).filter(pasaFiltroAmigos);
       return {
         id: mesIdx,
         valor: Number(mesIdx),
@@ -158,12 +181,12 @@ export default function GrillaHistorial({
         subtexto: `${items.length} ${items.length === 1 ? 'registro' : 'registros'}`,
         items
       };
-    });
+    }).filter((c) => c.items.length > 0 || !soloConAmigos);
 
     return (
       <VistaSelectorCarpetas 
         carpetas={carpetasMeses}
-        tituloVacio="No hay meses disponibles."
+        tituloVacio={soloConAmigos ? "No hay registros con amigos en este año." : "No hay meses disponibles."}
         onSeleccionar={onSeleccionarMes}
       />
     );

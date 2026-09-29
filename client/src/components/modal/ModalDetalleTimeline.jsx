@@ -7,6 +7,7 @@ import {
 } from '../../api';
 import CalificadorEstrellas from '../common/CalificadorEstrellas';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
+import SelectorAmigosEtiquetar from './SelectorAmigosEtiquetar';
 
 const PLATAFORMAS_DISPONIBLES = [
   'Netflix', 'Max', 'Disney+', 'Prime Video', 'Apple TV+', 'Cine', 'Paramount+', 'Mubi', 'Crunchyroll'
@@ -34,7 +35,9 @@ export default function ModalDetalleTimeline({
   const [resenia, setResenia] = useState(item.resenia || '');
   const [plataforma, setPlataforma] = useState(item.plataforma || '');
   const [alcancePlataforma, setAlcancePlataforma] = useState('solo_este');
-
+const [amigosSeleccionados, setAmigosSeleccionados] = useState(
+    item.amigos_covision ? item.amigos_covision.map((a) => a.amigo_id) : []
+  );
   const [guardando, setGuardando] = useState(false);
   const [detalle, setDetalle] = useState(null);
   const [actores, setActores] = useState([]);
@@ -159,11 +162,12 @@ useEffect(() => {
     if (!visualizacionId) return;
     setGuardando(true);
     try {
-      await guardarReseniaAPI(visualizacionId, {
-        calificacion: calificacion > 0 ? Number(calificacion) : null,
-        resenia: resenia.trim() || null,
-        plataforma: plataforma || null,
-      });
+await guardarReseniaAPI(visualizacionId, {
+      calificacion: calificacion > 0 ? Number(calificacion) : null,
+      resenia: resenia.trim() || null,
+      plataforma: plataforma || null,
+      amigos_etiquetados: amigosSeleccionados, // <--- ÚNICO CAMBIO AQUÍ
+    });
 
       if (esSerie && obraIdReal && plataforma && plataforma !== 'Sin plataforma' && alcancePlataforma !== 'solo_este') {
         try {
@@ -405,6 +409,13 @@ useEffect(() => {
                 </div>
               )}
             </div>
+            {/* Selector de Co-visualización ("Visto con...") */}
+        <div className="rounded-2xl overflow-hidden border border-neutral-300 dark:border-white/10">
+          <SelectorAmigosEtiquetar
+            amigosSeleccionados={amigosSeleccionados}
+            setAmigosSeleccionados={setAmigosSeleccionados}
+          />
+        </div>
 
             {/* Calificación */}
             <CalificadorEstrellas 

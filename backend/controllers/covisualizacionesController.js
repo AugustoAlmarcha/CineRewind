@@ -1,0 +1,182 @@
+const pool = require('../config/db');
+
+// 1. GET: /api/covisualizaciones/pendientes
+// Obtiene las invitaciones pendientes del usuario autenticado
+const obtenerInvitacionesPendientes = async (req, res) => {
+  const usuarioId = req.usuario?.id;
+  if (!usuarioId) {
+    return res.status(401).json({ error: 'Sesión no autorizada' });
+  }
+
+  try {
+    const query = `
+      SELECT 
+        c.id AS covisualizacion_id,
+        c.visualizacion_id,
+        c.estado,
+        c.creado_en,
+        h.fecha_visto,
+        h.plataforma,
+        h.temporada,
+        h.episodio,
+        o.id AS obra_id,
+        o.tmdb_id,
+        o.tipo,
+        o.titulo,
+        o.poster_path,
+        u.id AS anfitrion_id,
+        u.nombre AS anfitrion_nombre,
+        u.username AS anfitrion_username,
+        u.avatar_url AS anfitrion_avatar
+      FROM covisualizaciones c
+      INNER JOIN historial_visualizaciones h ON c.visualizacion_id = h.id
+      INNER JOIN obras_catalogo o ON h.obra_id = o.id
+      INNER JOIN usuarios u ON h.usuario_id = u.id
+      WHERE c.amigo_id = $1 AND c.estado = 'pendiente'
+      ORDER BY c.creado_en DESC;
+    `;
+
+    const resultado = await pool.query(query, [usuarioId]);
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('Error al obtener invitaciones pendientes:', error.message);
+    res.status(500).json({ error: 'Error del servidor al obtener invitaciones' });
+  }
+};
+
+// 2. PUT: /api/covisualizaciones/responder
+// Acepta o rechaza la invitación. Si acepta, clona el registro en su historial
+const responderInvitacion = async (req, res) => {
+  const usuarioId = req.usuario?.id;
+  const { covisualizacion_id, accion } = req.body; // accion: 'aceptar' | 'rechazar'
+
+  if (!usuarioId) {
+    return res.status(401).json({ error: 'Sesión no autorizada' });
+  }
+
+  if (!covisualizacion_id || !['aceptar', 'rechazar'].includes(accion)) {
+    return res.status(400).json({ error: 'Parámetros inválidos' });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Obtener la invitación y datos de la visualización original
+    const invRes = await client.query(
+      `SELECT c.id, c.visualizacion_id, c.estado, h.obra_id, h.fecha_visto, h.plataforma, 
+              h.temporada, h.episodio, h.foto_episodio, h.es_final_temporada, o.tipo
+       FROM covisualizaciones c
+       INNER JOIN historial_visualizaciones h ON c.visualizacion_id = h.id
+       INNER JOIN obras_catalogo o ON h.obra_id = o.id
+       WHERE c.id = $1 AND c.amigo_id = $2
+       FOR UPDATE`,
+      [covisualizacion_id, usuarioId]
+    );
+
+    if (invRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Invitación no encontrada' });
+    }
+
+    const inv = invRes.rows[0];
+
+    if (inv.estado !== 'pendiente') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Esta invitación ya fue respondida' });
+    }
+
+    if (accion === 'rechazar') {
+      await client.query(
+        `UPDATE covisualizaciones SET estado = 'rechazada', actualizado_en = CURRENT_TIMESTAMP WHERE id = $1`,
+        [covisualizacion_id]
+      );
+      await client.query('COMMIT');
+      return res.json({ mensaje: 'Invitación rechazada' });
+    }
+
+    // Acción: Aceptar -> Clonar en el historial del amigo si no existe
+    const existeEnHistorial = await client.query(
+      `SELECT id FROM historial_visualizaciones
+       WHERE usuario_id = $1 AND obra_id = $2 
+         AND COALESCE(temporada, 0) = COALESCE($3, 0)
+         AND COALESCE(episodio, 0) = COALESCE($4, 0)
+         AND fecha_visto = $5`,
+      [usuarioId, inv.obra_id, inv.temporada, inv.episodio, inv.fecha_visto]
+    );
+
+let nuevoRegistroId;
+
+    if (existeEnHistorial.rows.length === 0) {
+      const nuevoHistorial = await client.query(
+        `INSERT INTO historial_visualizaciones 
+          (usuario_id, obra_id, fecha_visto, plataforma, temporada, episodio, foto_episodio, es_final_temporada)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id`,
+        [
+          usuarioId,
+          inv.obra_id,
+          inv.fecha_visto,
+          inv.plataforma,
+          inv.temporada,
+          inv.episodio,
+          inv.foto_episodio,
+          inv.es_final_temporada,
+        ]
+      );
+      nuevoRegistroId = nuevoHistorial.rows[0].id;
+    } else {
+      nuevoRegistroId = existeEnHistorial.rows[0].id;
+    }
+
+    // 1. Marcar la invitación original de Juan hacia Pepe como 'aceptada'
+    await client.query(
+      `UPDATE covisualizaciones SET estado = 'aceptada', actualizado_en = CURRENT_TIMESTAMP WHERE id = $1`,
+      [covisualizacion_id]
+    );
+
+    // 2. Vincular al anfitrión (Juan) en el registro de Pepe como 'aceptada' (evita bucles y habilita la foto de Juan en el historial de Pepe)
+    const anfitrionRes = await client.query(
+      `SELECT usuario_id FROM historial_visualizaciones WHERE id = $1`,
+      [inv.visualizacion_id]
+    );
+    const anfitrionId = anfitrionRes.rows[0]?.usuario_id;
+
+    if (anfitrionId && nuevoRegistroId) {
+      await client.query(
+        `INSERT INTO covisualizaciones (visualizacion_id, amigo_id, estado)
+         VALUES ($1, $2, 'aceptada')
+         ON CONFLICT (visualizacion_id, amigo_id) 
+         DO UPDATE SET estado = 'aceptada';`,
+        [nuevoRegistroId, anfitrionId]
+      );
+    }
+
+    // Si es serie, activar el seguimiento en el carrusel del amigo
+    if (inv.tipo === 'serie') {
+      await client.query(
+        `INSERT INTO seguimiento_series (usuario_id, obra_id, activo, fecha_reinicio, actualizado_en)
+         VALUES ($1, $2, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+         ON CONFLICT (usuario_id, obra_id) DO UPDATE SET
+           activo = true,
+           actualizado_en = CURRENT_TIMESTAMP;`,
+        [usuarioId, inv.obra_id]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ mensaje: 'Visualización aceptada y agregada a tu historial', nuevoRegistroId });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al responder invitación:', error.message);
+    res.status(500).json({ error: 'Error del servidor al procesar la respuesta' });
+  } finally {
+    client.release();
+  }
+};
+
+module.exports = {
+  obtenerInvitacionesPendientes,
+  responderInvitacion,
+};

@@ -21,6 +21,7 @@ import SelectorTemporadaBarra from './SelectorTemporadaBarra';
 import VistaRegistroPelicula from './VistaRegistroPelicula';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
 import ModalActoresEpisodio from './ModalActoresEpisodio';
+import SelectorAmigosEtiquetar from './SelectorAmigosEtiquetar'; // <-- IMPORTACIÓN NUEVA
 
 export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, onCambiarObra }) {
   const { usuario } = useAuth();
@@ -50,6 +51,9 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
 
   const [episodiosYaVistos, setEpisodiosYaVistos] = useState([]);
   const [episodiosSeleccionados, setEpisodiosSeleccionados] = useState([]);
+
+  // Estado para co-visualización (amigos etiquetados)
+  const [amigosSeleccionados, setAmigosSeleccionados] = useState([]);
 
   const [errorRegistro, setErrorRegistro] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -101,6 +105,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
       setCargandoPendiente(false);
     }
   };
+
   const [repartoActores, setRepartoActores] = useState([]);
   const [mostrarActores, setMostrarActores] = useState(false);
   const [actorParaFilmografia, setActorParaFilmografia] = useState(null);
@@ -175,7 +180,6 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           obtenerEpisodiosTemporadaAPI(tmdbIdReal, temporadaSeleccionada)
         ];
 
-        // Solo busca en el backend si el usuario está autenticado y con un ID numérico real
         if (usuario?.id) {
           promesas.push(
             obtenerEpisodiosVistosAPI(usuario.id, tmdbIdReal, temporadaSeleccionada).catch(() => [])
@@ -251,18 +255,19 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         }
       });
 
-await registrarLoteAPI({
-  usuario_id: usuario.id,
-  tmdb_id: tmdbIdReal,
-  titulo: obraActual.titulo,
-  poster_path: datosTemporada?.poster_temporada || obraActual.poster_path,
-  plataforma: plataforma || null,
-  temporada: temporadaSeleccionada,
-  episodios: episodiosSeleccionados,
-  fecha_visto: fechaVisto,
-  fotos_episodios: fotosMapa,
-  total_episodios_temporada: datosTemporada?.episodios?.length || null, // <-- AQUÍ
-});
+      await registrarLoteAPI({
+        usuario_id: usuario.id,
+        tmdb_id: tmdbIdReal,
+        titulo: obraActual.titulo,
+        poster_path: datosTemporada?.poster_temporada || obraActual.poster_path,
+        plataforma: plataforma || null,
+        temporada: temporadaSeleccionada,
+        episodios: episodiosSeleccionados,
+        fecha_visto: fechaVisto,
+        fotos_episodios: fotosMapa,
+        total_episodios_temporada: datosTemporada?.episodios?.length || null,
+        amigos_etiquetados: amigosSeleccionados, // <-- SE ENVÍAN AMIGOS ETIQUETADOS
+      });
 
       if (plataforma && plataforma !== 'Sin plataforma') {
         try {
@@ -305,6 +310,7 @@ await registrarLoteAPI({
         poster_path: obraActual.poster_path,
         fecha_visto: fechaVisto,
         plataforma: plataforma || null,
+        amigos_etiquetados: amigosSeleccionados, // <-- SE ENVÍAN AMIGOS ETIQUETADOS
       });
 
       onRegistroCompletado();
@@ -338,7 +344,7 @@ await registrarLoteAPI({
               <p className="text-xs text-neutral-500 dark:text-neutral-400">{obraActual?.anio}</p>
             </div>
           </div>
-<div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             {/* Botón Guardar en Pendientes */}
             <button
               type="button"
@@ -374,6 +380,12 @@ await registrarLoteAPI({
           setFechaVisto={setFechaVisto}
           noRecuerdaFecha={noRecuerdaFecha}
           onToggleNoRecuerda={handleToggleNoRecuerda}
+        />
+
+        {/* Co-visualización: Selector de Amigos */}
+        <SelectorAmigosEtiquetar 
+          amigosSeleccionados={amigosSeleccionados}
+          setAmigosSeleccionados={setAmigosSeleccionados}
         />
 
         {/* Galería de Actores */}

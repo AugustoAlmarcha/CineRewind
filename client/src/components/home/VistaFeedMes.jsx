@@ -82,11 +82,9 @@ export default function VistaFeedMes({
                 const itemIdReal = item.id !== undefined ? item.id : item.historial_id;
                 const seleccionado = itemIdReal !== undefined && seleccionadosParaBorrar.includes(itemIdReal);
 
-                // Detección directa desde PostgreSQL (0 ms)
+                // Detección directa desde PostgreSQL
                 const esFinTemporada = Boolean(item.es_final_temporada);
 
-                // Borde estándar vs Marco Plateado
-              // Borde estándar vs Marco Plateado Adaptativo
                 const estiloBorde = esFinTemporada
                   ? 'border-2 border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.45)] ring-1 ring-amber-400/60 dark:border-slate-200 dark:shadow-[0_0_15px_rgba(226,232,240,0.45)] dark:ring-1 dark:ring-white/50'
                   : 'border-neutral-200 dark:border-white/10 hover:border-rose-500/60';
@@ -121,7 +119,9 @@ export default function VistaFeedMes({
                       </div>
                     )}
 
+                    {/* Capa de información sobre la portada */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-transparent flex flex-col justify-between p-4 pointer-events-none">
+                      {/* Arriba: Tipo/Capítulo y Calificación */}
                       <div className="flex justify-between items-center gap-1">
                         <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
                           esFinTemporada
@@ -132,11 +132,11 @@ export default function VistaFeedMes({
                         </span>
 
                         <div className="flex items-center gap-1">
-                        {esFinTemporada && (
-                          <span className="text-[9px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded bg-amber-500 text-white border border-amber-300 shadow dark:bg-slate-300/90 dark:text-neutral-900 dark:border-white">
-                            FIN TEMP
-                          </span>
-                        )}
+                          {esFinTemporada && (
+                            <span className="text-[9px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded bg-amber-500 text-white border border-amber-300 shadow dark:bg-slate-300/90 dark:text-neutral-900 dark:border-white">
+                              FIN TEMP
+                            </span>
+                          )}
 
                           {item.calificacion && (
                             <span className="text-[11px] font-black text-amber-400 bg-black/70 px-2 py-0.5 rounded-md border border-white/10 flex items-center gap-1">
@@ -146,16 +146,45 @@ export default function VistaFeedMes({
                         </div>
                       </div>
 
-                      <div>
-                        <h4 className="text-sm font-black text-white truncate drop-shadow">
-                          {item.titulo}
-                        </h4>
-                        <p className="text-[10px] font-bold text-neutral-400 truncate mt-0.5">
-                          {item.plataforma || 'Sin plataforma'}
-                        </p>
+                      {/* Abajo: Título a la izquierda y Carita del amigo a la derecha */}
+                      <div className="flex items-end justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-black text-white truncate drop-shadow">
+                            {item.titulo}
+                          </h4>
+                          <p className="text-[10px] font-bold text-neutral-400 truncate mt-0.5">
+                            {item.plataforma || 'Sin plataforma'}
+                          </p>
+                        </div>
+
+                        {/* FOTO DE PERFIL DEL AMIGO ABAJO A LA DERECHA */}
+                        {Array.isArray(item.amigos_covision) && item.amigos_covision.length > 0 && (
+                          <div className="flex -space-x-1.5 overflow-hidden flex-shrink-0 pb-0.5">
+                            {item.amigos_covision.map((amigo) => (
+                              <div
+                                key={amigo.amigo_id || amigo.covisualizacion_id}
+                                title={`Visto con @${amigo.username || amigo.nombre}`}
+                                className="w-6 h-6 rounded-full ring-2 ring-black/80 bg-neutral-800 overflow-hidden flex items-center justify-center shadow-md flex-shrink-0"
+                              >
+                                {amigo.avatar_url ? (
+                                  <img
+                                    src={amigo.avatar_url}
+                                    alt={amigo.username}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-[9px] font-black text-rose-500">
+                                    {(amigo.nombre || amigo.username || '?').charAt(0).toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 
+                    {/* Casilla de selección múltiple */}
                     {modoSeleccion && (
                       <div 
                         onClick={(e) => {

@@ -5,7 +5,7 @@ const resolverUsuarioId = (req) => {
   return req.usuario?.id || req.body?.usuario_id || req.params?.usuario_id;
 };
 
-// POST: Registrar una película o serie individual
+// POST: Registrar una película o serie individual (con soporte para Co-visualización)
 const registrarVisualizacion = async (req, res) => {
   const usuario_id = resolverUsuarioId(req);
   const {
@@ -19,6 +19,7 @@ const registrarVisualizacion = async (req, res) => {
     temporada,
     episodio,
     es_final_temporada,
+    amigos_etiquetados, // <-- Array de IDs de amigos: [2, 5]
   } = req.body;
 
   if (!usuario_id || !tmdb_id || !tipo || !titulo || !fecha_visto) {
@@ -90,6 +91,23 @@ const registrarVisualizacion = async (req, res) => {
       Boolean(es_final_temporada)
     ]);
 
+    const visualizacionId = resHistorial.rows[0].id;
+
+    // HU-10: Guardar invitaciones de co-visualización pendientes
+    if (Array.isArray(amigos_etiquetados) && amigos_etiquetados.length > 0) {
+      for (const amigoId of amigos_etiquetados) {
+        const idAmigoNum = parseInt(amigoId, 10);
+        if (idAmigoNum && idAmigoNum !== usuario_id) {
+          await pool.query(
+            `INSERT INTO covisualizaciones (visualizacion_id, amigo_id, estado)
+             VALUES ($1, $2, 'pendiente')
+             ON CONFLICT (visualizacion_id, amigo_id) DO NOTHING;`,
+            [visualizacionId, idAmigoNum]
+          );
+        }
+      }
+    }
+
     if (tipo.toLowerCase() === 'serie') {
       const fechaRegistro = resHistorial.rows[0].creado_en;
 
@@ -97,13 +115,13 @@ const registrarVisualizacion = async (req, res) => {
         `INSERT INTO seguimiento_series (usuario_id, obra_id, activo, fecha_reinicio, actualizado_en)
          VALUES ($1, $2, true, $5, CURRENT_TIMESTAMP)
          ON CONFLICT (usuario_id, obra_id) DO UPDATE SET 
-           activo = true,
-           fecha_reinicio = CASE 
-             WHEN seguimiento_series.activo = false THEN $5
-             WHEN $3 = 1 AND $4 = 1 THEN $5
-             ELSE COALESCE(seguimiento_series.fecha_reinicio, $5)
-           END,
-           actualizado_en = CURRENT_TIMESTAMP;`,
+            activo = true,
+            fecha_reinicio = CASE 
+              WHEN seguimiento_series.activo = false THEN $5
+              WHEN $3 = 1 AND $4 = 1 THEN $5
+              ELSE COALESCE(seguimiento_series.fecha_reinicio, $5)
+            END,
+            actualizado_en = CURRENT_TIMESTAMP;`,
         [usuario_id, obra_id, tempNum, epNum, fechaRegistro]
       );
     }
@@ -118,7 +136,7 @@ const registrarVisualizacion = async (req, res) => {
   }
 };
 
-// GET: Timeline cronológico directo sin peticiones externas (0 ms)
+// GET: Timeline cronológico con soporte de "Visto con..."
 const obtenerTimeline = async (req, res) => {
   const usuario_id = req.params.usuario_id || req.usuario?.id;
   const { tipo } = req.query;
@@ -147,7 +165,26 @@ const obtenerTimeline = async (req, res) => {
         o.titulo,
         o.poster_path AS poster_serie,
         o.poster_path AS poster_obra,
-        COALESCE(h.foto_episodio, o.poster_path, '') AS poster_path
+        COALESCE(h.foto_episodio, o.poster_path, '') AS poster_path,
+        -- Subconsulta para traer los amigos etiquetados
+        COALESCE(
+          (
+            SELECT json_agg(
+              json_build_object(
+                'covisualizacion_id', c.id,
+                'amigo_id', u.id,
+                'nombre', u.nombre,
+                'username', u.username,
+                'avatar_url', u.avatar_url,
+                'estado', c.estado
+              )
+            )
+            FROM covisualizaciones c
+            INNER JOIN usuarios u ON c.amigo_id = u.id
+            WHERE c.visualizacion_id = h.id
+          ),
+          '[]'::json
+        ) AS amigos_covision
       FROM historial_visualizaciones h
       INNER JOIN obras_catalogo o ON h.obra_id = o.id
       WHERE h.usuario_id = $1
@@ -181,6 +218,7 @@ const obtenerTimeline = async (req, res) => {
         poster_serie: posterSerie,
         poster_obra: posterSerie,
         es_final_temporada: Boolean(row.es_final_temporada),
+        amigos_covision: row.amigos_covision || [],
       };
     });
 
@@ -214,11 +252,21 @@ const eliminarVisualizacion = async (req, res) => {
   }
 };
 
-// POST: Registrar lote de capítulos en masa con detección de final de temporada
-// POST: Registrar lote de capítulos en masa con detección de final de temporada
+// POST: Registrar lote de capítulos con etiquetado de amigos
 const registrarLoteVisualizaciones = async (req, res) => {
   const usuario_id = resolverUsuarioId(req);
-  const { tmdb_id, titulo, poster_path, plataforma, temporada, episodios, fecha_visto, fotos_episodios, total_episodios_temporada } = req.body;
+  const { 
+    tmdb_id, 
+    titulo, 
+    poster_path, 
+    plataforma, 
+    temporada, 
+    episodios, 
+    fecha_visto, 
+    fotos_episodios, 
+    total_episodios_temporada,
+    amigos_etiquetados // <-- Array de IDs de amigos
+  } = req.body;
 
   if (!usuario_id || !tmdb_id || !titulo || !temporada || !Array.isArray(episodios) || episodios.length === 0) {
     return res.status(400).json({ error: 'Faltan datos requeridos para el registro múltiple' });
@@ -231,7 +279,6 @@ const registrarLoteVisualizaciones = async (req, res) => {
   const tempNum = parseInt(temporada, 10);
   const episodiosNumeros = episodios.map((e) => parseInt(e, 10));
   
-  // Total real de la temporada recibido del cliente
   const totalRealTemp = total_episodios_temporada ? parseInt(total_episodios_temporada, 10) : null;
   const maxEpisodioEnviado = Math.max(...episodiosNumeros);
 
@@ -249,8 +296,6 @@ const registrarLoteVisualizaciones = async (req, res) => {
 
     for (const ep of episodiosNumeros) {
       const fotoEp = fotos_episodios && fotos_episodios[ep] ? fotos_episodios[ep] : null;
-      
-      // Solo es fin de temporada si el cliente mandó el total real comprobado y coincide
       const esFinTemp = Boolean(totalRealTemp && ep === totalRealTemp);
 
       const existe = await pool.query(
@@ -259,20 +304,40 @@ const registrarLoteVisualizaciones = async (req, res) => {
         [usuario_id, obra_id, tempNum, ep, fecha_visto]
       );
 
+      let visualizacionId;
+
       if (existe.rows.length === 0) {
-        await pool.query(
+        const insercion = await pool.query(
           `INSERT INTO historial_visualizaciones 
              (usuario_id, obra_id, fecha_visto, plataforma, temporada, episodio, foto_episodio, es_final_temporada)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           RETURNING id;`,
           [usuario_id, obra_id, fecha_visto, plataforma || null, tempNum, ep, fotoEp, esFinTemp]
         );
+        visualizacionId = insercion.rows[0].id;
+      } else {
+        visualizacionId = existe.rows[0].id;
+      }
+
+      // HU-10: Asignar amigos a cada capítulo procesado
+      if (Array.isArray(amigos_etiquetados) && amigos_etiquetados.length > 0) {
+        for (const amigoId of amigos_etiquetados) {
+          const idAmigoNum = parseInt(amigoId, 10);
+          if (idAmigoNum && idAmigoNum !== usuario_id) {
+            await pool.query(
+              `INSERT INTO covisualizaciones (visualizacion_id, amigo_id, estado)
+               VALUES ($1, $2, 'pendiente')
+               ON CONFLICT (visualizacion_id, amigo_id) DO NOTHING;`,
+              [visualizacionId, idAmigoNum]
+            );
+          }
+        }
       }
     }
 
     const incluyePrimerCapitulo = tempNum === 1 && episodiosNumeros.includes(1);
     const fechaLote = new Date();
 
-    // Sincronización del lote con fecha_reinicio
     await pool.query(
       `INSERT INTO seguimiento_series (usuario_id, obra_id, activo, fecha_reinicio, total_episodios_temporada, actualizado_en)
        VALUES ($1, $2, true, $4, $5, CURRENT_TIMESTAMP)
@@ -320,9 +385,10 @@ const obtenerEpisodiosVistosTemporada = async (req, res) => {
 };
 
 // PATCH: Guardar o actualizar reseña y puntuación
+// PATCH: Guardar o actualizar reseña, calificación, plataforma y co-visualizaciones
 const actualizarReseniaYCalificacion = async (req, res) => {
   const { id } = req.params;
-  const { calificacion, resenia, plataforma } = req.body;
+  const { calificacion, resenia, plataforma, amigos_etiquetados } = req.body;
   const usuario_id = resolverUsuarioId(req);
 
   if (!usuario_id) {
@@ -335,6 +401,7 @@ const actualizarReseniaYCalificacion = async (req, res) => {
   }
 
   try {
+    // 1. Actualizar datos propios de la visualización
     const query = `
       UPDATE historial_visualizaciones
       SET 
@@ -355,6 +422,36 @@ const actualizarReseniaYCalificacion = async (req, res) => {
 
     if (resultado.rowCount === 0) {
       return res.status(404).json({ error: 'Registro no encontrado o no pertenece al usuario' });
+    }
+
+    // 2. Sincronizar amigos en covisualizaciones si se pasaron en el cuerpo
+    if (Array.isArray(amigos_etiquetados)) {
+      // Amigos que ya estaban asignados a esta visualización
+      const actualesRes = await pool.query(
+        'SELECT amigo_id FROM covisualizaciones WHERE visualizacion_id = $1',
+        [visualizacionIdNum]
+      );
+      const actualesIds = actualesRes.rows.map((r) => r.amigo_id);
+      const nuevosIds = amigos_etiquetados.map((id) => Number(id)).filter((id) => id && id !== usuario_id);
+
+      // Eliminar amigos desmarcados
+      const paraEliminar = actualesIds.filter((id) => !nuevosIds.includes(id));
+      if (paraEliminar.length > 0) {
+        await pool.query(
+          'DELETE FROM covisualizaciones WHERE visualizacion_id = $1 AND amigo_id = ANY($2::int[])',
+          [visualizacionIdNum, paraEliminar]
+        );
+      }
+
+      // Insertar nuevos amigos etiquetados en estado 'pendiente'
+      for (const amigoId of nuevosIds) {
+        await pool.query(
+          `INSERT INTO covisualizaciones (visualizacion_id, amigo_id, estado)
+           VALUES ($1, $2, 'pendiente')
+           ON CONFLICT (visualizacion_id, amigo_id) DO NOTHING;`,
+          [visualizacionIdNum, amigoId]
+        );
+      }
     }
 
     res.json({
@@ -470,7 +567,6 @@ const obtenerEstadisticasUsuario = async (req, res) => {
   }
 
   try {
-    // 1. Total de series distintas con al menos un episodio visto
     const seriesRes = await pool.query(`
       SELECT COUNT(DISTINCT o.id) AS total_series
       FROM historial_visualizaciones h
@@ -478,7 +574,6 @@ const obtenerEstadisticasUsuario = async (req, res) => {
       WHERE h.usuario_id = $1 AND o.tipo = 'serie';
     `, [usuarioId]);
 
-    // 2. Total de episodios vistos
     const episodiosRes = await pool.query(`
       SELECT COUNT(h.id) AS total_episodios
       FROM historial_visualizaciones h
@@ -486,7 +581,6 @@ const obtenerEstadisticasUsuario = async (req, res) => {
       WHERE h.usuario_id = $1 AND o.tipo = 'serie';
     `, [usuarioId]);
 
-    // 3. Total de películas vistas
     const peliculasRes = await pool.query(`
       SELECT COUNT(h.id) AS total_peliculas
       FROM historial_visualizaciones h
@@ -498,8 +592,6 @@ const obtenerEstadisticasUsuario = async (req, res) => {
     const totalEpisodios = parseInt(episodiosRes.rows[0].total_episodios, 10) || 0;
     const totalPeliculas = parseInt(peliculasRes.rows[0].total_peliculas, 10) || 0;
 
-    // 4. Estimación de Horas Totales:
-    // Promedio: ~105 min (1.75h) por película y ~45 min (0.75h) por episodio
     const horasPeliculas = totalPeliculas * 1.75;
     const horasSeries = totalEpisodios * 0.75;
     const horasTotales = Math.round(horasPeliculas + horasSeries);
@@ -515,6 +607,7 @@ const obtenerEstadisticasUsuario = async (req, res) => {
     res.status(500).json({ error: 'Error del servidor al calcular estadísticas' });
   }
 };
+
 // GET: /api/historial/records
 const obtenerRecordsUsuario = async (req, res) => {
   const usuarioId = req.usuario?.id;
@@ -523,7 +616,6 @@ const obtenerRecordsUsuario = async (req, res) => {
   }
 
   try {
-    // 1. Serie Maratón (la serie con mayor cantidad de episodios vistos)
     const serieQuery = `
       SELECT 
         o.id,
@@ -540,7 +632,6 @@ const obtenerRecordsUsuario = async (req, res) => {
     `;
     const serieRes = await pool.query(serieQuery, [usuarioId]);
 
-    // 2. Película Rewatch (la película registrada más veces, mínimo 2)
     const peliQuery = `
       SELECT 
         o.id,

@@ -34,7 +34,8 @@ export default function App() {
       <Navbar 
         darkMode={darkMode} 
         onToggleTheme={toggleTheme} 
-        onSeleccionarObra={(obra) => setObraSeleccionada(obra)} 
+        onSeleccionarObra={(obra) => setObraSeleccionada(obra)}
+        onActualizarDatos={() => setActualizarTrigger((prev) => prev + 1)}
       />
 
       <Routes>
@@ -48,7 +49,6 @@ export default function App() {
             />
           } 
         />
-        {/* Ruta para el nuevo perfil */}
         <Route path="/perfil/:username" element={<Perfil />} />
       </Routes>
 

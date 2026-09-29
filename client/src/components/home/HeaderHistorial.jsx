@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { obtenerAmigosAPI } from '../../api';
 
 export default function HeaderHistorial({
   vistaTotal,
@@ -16,11 +17,42 @@ export default function HeaderHistorial({
   modoSeleccion,
   setModoSeleccion,
   setSeleccionadosParaBorrar,
+  soloConAmigos,
+  setSoloConAmigos,
+  amigosFiltro = [],
+  setAmigosFiltro,
 }) {
-  // El botón de selección se muestra:
-  // 1. En Diario por Fechas cuando entras a un mes puntual
-  // 2. En Total Histórico cuando abres una serie
   const puedeSeleccionar = (!vistaTotal && mesSeleccionado !== null) || (vistaTotal && serieSeleccionadaTotal !== null);
+  const [amigosDisponibles, setAmigosDisponibles] = useState([]);
+  const [menuAmigosAbierto, setMenuAmigosAbierto] = useState(false);
+  const menuAmigosRef = useRef(null);
+
+  // Cargar lista de amigos confirmados
+  useEffect(() => {
+    obtenerAmigosAPI()
+      .then((data) => {
+        if (Array.isArray(data)) setAmigosDisponibles(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Cierra el menú al hacer clic en cualquier parte afuera
+  useEffect(() => {
+    const handleClickAfuera = (e) => {
+      if (menuAmigosRef.current && !menuAmigosRef.current.contains(e.target)) {
+        setMenuAmigosAbierto(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickAfuera);
+    return () => document.removeEventListener('mousedown', handleClickAfuera);
+  }, []);
+
+  const alternarAmigoFiltro = (id) => {
+    if (!setAmigosFiltro) return;
+    setAmigosFiltro((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
 
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-200 dark:border-white/10 pb-5">
@@ -106,8 +138,10 @@ export default function HeaderHistorial({
         )}
       </div>
 
-      {/* Derecha: Buscador contextual + Selección múltiple + Filtro tipo */}
+      {/* Derecha: Buscador + Botón Con Amigos + Selección masiva + Filtro tipo */}
       <div className="flex items-center gap-3 flex-wrap">
+        
+        {/* Buscador de título */}
         <div className="relative">
           <input
             type="text"
@@ -127,6 +161,103 @@ export default function HeaderHistorial({
           )}
         </div>
 
+        {/* BOTÓN FILTRO SOCIAL: CON AMIGOS CON CIERRE AUTOMÁTICO */}
+        <div className="relative" ref={menuAmigosRef}>
+          <div className="flex items-center">
+            <button
+              type="button"
+              onClick={() => {
+                const nuevoEstado = !soloConAmigos;
+                setSoloConAmigos(nuevoEstado);
+                if (!nuevoEstado) {
+                  if (setAmigosFiltro) setAmigosFiltro([]);
+                  setMenuAmigosAbierto(false);
+                }
+              }}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black border transition cursor-pointer select-none ${
+                soloConAmigos
+                  ? 'bg-rose-600 border-rose-600 text-white shadow-md'
+                  : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+              } ${soloConAmigos ? 'rounded-r-none' : ''}`}
+              title="Filtrar por co-visualizaciones"
+            >
+              <span>👥</span>
+              <span>
+                {soloConAmigos
+                  ? amigosFiltro.length > 0
+                    ? `Con (${amigosFiltro.length})`
+                    : 'Con amigos'
+                  : 'Con amigos'}
+              </span>
+            </button>
+
+            {/* Pequeño botón para desplegar/ocultar el menú solo cuando está activo */}
+            {soloConAmigos && (
+              <button
+                type="button"
+                onClick={() => setMenuAmigosAbierto(!menuAmigosAbierto)}
+                className="px-2 py-2 bg-rose-700 hover:bg-rose-800 text-white border-y border-r border-rose-600 rounded-r-xl text-xs font-bold transition cursor-pointer"
+                title={menuAmigosAbierto ? "Cerrar lista" : "Filtrar por amigos específicos"}
+              >
+                {menuAmigosAbierto ? '▲' : '▼'}
+              </button>
+            )}
+          </div>
+
+          {/* Menú flotante: se cierra al hacer clic afuera o al tocar la flechita */}
+          {menuAmigosAbierto && soloConAmigos && (
+            <div className="absolute right-0 top-12 bg-white dark:bg-[#1a1a24] border border-neutral-200 dark:border-white/15 rounded-2xl p-3 shadow-2xl w-60 z-50 animate-fadeIn">
+              <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-neutral-100 dark:border-white/5">
+                <p className="text-[10px] font-black uppercase text-neutral-400">Ver vistas con:</p>
+                <div className="flex items-center gap-2">
+                  {amigosFiltro.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setAmigosFiltro([])}
+                      className="text-[10px] font-bold text-rose-500 hover:underline cursor-pointer"
+                    >
+                      Todos
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setMenuAmigosAbierto(false)}
+                    className="text-xs text-neutral-400 hover:text-white cursor-pointer px-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {amigosDisponibles.length === 0 ? (
+                <p className="text-xs text-neutral-400 italic py-2 text-center">No tienes amigos agregados.</p>
+              ) : (
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {amigosDisponibles.map((a) => {
+                    const activo = amigosFiltro.includes(a.id);
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => alternarAmigoFiltro(a.id)}
+                        className={`w-full flex items-center justify-between p-2 rounded-xl text-xs transition cursor-pointer ${
+                          activo 
+                            ? 'bg-rose-600 text-white font-bold' 
+                            : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-700 dark:text-neutral-300'
+                        }`}
+                      >
+                        <span className="truncate">@{a.username}</span>
+                        {activo && <span>✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Botón Seleccionar (borrado masivo) */}
         {puedeSeleccionar && (
           <button
             type="button"
@@ -144,6 +275,7 @@ export default function HeaderHistorial({
           </button>
         )}
 
+        {/* Selector de medio: Todos / Películas / Series */}
         <div className="flex bg-neutral-200 dark:bg-[#16161c] p-1 rounded-xl border border-neutral-300 dark:border-white/10">
           <button
             type="button"

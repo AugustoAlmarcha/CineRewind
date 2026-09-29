@@ -72,6 +72,24 @@ CREATE TABLE IF NOT EXISTS obras_pendientes (
     CONSTRAINT uq_usuario_obra_pendiente UNIQUE (usuario_id, obra_id)
 );
 
+-- 7. Tabla de Amistades y Red Social Cinéfila
+CREATE TABLE IF NOT EXISTS amistades (
+    id SERIAL PRIMARY KEY,
+    remitente_id INTEGER NOT NULL,
+    destinatario_id INTEGER NOT NULL,
+    estado VARCHAR(20) DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aceptada', 'rechazada')),
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    -- Claves foráneas explícitas
+    CONSTRAINT fk_amistad_remitente FOREIGN KEY (remitente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    CONSTRAINT fk_amistad_destinatario FOREIGN KEY (destinatario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+
+    -- Reglas de integridad
+    CONSTRAINT uq_amistad_par UNIQUE (remitente_id, destinatario_id),
+    CONSTRAINT check_amistad_distintos_usuarios CHECK (remitente_id <> destinatario_id)
+);
+
 -- ==========================================================
 -- Índices de Rendimiento (PostgreSQL)
 -- ==========================================================
@@ -99,3 +117,10 @@ ON favoritos_top4 (usuario_id, tipo, posicion ASC);
 
 CREATE INDEX IF NOT EXISTS idx_pendientes_usuario 
 ON obras_pendientes (usuario_id, creado_en DESC);
+
+-- Índices para búsqueda rápida de amigos y solicitudes pendientes
+CREATE INDEX IF NOT EXISTS idx_amistades_remitente 
+ON amistades (remitente_id, estado);
+
+CREATE INDEX IF NOT EXISTS idx_amistades_destinatario 
+ON amistades (destinatario_id, estado);

@@ -335,3 +335,104 @@ export const importarNetflixAPI = async (archivoCSV) => {
   return res.json();
 };
 
+// ==========================================
+// RED SOCIAL: AMISTADES Y BÚSQUEDA DE CINÉFILOS
+// ==========================================
+
+export const buscarCinefilosAPI = async (termino) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch(`/api/amigos/buscar?q=${encodeURIComponent(termino)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Error al buscar usuarios');
+  return await res.json();
+};
+
+export const enviarSolicitudAmistadAPI = async (destinatarioId) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/amigos/solicitar', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ destinatario_id: destinatarioId }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al enviar solicitud');
+  }
+  return await res.json();
+};
+
+export const obtenerSolicitudesPendientesAPI = async () => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/amigos/pendientes', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Error al obtener solicitudes pendientes');
+  return await res.json();
+};
+
+export const responderSolicitudAmistadAPI = async (solicitudId, accion) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/amigos/responder', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ solicitud_id: solicitudId, accion }),
+  });
+  if (!res.ok) throw new Error('Error al responder solicitud');
+  return await res.json();
+};
+
+export const obtenerAmigosAPI = async () => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/amigos', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Error al obtener amigos');
+  return await res.json();
+};
+
+export const eliminarAmigoAPI = async (amistadId) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch(`/api/amigos/${amistadId}`, {
+    method: 'DELETE',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Error al eliminar amigo');
+  return await res.json();
+};
+
+// ==========================================
+// CO-VISUALIZACIONES (HU-11)
+// ==========================================
+
+export const obtenerInvitacionesCovisionAPI = async () => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/covisualizaciones/pendientes', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error('Error al obtener invitaciones');
+  return await res.json();
+};
+
+export const responderInvitacionCovisionAPI = async (covisualizacionId, accion) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/covisualizaciones/responder', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ covisualizacion_id: covisualizacionId, accion }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al responder invitación');
+  }
+  return await res.json();
+};

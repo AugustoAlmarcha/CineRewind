@@ -184,7 +184,7 @@ const obtenerViendoActualmente = async (req, res) => {
 // POST: Avanzar capítulo registrando el salto correcto
 const avanzarCapitulo = async (req, res) => {
   const usuario_id = resolverUsuarioId(req);
-  const { obra_id, temporada, episodio_actual, plataforma } = req.body;
+  const { obra_id, temporada, episodio_actual, plataforma, amigos_etiquetados } = req.body;
 
   if (!usuario_id || !obra_id || !temporada || episodio_actual === undefined) {
     return res.status(400).json({ error: 'Faltan parámetros obligatorios' });
@@ -298,6 +298,21 @@ const avanzarCapitulo = async (req, res) => {
       fotoEp,
       esFinTemporada
     ]);
+    // HU-10: Guardar invitaciones pendientes si se etiquetaron amigos desde la tarjeta
+    if (Array.isArray(amigos_etiquetados) && amigos_etiquetados.length > 0) {
+      const visualizacionId = resHistorial.rows[0].id;
+      for (const amigoId of amigos_etiquetados) {
+        const idAmigoNum = parseInt(amigoId, 10);
+        if (idAmigoNum && idAmigoNum !== Number(usuario_id)) {
+          await pool.query(
+            `INSERT INTO covisualizaciones (visualizacion_id, amigo_id, estado)
+             VALUES ($1, $2, 'pendiente')
+             ON CONFLICT (visualizacion_id, amigo_id) DO NOTHING;`,
+            [visualizacionId, idAmigoNum]
+          );
+        }
+      }
+    }
 
     await pool.query(
       `INSERT INTO seguimiento_series (usuario_id, obra_id, activo, total_episodios_temporada, actualizado_en)

@@ -3,19 +3,46 @@ import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ModalAuth from './auth/ModalAuth';
 import BuscadorNavbar from './navbar/BuscadorNavbar';
-import ModalImportarNetflix from './modal/ModalImportarNetflix'; // Ajusta la ruta a tu carpeta de componentes
-
-
-
-export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme }) {
+import ModalImportarNetflix from './modal/ModalImportarNetflix';
+import ModalAmigos from './modal/ModalAmigos'; // 1. Importar el modal de amigos
+import { obtenerSolicitudesPendientesAPI, obtenerInvitacionesCovisionAPI } from '../api';
+export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme, onActualizarDatos }) {
   const { usuario, cerrarSesion } = useAuth();
   const navigate = useNavigate();
-  // Dentro de tu componente Navbar:
-const [modalNetflixAbierto, setModalNetflixAbierto] = useState(false);
+
+  const [modalNetflixAbierto, setModalNetflixAbierto] = useState(false);
+  const [modalAmigosAbierto, setModalAmigosAbierto] = useState(false); // Estado del modal de amigos
+  const [cantidadPendientes, setCantidadPendientes] = useState(0); // Contador de solicitudes
+  
 
   const [modalAuthAbierto, setModalAuthAbierto] = useState(false);
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
   const userMenuRef = useRef(null);
+
+  // Consultar solicitudes pendientes si hay sesión activa
+const revisarSolicitudes = async () => {
+    if (!usuario) {
+      setCantidadPendientes(0);
+      return;
+    }
+    try {
+      const [resAmigos, resCovisiones] = await Promise.all([
+        obtenerSolicitudesPendientesAPI(),
+        obtenerInvitacionesCovisionAPI(),
+      ]);
+      const totalPendientes = 
+        (Array.isArray(resAmigos) ? resAmigos.length : 0) + 
+        (Array.isArray(resCovisiones) ? resCovisiones.length : 0);
+
+      setCantidadPendientes(totalPendientes);
+    } catch {
+      setCantidadPendientes(0);
+    }
+  };
+
+  useEffect(() => {
+    revisarSolicitudes();
+  }, [usuario]);
 
   // Cerrar menú del usuario al hacer clic afuera
   useEffect(() => {
@@ -52,7 +79,7 @@ const [modalNetflixAbierto, setModalNetflixAbierto] = useState(false);
           <BuscadorNavbar onSeleccionarObra={onSeleccionarObra} />
 
           {/* Navegación y Login / Usuario */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
             <nav className="flex items-center gap-6 text-sm font-semibold">
               <NavLink 
                 to="/" 
@@ -71,6 +98,24 @@ const [modalNetflixAbierto, setModalNetflixAbierto] = useState(false);
                 Tendencias
               </NavLink>
             </nav>
+
+            {/* Botón de Comunidad / Amigos (Solo visible si hay usuario logueado) */}
+            {usuario && (
+              <button
+                type="button"
+                onClick={() => setModalAmigosAbierto(true)}
+                className="relative p-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-[#18181c] text-neutral-700 dark:text-neutral-300 hover:border-rose-500/40 cursor-pointer transition-all duration-200"
+                title="Red y Amigos"
+                aria-label="Red y Amigos"
+              >
+                <span className="text-base">👥</span>
+                {cantidadPendientes > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse shadow-md">
+                    {cantidadPendientes}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* Alternar Tema */}
             <button
@@ -112,49 +157,46 @@ const [modalNetflixAbierto, setModalNetflixAbierto] = useState(false);
                   </span>
                 </button>
 
-{menuUsuarioAbierto && (
-  <div className="absolute right-0 mt-2 w-48 bg-[#fbf9f5] dark:bg-[#16161a] border border-neutral-300 dark:border-white/10 rounded-2xl shadow-xl py-2 z-50 animate-fadeIn">
-    <div className="px-4 py-2 border-b border-neutral-200 dark:border-white/5">
-      <p className="text-xs font-black text-neutral-900 dark:text-white truncate">{usuario.nombre}</p>
-      <p className="text-[11px] text-neutral-500 truncate">@{usuario.username}</p>
-    </div>
+                {menuUsuarioAbierto && (
+                  <div className="absolute right-0 mt-2 w-48 bg-[#fbf9f5] dark:bg-[#16161a] border border-neutral-300 dark:border-white/10 rounded-2xl shadow-xl py-2 z-50 animate-fadeIn">
+                    <div className="px-4 py-2 border-b border-neutral-200 dark:border-white/5">
+                      <p className="text-xs font-black text-neutral-900 dark:text-white truncate">{usuario.nombre}</p>
+                      <p className="text-[11px] text-neutral-500 truncate">@{usuario.username}</p>
+                    </div>
 
-    {/* Botón para entrar a tu perfil */}
-<button
-  onClick={() => {
-    setMenuUsuarioAbierto(false);
-    navigate(`/perfil/${usuario.username}`); // <-- Así con comillas invertidas y ${usuario.username}
-  }}
-  className="w-full text-left px-4 py-2 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 transition flex items-center gap-2 cursor-pointer text-neutral-700 dark:text-neutral-300"
->
-  <span>👤</span> Mi Perfil
-</button>
+                    <button
+                      onClick={() => {
+                        setMenuUsuarioAbierto(false);
+                        navigate(`/perfil/${usuario.username}`);
+                      }}
+                      className="w-full text-left px-4 py-2 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 transition flex items-center gap-2 cursor-pointer text-neutral-700 dark:text-neutral-300"
+                    >
+                      <span>👤</span> Mi Perfil
+                    </button>
 
-{/* Opción 2: Importar Historial (NUEVO) */}
-<button
-  type="button"
-  onClick={() => {
-    setMenuUsuarioAbierto(false); 
-    setModalNetflixAbierto(true);
-  }}
-  className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-red-500/10 hover:text-red-500 transition-colors text-left cursor-pointer"
->
-  <span>📥</span> Importar Netflix
-</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuUsuarioAbierto(false); 
+                        setModalNetflixAbierto(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-red-500/10 hover:text-red-500 transition-colors text-left cursor-pointer"
+                    >
+                      <span>📥</span> Importar Netflix
+                    </button>
 
-    {/* Botón Cerrar Sesión */}
-    <button
-      onClick={() => {
-        cerrarSesion();
-        setMenuUsuarioAbierto(false);
-        navigate('/');
-      }}
-      className="w-full text-left px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-500/10 transition flex items-center gap-2 cursor-pointer border-t border-neutral-200 dark:border-white/5 mt-1"
-    >
-      <span>🚪</span> Cerrar Sesión
-    </button>
-  </div>
-)}
+                    <button
+                      onClick={() => {
+                        cerrarSesion();
+                        setMenuUsuarioAbierto(false);
+                        navigate('/');
+                      }}
+                      className="w-full text-left px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-500/10 transition flex items-center gap-2 cursor-pointer border-t border-neutral-200 dark:border-white/5 mt-1"
+                    >
+                      <span>🚪</span> Cerrar Sesión
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <button
@@ -168,14 +210,25 @@ const [modalNetflixAbierto, setModalNetflixAbierto] = useState(false);
           </div>
 
         </div>
-
       </header>
 
-{/* AQUÍ AFUERA DEL HEADER */}
+      {/* Modales Globales */}
       <ModalImportarNetflix
         abierto={modalNetflixAbierto}
         alCerrar={() => setModalNetflixAbierto(false)}
       />
+
+{modalAmigosAbierto && (
+    <ModalAmigos 
+      onClose={() => {
+        setModalAmigosAbierto(false);
+        revisarSolicitudes(); // Actualiza el badge numérico del Navbar al cerrar
+      }}
+      onActualizado={() => {
+        if (onActualizarDatos) onActualizarDatos(); // Refresca Home/Perfil al instante en vivo
+      }} 
+    />
+  )}
 
       <ModalAuth
         isOpen={modalAuthAbierto}

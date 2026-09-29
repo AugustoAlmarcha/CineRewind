@@ -5,6 +5,7 @@ import ModalEditarPerfil from '../components/modal/ModalEditarPerfil';
 import ModalElegirFavorito from '../components/modal/ModalElegirFavorito';
 import ModalRegistrar from '../components/modal/ModalRegistrar';
 import ModalImportarNetflix from '../components/modal/ModalImportarNetflix';
+import ModalAmigos from '../components/modal/ModalAmigos';
 import { 
   actualizarPerfilAPI, 
   obtenerFavoritosAPI, 
@@ -25,6 +26,7 @@ export default function Perfil() {
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
   const [obraParaRegistrar, setObraParaRegistrar] = useState(null);
   const [modalNetflixAbierto, setModalNetflixAbierto] = useState(false);
+  const [modalAmigosAbierto, setModalAmigosAbierto] = useState(false);
   // Estadísticas del Ticket de Sala
   const [stats, setStats] = useState({
     total_series: 0,
@@ -360,6 +362,15 @@ const handleEliminarFavorito = async (e, posicion, tipo) => {
     className="px-4 py-1.5 rounded-xl border border-neutral-300 dark:border-white/10 text-xs font-bold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-white/5 transition-all shadow-sm"
   >
     Editar Perfil
+  </button>
+  {/* BOTÓN NUEVO: Comunidad & Amigos */}
+  <button
+    type="button"
+    onClick={() => setModalAmigosAbierto(true)}
+    className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
+    title="Gestionar lista de amigos y buscar usuarios"
+  >
+    <span>👥</span> Amigos
   </button>
 </div>
         </div>
@@ -810,6 +821,12 @@ const handleEliminarFavorito = async (e, posicion, tipo) => {
           onSeleccionar={handleGuardarFavorito}
         />
       )}
+      {/* Modal de Amigos & Comunidad */}
+      {modalAmigosAbierto && (
+        <ModalAmigos 
+          onClose={() => setModalAmigosAbierto(false)} 
+        />
+      )}
 
       {/* Modal Registrar Visualización al tocar una tarjeta de Pendientes */}
       {obraParaRegistrar && (
@@ -828,6 +845,7 @@ const handleEliminarFavorito = async (e, posicion, tipo) => {
     cargarFavoritos();
   }}
 />
+
     </main>
   );
 }
