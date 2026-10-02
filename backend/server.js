@@ -9,6 +9,7 @@ const historialRoutes = require('./routes/historialRoutes');
 const favoritosRoutes = require('./routes/favoritosRoutes');
 const pendientesRoutes = require('./routes/pendientesRoutes');
 const authRutas = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
 const amigosRoutes = require('./routes/amigosRoutes');
 const covisualizacionesRoutes = require('./routes/covisualizacionesRoutes'); // <--- 1. IMPORTAR AQUÍ
 
@@ -27,7 +28,7 @@ app.use('/api/favoritos', favoritosRoutes);
 app.use('/api/pendientes', pendientesRoutes);
 app.use('/api/amigos', amigosRoutes);
 app.use('/api/covisualizaciones', covisualizacionesRoutes); // <--- 2. MONTAR AQUÍ
-
+app.use('/api/admin', adminRoutes);
 // Endpoint de prueba rápida para la base de datos
 app.get('/api/test-db', async (req, res) => {
   try {

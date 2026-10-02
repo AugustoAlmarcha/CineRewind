@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Tendencias from './pages/Tendencias';
 import ModalRegistrar from './components/modal/ModalRegistrar';
 import Perfil from './pages/Perfil';
+import AdminPanel from './pages/AdminPanel';
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(() => {
@@ -50,6 +51,7 @@ export default function App() {
           } 
         />
         <Route path="/perfil/:username" element={<Perfil />} />
+        <Route path="/admin" element={<AdminPanel />} />
       </Routes>
 
       {obraSeleccionada && (

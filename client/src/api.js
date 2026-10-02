@@ -456,3 +456,20 @@ export const cambiarPasswordAPI = async ({ passwordActual, passwordNueva }) => {
 
   return data;
 };
+
+// Obtener métricas globales del panel de administración
+export const obtenerMetricasAdminAPI = async () => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/admin/metricas', {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Error al obtener métricas de administrador');
+  }
+  return data;
+};

@@ -106,7 +106,7 @@ const iniciarSesion = async (req, res) => {
 
   try {
     const consulta = `
-      SELECT id, nombre, username, email, password_hash, avatar_url, biografia, banner_url, rol, creado_en
+      SELECT id, nombre, username, email, rol, password_hash, avatar_url, biografia, banner_url, creado_en
       FROM usuarios 
       WHERE email = $1 OR username = $1;
     `;
@@ -163,7 +163,7 @@ const loginGoogle = async (req, res) => {
     const emailLimpio = email.toLowerCase().trim();
 
     let resultado = await pool.query(
-      'SELECT id, nombre, username, email, avatar_url, biografia, banner_url, rol FROM usuarios WHERE email = $1',
+      'SELECT id, nombre, username, email, rol, avatar_url, biografia, banner_url, creado_en FROM usuarios WHERE email = $1',
       [emailLimpio]
     );
 
@@ -183,7 +183,7 @@ const loginGoogle = async (req, res) => {
       const insertQuery = `
         INSERT INTO usuarios (nombre, username, email, password_hash, avatar_url)
         VALUES ($1, $2, $3, NULL, $4)
-        RETURNING id, nombre, username, email, avatar_url, biografia, banner_url, rol;
+        RETURNING id, nombre, username, email, rol, avatar_url, biografia, banner_url, creado_en;
       `;
       const nuevoRes = await pool.query(insertQuery, [
         name || usernameFinal,
@@ -216,7 +216,7 @@ const obtenerPerfilActual = async (req, res) => {
 
   try {
     const consulta = `
-      SELECT id, nombre, username, email, avatar_url, biografia, banner_url, creado_en
+      SELECT id, nombre, username, email, rol,avatar_url, biografia, banner_url, creado_en
       FROM usuarios 
       WHERE id = $1;
     `;

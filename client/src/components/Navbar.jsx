@@ -4,23 +4,22 @@ import { useAuth } from '../context/AuthContext';
 import ModalAuth from './auth/ModalAuth';
 import BuscadorNavbar from './navbar/BuscadorNavbar';
 import ModalImportarNetflix from './modal/ModalImportarNetflix';
-import ModalAmigos from './modal/ModalAmigos'; // 1. Importar el modal de amigos
+import ModalAmigos from './modal/ModalAmigos';
 import { obtenerSolicitudesPendientesAPI, obtenerInvitacionesCovisionAPI } from '../api';
+
 export default function Navbar({ onSeleccionarObra, darkMode, onToggleTheme, onActualizarDatos }) {
   const { usuario, cerrarSesion } = useAuth();
   const navigate = useNavigate();
 
   const [modalNetflixAbierto, setModalNetflixAbierto] = useState(false);
-  const [modalAmigosAbierto, setModalAmigosAbierto] = useState(false); // Estado del modal de amigos
-  const [cantidadPendientes, setCantidadPendientes] = useState(0); // Contador de solicitudes
-  
+  const [modalAmigosAbierto, setModalAmigosAbierto] = useState(false);
+  const [cantidadPendientes, setCantidadPendientes] = useState(0);
 
   const [modalAuthAbierto, setModalAuthAbierto] = useState(false);
   const [menuUsuarioAbierto, setMenuUsuarioAbierto] = useState(false);
   const userMenuRef = useRef(null);
 
-  // Consultar solicitudes pendientes si hay sesión activa
-const revisarSolicitudes = async () => {
+  const revisarSolicitudes = async () => {
     if (!usuario) {
       setCantidadPendientes(0);
       return;
@@ -44,7 +43,6 @@ const revisarSolicitudes = async () => {
     revisarSolicitudes();
   }, [usuario]);
 
-  // Cerrar menú del usuario al hacer clic afuera
   useEffect(() => {
     const handleClickAfuera = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
@@ -99,7 +97,7 @@ const revisarSolicitudes = async () => {
               </NavLink>
             </nav>
 
-            {/* Botón de Comunidad / Amigos (Solo visible si hay usuario logueado) */}
+            {/* Botón de Comunidad / Amigos */}
             {usuario && (
               <button
                 type="button"
@@ -174,6 +172,20 @@ const revisarSolicitudes = async () => {
                       <span>👤</span> Mi Perfil
                     </button>
 
+                    {/* BOTÓN ADMIN */}
+                    {usuario.rol === 'admin' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuUsuarioAbierto(false);
+                          navigate('/admin');
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-500/10 transition flex items-center gap-2 cursor-pointer"
+                      >
+                        <span>🛡️</span> Panel Admin
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => {
@@ -218,17 +230,17 @@ const revisarSolicitudes = async () => {
         alCerrar={() => setModalNetflixAbierto(false)}
       />
 
-{modalAmigosAbierto && (
-    <ModalAmigos 
-      onClose={() => {
-        setModalAmigosAbierto(false);
-        revisarSolicitudes(); // Actualiza el badge numérico del Navbar al cerrar
-      }}
-      onActualizado={() => {
-        if (onActualizarDatos) onActualizarDatos(); // Refresca Home/Perfil al instante en vivo
-      }} 
-    />
-  )}
+      {modalAmigosAbierto && (
+        <ModalAmigos 
+          onClose={() => {
+            setModalAmigosAbierto(false);
+            revisarSolicitudes();
+          }}
+          onActualizado={() => {
+            if (onActualizarDatos) onActualizarDatos();
+          }} 
+        />
+      )}
 
       <ModalAuth
         isOpen={modalAuthAbierto}
