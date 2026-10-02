@@ -20,6 +20,7 @@ const registrarVisualizacion = async (req, res) => {
     episodio,
     es_final_temporada,
     amigos_etiquetados, // <-- Array de IDs de amigos: [2, 5]
+    visto_con_texto,
   } = req.body;
 
   if (!usuario_id || !tmdb_id || !tipo || !titulo || !fecha_visto) {
@@ -76,8 +77,8 @@ const registrarVisualizacion = async (req, res) => {
 
     const queryHistorial = `
       INSERT INTO historial_visualizaciones 
-        (usuario_id, obra_id, fecha_visto, plataforma, pais, temporada, episodio, es_final_temporada)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        (usuario_id, obra_id, fecha_visto, plataforma, pais, temporada, episodio, es_final_temporada, visto_con_texto)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *;
     `;
     const resHistorial = await pool.query(queryHistorial, [
@@ -88,7 +89,8 @@ const registrarVisualizacion = async (req, res) => {
       pais || null,
       tempNum,
       epNum,
-      Boolean(es_final_temporada)
+      Boolean(es_final_temporada),
+      visto_con_texto || null
     ]);
 
     const visualizacionId = resHistorial.rows[0].id;
@@ -159,6 +161,7 @@ const obtenerTimeline = async (req, res) => {
         h.calificacion,
         h.resenia,
         h.foto_episodio,
+        h.visto_con_texto,
         o.id AS obra_id,
         o.tmdb_id,
         o.tipo,
@@ -265,7 +268,8 @@ const registrarLoteVisualizaciones = async (req, res) => {
     fecha_visto, 
     fotos_episodios, 
     total_episodios_temporada,
-    amigos_etiquetados // <-- Array de IDs de amigos
+    amigos_etiquetados, // <-- Array de IDs de amigos
+    visto_con_texto,    // <-- Acompañantes manuales sin cuenta ("Mamá", "Hermana")
   } = req.body;
 
   if (!usuario_id || !tmdb_id || !titulo || !temporada || !Array.isArray(episodios) || episodios.length === 0) {
@@ -309,10 +313,20 @@ const registrarLoteVisualizaciones = async (req, res) => {
       if (existe.rows.length === 0) {
         const insercion = await pool.query(
           `INSERT INTO historial_visualizaciones 
-             (usuario_id, obra_id, fecha_visto, plataforma, temporada, episodio, foto_episodio, es_final_temporada)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             (usuario_id, obra_id, fecha_visto, plataforma, temporada, episodio, foto_episodio, es_final_temporada, visto_con_texto)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            RETURNING id;`,
-          [usuario_id, obra_id, fecha_visto, plataforma || null, tempNum, ep, fotoEp, esFinTemp]
+          [
+            usuario_id, 
+            obra_id, 
+            fecha_visto, 
+            plataforma || null, 
+            tempNum, 
+            ep, 
+            fotoEp, 
+            esFinTemp,
+            visto_con_texto ? String(visto_con_texto).trim() : null // <-- $9
+          ]
         );
         visualizacionId = insercion.rows[0].id;
       } else {
@@ -388,7 +402,7 @@ const obtenerEpisodiosVistosTemporada = async (req, res) => {
 // PATCH: Guardar o actualizar reseña, calificación, plataforma y co-visualizaciones
 const actualizarReseniaYCalificacion = async (req, res) => {
   const { id } = req.params;
-  const { calificacion, resenia, plataforma, amigos_etiquetados } = req.body;
+  const { calificacion, resenia, plataforma, amigos_etiquetados,visto_con_texto } = req.body;
   const usuario_id = resolverUsuarioId(req);
 
   if (!usuario_id) {
@@ -408,7 +422,8 @@ const actualizarReseniaYCalificacion = async (req, res) => {
         calificacion = COALESCE($1, calificacion),
         resenia = COALESCE($2, resenia),
         plataforma = COALESCE($3, plataforma)
-      WHERE id = $4 AND usuario_id = $5
+        visto_con_texto = $4
+      WHERE id = $5 AND usuario_id = $6
       RETURNING *;
     `;
 
@@ -416,6 +431,7 @@ const actualizarReseniaYCalificacion = async (req, res) => {
       calificacion !== undefined && calificacion !== null && calificacion > 0 ? Number(calificacion) : null,
       resenia !== undefined && resenia !== null && resenia.trim() !== '' ? resenia.trim() : null,
       plataforma !== undefined && plataforma !== null && plataforma.trim() !== '' ? plataforma.trim() : null,
+      visto_con_texto !== undefined ? (visto_con_texto ? String(visto_con_texto).trim() : null) : null,
       visualizacionIdNum,
       usuario_id
     ]);

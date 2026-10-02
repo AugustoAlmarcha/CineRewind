@@ -146,7 +146,7 @@ export default function VistaFeedMes({
                         </div>
                       </div>
 
-                      {/* Abajo: Título a la izquierda y Carita del amigo a la derecha */}
+                      {/* Abajo: Título a la izquierda y Compañía a la derecha */}
                       <div className="flex items-end justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <h4 className="text-sm font-black text-white truncate drop-shadow">
@@ -157,30 +157,43 @@ export default function VistaFeedMes({
                           </p>
                         </div>
 
-                        {/* FOTO DE PERFIL DEL AMIGO ABAJO A LA DERECHA */}
-                        {Array.isArray(item.amigos_covision) && item.amigos_covision.length > 0 && (
-                          <div className="flex -space-x-1.5 overflow-hidden flex-shrink-0 pb-0.5">
-                            {item.amigos_covision.map((amigo) => (
-                              <div
-                                key={amigo.amigo_id || amigo.covisualizacion_id}
-                                title={`Visto con @${amigo.username || amigo.nombre}`}
-                                className="w-6 h-6 rounded-full ring-2 ring-black/80 bg-neutral-800 overflow-hidden flex items-center justify-center shadow-md flex-shrink-0"
-                              >
-                                {amigo.avatar_url ? (
-                                  <img
-                                    src={amigo.avatar_url}
-                                    alt={amigo.username}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <span className="text-[9px] font-black text-rose-500">
-                                    {(amigo.nombre || amigo.username || '?').charAt(0).toUpperCase()}
-                                  </span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        {/* COMPAÑÍA: Amigos con cuenta y/o personas sin cuenta ("Mamá", etc.) */}
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          {/* 1. Avatares circulares de amigos de la plataforma */}
+                          {Array.isArray(item.amigos_covision) && item.amigos_covision.length > 0 && (
+                            <div className="flex -space-x-1.5 overflow-hidden flex-shrink-0">
+                              {item.amigos_covision.map((amigo) => (
+                                <div
+                                  key={amigo.amigo_id || amigo.covisualizacion_id}
+                                  title={`Visto con @${amigo.username || amigo.nombre}`}
+                                  className="w-6 h-6 rounded-full ring-2 ring-black/80 bg-neutral-800 overflow-hidden flex items-center justify-center shadow-md flex-shrink-0"
+                                >
+                                  {amigo.avatar_url ? (
+                                    <img
+                                      src={amigo.avatar_url}
+                                      alt={amigo.username}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-[9px] font-black text-rose-500">
+                                      {(amigo.nombre || amigo.username || '?').charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 2. Etiqueta para acompañante manual libre */}
+                          {item.visto_con_texto && (
+                            <span
+                              title={`Visto con ${item.visto_con_texto}`}
+                              className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-black/75 text-rose-300 border border-white/10 backdrop-blur-xs truncate max-w-[90px] shadow-sm"
+                            >
+                              👥 {item.visto_con_texto}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 

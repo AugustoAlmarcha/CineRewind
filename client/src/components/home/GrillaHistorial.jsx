@@ -31,14 +31,23 @@ export default function GrillaHistorial({
 }) {
 
   // Helper para verificar si un registro cumple con el filtro de amigos
-  const pasaFiltroAmigos = (item) => {
+const pasaFiltroAmigos = (item) => {
     if (!soloConAmigos) return true;
+
     const amigos = Array.isArray(item.amigos_covision) ? item.amigos_covision : [];
-    if (amigos.length === 0) return false;
-    // Si no seleccionó amigos específicos, pasa cualquiera que tenga amigos
-    if (!amigosFiltro || amigosFiltro.length === 0) return true;
-    // Lógica OR: si lo vio con Pepe O con Lucas O con ambos
-    return amigos.some((a) => amigosFiltro.includes(a.amigo_id));
+    const tieneTextoManual = Boolean(item.visto_con_texto && item.visto_con_texto.trim());
+
+    // Si no tiene amigos de la app ni acompañante manual, no pasa el filtro
+    if (amigos.length === 0 && !tieneTextoManual) return false;
+
+    // Si seleccionaste amigos puntuales del desplegable (ej: Pepe)
+    if (amigosFiltro && amigosFiltro.length > 0) {
+      if (amigos.length === 0) return false;
+      return amigos.some((a) => amigosFiltro.includes(a.amigo_id));
+    }
+
+    // Si está en "Con amigos" general, pasa cualquiera que se haya visto acompañado
+    return true;
   };
 
   // 1. Catálogo unificado Total Histórico (con filtro de búsqueda y amigos)

@@ -1,4 +1,6 @@
--- CineRewind: Esquema Definitivo de Base de Datos
+-- ==========================================================
+-- CineRewind: Esquema Definitivo de Base de Datos (PostgreSQL)
+-- ==========================================================
 
 -- 1. Tabla de Usuarios (Soporte Dual: Contraseña y Google OAuth)
 CREATE TABLE IF NOT EXISTS usuarios (
@@ -38,6 +40,7 @@ CREATE TABLE IF NOT EXISTS historial_visualizaciones (
     resenia TEXT,
     foto_episodio TEXT,
     es_final_temporada BOOLEAN DEFAULT false,
+    visto_con_texto VARCHAR(255), -- Acompañantes manuales sin cuenta (ej: "Mamá", "Hermana")
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -75,25 +78,35 @@ CREATE TABLE IF NOT EXISTS obras_pendientes (
 -- 7. Tabla de Amistades y Red Social Cinéfila
 CREATE TABLE IF NOT EXISTS amistades (
     id SERIAL PRIMARY KEY,
-    remitente_id INTEGER NOT NULL,
-    destinatario_id INTEGER NOT NULL,
+    remitente_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    destinatario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     estado VARCHAR(20) DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aceptada', 'rechazada')),
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-
-    -- Claves foráneas explícitas
-    CONSTRAINT fk_amistad_remitente FOREIGN KEY (remitente_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-    CONSTRAINT fk_amistad_destinatario FOREIGN KEY (destinatario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
 
     -- Reglas de integridad
     CONSTRAINT uq_amistad_par UNIQUE (remitente_id, destinatario_id),
     CONSTRAINT check_amistad_distintos_usuarios CHECK (remitente_id <> destinatario_id)
 );
 
+-- 8. Tabla de Co-visualizaciones ("Visto con...")
+CREATE TABLE IF NOT EXISTS covisualizaciones (
+    id SERIAL PRIMARY KEY,
+    visualizacion_id INTEGER NOT NULL REFERENCES historial_visualizaciones(id) ON DELETE CASCADE,
+    amigo_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    estado VARCHAR(20) DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aceptada', 'rechazada')),
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    -- Evita duplicar invitaciones para una misma visualización
+    CONSTRAINT uq_covision_par UNIQUE (visualizacion_id, amigo_id)
+);
+
 -- ==========================================================
 -- Índices de Rendimiento (PostgreSQL)
 -- ==========================================================
 
+-- Timeline y Consultas por Fecha
 CREATE INDEX IF NOT EXISTS idx_historial_usuario_fecha 
 ON historial_visualizaciones (usuario_id, fecha_visto DESC);
 
@@ -103,24 +116,34 @@ ON historial_visualizaciones (usuario_id, obra_id, creado_en DESC);
 CREATE INDEX IF NOT EXISTS idx_historial_obra 
 ON historial_visualizaciones (obra_id);
 
+-- Catálogo Caché TMDb
 CREATE INDEX IF NOT EXISTS idx_obras_tmdb_id 
 ON obras_catalogo (tmdb_id);
 
+-- Carrusel de Series Activas
 CREATE INDEX IF NOT EXISTS idx_seguimiento_usuario_activo 
 ON seguimiento_series (usuario_id, activo);
 
 CREATE INDEX IF NOT EXISTS idx_seguimiento_reinicio
 ON seguimiento_series (usuario_id, obra_id, fecha_reinicio);
 
+-- Perfil y Watchlist
 CREATE INDEX IF NOT EXISTS idx_favoritos_usuario_posicion_tipo 
 ON favoritos_top4 (usuario_id, tipo, posicion ASC);
 
 CREATE INDEX IF NOT EXISTS idx_pendientes_usuario 
 ON obras_pendientes (usuario_id, creado_en DESC);
 
--- Índices para búsqueda rápida de amigos y solicitudes pendientes
+-- Amistades y Notificaciones
 CREATE INDEX IF NOT EXISTS idx_amistades_remitente 
 ON amistades (remitente_id, estado);
 
 CREATE INDEX IF NOT EXISTS idx_amistades_destinatario 
 ON amistades (destinatario_id, estado);
+
+-- Co-visualizaciones
+CREATE INDEX IF NOT EXISTS idx_covisualizaciones_amigo_estado 
+ON covisualizaciones (amigo_id, estado);
+
+CREATE INDEX IF NOT EXISTS idx_covisualizaciones_visualizacion 
+ON covisualizaciones (visualizacion_id);

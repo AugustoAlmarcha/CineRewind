@@ -38,6 +38,7 @@ export default function ModalDetalleTimeline({
 const [amigosSeleccionados, setAmigosSeleccionados] = useState(
     item.amigos_covision ? item.amigos_covision.map((a) => a.amigo_id) : []
   );
+  const [vistoConTexto, setVistoConTexto] = useState(item.visto_con_texto || '');
   const [guardando, setGuardando] = useState(false);
   const [detalle, setDetalle] = useState(null);
   const [actores, setActores] = useState([]);
@@ -167,6 +168,7 @@ await guardarReseniaAPI(visualizacionId, {
       resenia: resenia.trim() || null,
       plataforma: plataforma || null,
       amigos_etiquetados: amigosSeleccionados, // <--- ÚNICO CAMBIO AQUÍ
+      visto_con_texto: vistoConTexto.trim() || null,
     });
 
       if (esSerie && obraIdReal && plataforma && plataforma !== 'Sin plataforma' && alcancePlataforma !== 'solo_este') {
@@ -410,10 +412,12 @@ await guardarReseniaAPI(visualizacionId, {
               )}
             </div>
             {/* Selector de Co-visualización ("Visto con...") */}
-        <div className="rounded-2xl overflow-hidden border border-neutral-300 dark:border-white/10">
+<div className="rounded-2xl overflow-hidden border border-neutral-300 dark:border-white/10">
           <SelectorAmigosEtiquetar
             amigosSeleccionados={amigosSeleccionados}
             setAmigosSeleccionados={setAmigosSeleccionados}
+            vistoConTexto={vistoConTexto}
+            setVistoConTexto={setVistoConTexto}
           />
         </div>
 

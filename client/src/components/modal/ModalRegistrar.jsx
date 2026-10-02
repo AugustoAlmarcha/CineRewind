@@ -54,7 +54,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
 
   // Estado para co-visualización (amigos etiquetados)
   const [amigosSeleccionados, setAmigosSeleccionados] = useState([]);
-
+const [vistoConTexto, setVistoConTexto] = useState('');
   const [errorRegistro, setErrorRegistro] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [esPendiente, setEsPendiente] = useState(false);
@@ -266,7 +266,9 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         fecha_visto: fechaVisto,
         fotos_episodios: fotosMapa,
         total_episodios_temporada: datosTemporada?.episodios?.length || null,
-        amigos_etiquetados: amigosSeleccionados, // <-- SE ENVÍAN AMIGOS ETIQUETADOS
+        amigos_etiquetados: amigosSeleccionados,
+        visto_con_texto: vistoConTexto.trim() || null,
+        
       });
 
       if (plataforma && plataforma !== 'Sin plataforma') {
@@ -310,7 +312,8 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         poster_path: obraActual.poster_path,
         fecha_visto: fechaVisto,
         plataforma: plataforma || null,
-        amigos_etiquetados: amigosSeleccionados, // <-- SE ENVÍAN AMIGOS ETIQUETADOS
+        amigos_etiquetados: amigosSeleccionados, 
+        visto_con_texto: vistoConTexto.trim() || null,
       });
 
       onRegistroCompletado();
@@ -383,9 +386,11 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         />
 
         {/* Co-visualización: Selector de Amigos */}
-        <SelectorAmigosEtiquetar 
+<SelectorAmigosEtiquetar
           amigosSeleccionados={amigosSeleccionados}
           setAmigosSeleccionados={setAmigosSeleccionados}
+          vistoConTexto={vistoConTexto}
+          setVistoConTexto={setVistoConTexto}
         />
 
         {/* Galería de Actores */}
