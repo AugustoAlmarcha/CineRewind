@@ -436,3 +436,23 @@ export const responderInvitacionCovisionAPI = async (covisualizacionId, accion) 
   }
   return await res.json();
 };
+
+// Cambiar contraseña de la cuenta activa
+export const cambiarPasswordAPI = async ({ passwordActual, passwordNueva }) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/auth/cambiar-password', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ passwordActual, passwordNueva }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Error al cambiar la contraseña');
+  }
+
+  return data;
+};

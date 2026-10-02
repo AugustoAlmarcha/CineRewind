@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { comprobarUsernameAPI } from '../../api'; 
+import { cambiarPasswordAPI } from '../../api';
 const CATEGORIAS_AVATARES = [
   {
     id: 'pokemon',
@@ -182,6 +183,46 @@ const handleSubmit = async (e) => {
     setGuardando(false);
   }
 };
+
+const [mostrarSeguridad, setMostrarSeguridad] = useState(false);
+  const [passActual, setPassActual] = useState('');
+  const [passNueva, setPassNueva] = useState('');
+  const [passRepetir, setPassRepetir] = useState('');
+  const [mensajePass, setMensajePass] = useState(null);
+  const [errorPass, setErrorPass] = useState(null);
+  const [guardandoPass, setGuardandoPass] = useState(false);
+
+  const handleCambiarPassword = async (e) => {
+    e.preventDefault();
+    setErrorPass(null);
+    setMensajePass(null);
+
+    if (passNueva.length < 6) {
+      setErrorPass('La nueva contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    if (passNueva !== passRepetir) {
+      setErrorPass('Las contraseñas nuevas no coinciden.');
+      return;
+    }
+
+    setGuardandoPass(true);
+    try {
+      await cambiarPasswordAPI({
+        passwordActual: passActual,
+        passwordNueva: passNueva,
+      });
+      setMensajePass('✓ Contraseña actualizada correctamente.');
+      setPassActual('');
+      setPassNueva('');
+      setPassRepetir('');
+    } catch (err) {
+      setErrorPass(err.message || 'Error al actualizar contraseña');
+    } finally {
+      setGuardandoPass(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
@@ -370,6 +411,88 @@ const handleSubmit = async (e) => {
     }`}
   />
 </div>
+</div>
+{/* Acordeón de Seguridad y Contraseña */}
+<div className="border border-neutral-300 dark:border-white/10 rounded-2xl p-3.5 bg-neutral-50 dark:bg-white/[0.02]">
+  <button
+    type="button"
+    onClick={() => setMostrarSeguridad(!mostrarSeguridad)}
+    className="w-full flex items-center justify-between text-xs font-bold text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition cursor-pointer"
+  >
+    <div className="flex items-center gap-2">
+      <span>🔒</span>
+      <span>Seguridad y Contraseña</span>
+    </div>
+    <span>{mostrarSeguridad ? '▲ Ocultar' : '▼ Modificar'}</span>
+  </button>
+
+  {mostrarSeguridad && (
+    <div className="space-y-3 pt-3 mt-3 border-t border-neutral-200 dark:border-white/10 animate-fadeIn">
+      {errorPass && (
+        <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-bold text-center">
+          ⚠️ {errorPass}
+        </div>
+      )}
+
+      {mensajePass && (
+        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-bold text-center">
+          {mensajePass}
+        </div>
+      )}
+
+      <div>
+        <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-1">
+          Contraseña Actual
+        </label>
+        <input
+          type="password"
+          value={passActual}
+          onChange={(e) => setPassActual(e.target.value)}
+          placeholder="••••••••"
+          className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#1a1a22] border border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white outline-none focus:border-rose-500"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div>
+          <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-1">
+            Nueva Contraseña (mín 6)
+          </label>
+          <input
+            type="password"
+            value={passNueva}
+            onChange={(e) => setPassNueva(e.target.value)}
+            placeholder="••••••••"
+            className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#1a1a22] border border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white outline-none focus:border-rose-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold text-neutral-500 dark:text-neutral-400 mb-1">
+            Repetir Nueva
+          </label>
+          <input
+            type="password"
+            value={passRepetir}
+            onChange={(e) => setPassRepetir(e.target.value)}
+            placeholder="••••••••"
+            className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#1a1a22] border border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white outline-none focus:border-rose-500"
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-1">
+        <button
+          type="button"
+          disabled={guardandoPass || !passActual || !passNueva || !passRepetir}
+          onClick={handleCambiarPassword}
+          className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-900 text-xs font-black rounded-xl transition cursor-pointer disabled:opacity-40"
+        >
+          {guardandoPass ? 'Actualizando...' : 'Actualizar Contraseña'}
+        </button>
+      </div>
+    </div>
+  )}
 </div>
 
           {/* Biografía */}

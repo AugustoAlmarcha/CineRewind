@@ -331,11 +331,73 @@ const comprobarDisponibilidadUsername = async (req, res) => {
   }
 };
 
+// PUT: /api/auth/cambiar-password
+const cambiarPassword = async (req, res) => {
+  const usuarioId = req.usuario?.id;
+  const { passwordActual, passwordNueva } = req.body;
+
+  if (!usuarioId) {
+    return res.status(401).json({ error: 'Sesión no autorizada' });
+  }
+
+  if (!passwordActual || !passwordNueva) {
+    return res.status(400).json({ error: 'Debes ingresar tu contraseña actual y la nueva' });
+  }
+
+  if (passwordNueva.length < 6) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+  }
+
+  try {
+    // 1. Obtener la contraseña hasheada actual del usuario
+    const userRes = await pool.query(
+      'SELECT id, password_hash FROM usuarios WHERE id = $1',
+      [usuarioId]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const usuario = userRes.rows[0];
+
+    // Si es una cuenta exclusiva de Google sin contraseña previa
+    if (!usuario.password_hash) {
+      return res.status(400).json({ 
+        error: 'Esta cuenta fue creada con Google. No posee una contraseña clásica para modificar.' 
+      });
+    }
+
+    // 2. Validar que la contraseña actual sea correcta
+    const coincide = await bcrypt.compare(passwordActual, usuario.password_hash);
+    if (!coincide) {
+      return res.status(401).json({ error: 'La contraseña actual no es correcta' });
+    }
+
+    // 3. Hashear la nueva contraseña
+    const salt = await bcrypt.genSalt(10);
+    const nuevoHash = await bcrypt.hash(passwordNueva, salt);
+
+    // 4. Guardar en PostgreSQL
+    await pool.query(
+      'UPDATE usuarios SET password_hash = $1 WHERE id = $2',
+      [nuevoHash, usuarioId]
+    );
+
+    res.json({ mensaje: 'Contraseña actualizada con éxito' });
+  } catch (error) {
+    console.error('Error al cambiar contraseña:', error.message);
+    res.status(500).json({ error: 'Error del servidor al cambiar la contraseña' });
+  }
+};
+
 module.exports = {
   registrarUsuario,
   iniciarSesion,
   loginGoogle,
   comprobarDisponibilidadUsername,
   actualizarPerfil,
-  obtenerPerfilActual, // Es indispensable para que AuthContext sepa quién está logueado al refrescar F5
+  obtenerPerfilActual,
+  cambiarPassword,
+   // Es indispensable para que AuthContext sepa quién está logueado al refrescar F5
 };
