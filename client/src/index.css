@@ -103,3 +103,13 @@
   -ms-overflow-style: none; /* IE y Edge */
   scrollbar-width: none;    /* Firefox */
 }
+
+@keyframes floatSlow {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-18px) rotate(6deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+.animate-float-slow {
+  animation: floatSlow 4s ease-in-out infinite;
+}
