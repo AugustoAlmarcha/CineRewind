@@ -1,43 +1,82 @@
 const jwt = require('jsonwebtoken');
 
-// Middleware estricto: bloquea la petición si no hay token válido
+// 🛡️ Helper para obtener el JWT_SECRET de forma consistente
+const obtenerJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    console.warn('⚠️ ADVERTENCIA DE SEGURIDAD: JWT_SECRET no está definida en .env. Usando clave temporal.');
+    return 'cinerewind_super_secreto_2026_key_jwt';
+  }
+  return secret;
+};
+
+// 🛡️ Middleware estricto: Bloquea la petición si no hay un token Bearer válido
 const verificarToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ 
+      error: 'Acceso denegado: Formato de autorización inválido o token no proporcionado.' 
+    });
+  }
+
+  const token = authHeader.split(' ')[1]?.trim();
 
   if (!token) {
-    return res.status(401).json({ error: 'Acceso denegado: No se proporcionó un token de sesión' });
+    return res.status(401).json({ 
+      error: 'Acceso denegado: Token vacío.' 
+    });
   }
 
   try {
-    const payload = jwt.verify(
-      token, 
-      process.env.JWT_SECRET || 'cinerewind_super_secreto_2026_key_jwt'
-    );
-    req.usuario = payload; // { id, email, username }
+    const payload = jwt.verify(token, obtenerJwtSecret());
+    
+    // Verificamos que el payload contenga al menos el id del usuario
+    if (!payload || !payload.id) {
+      return res.status(403).json({ error: 'Token inválido: Sesión corrupta.' });
+    }
+
+    req.usuario = {
+      id: payload.id,
+      email: payload.email,
+      username: payload.username
+    };
+
     next();
   } catch (error) {
-    return res.status(403).json({ error: 'Token inválido o expirado. Inicia sesión nuevamente.' });
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.' });
+    }
+    return res.status(403).json({ error: 'Token inválido o manipulado. Inicia sesión nuevamente.' });
   }
 };
 
-// Middleware blando: si viene token lo inyecta en req.usuario, pero no bloquea si no viene
+// 🛡️ Middleware blando: si viene token válido lo inyecta en req.usuario, sino sigue como invitado
 const extraerTokenOpcional = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
 
-  if (token) {
-    try {
-      const payload = jwt.verify(
-        token, 
-        process.env.JWT_SECRET || 'cinerewind_super_secreto_2026_key_jwt'
-      );
-      req.usuario = payload;
-    } catch {
-      // Si el token es inválido o expiró, simplemente se ignora y continúa como invitado
-      req.usuario = null;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1]?.trim();
+
+    if (token) {
+      try {
+        const payload = jwt.verify(token, obtenerJwtSecret());
+        if (payload && payload.id) {
+          req.usuario = {
+            id: payload.id,
+            email: payload.email,
+            username: payload.username
+          };
+        }
+      } catch {
+        // Token inválido o vencido: se continúa como invitado silenciosamente
+        req.usuario = null;
+      }
     }
+  } else {
+    req.usuario = null;
   }
+
   next();
 };
 

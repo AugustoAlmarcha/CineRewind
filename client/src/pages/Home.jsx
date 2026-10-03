@@ -1,14 +1,16 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import CarruselViendo from '../components/home/CarruselViendo';
 import HeaderHistorial from '../components/home/HeaderHistorial';
 import GrillaHistorial from '../components/home/GrillaHistorial';
 import BarraAccionLote from '../components/home/BarraAccionLote';
-import { useLocation } from 'react-router-dom';
+
 // Modales modulares
 import ModalRegistrar from '../components/modal/ModalRegistrar';
 import ModalConfirmar from '../components/modal/ModalConfirmar';
 import ModalDetalleTimeline from '../components/modal/ModalDetalleTimeline';
 import ModalDetalleEpisodioViendo from '../components/modal/ModalDetalleEpisodioViendo';
+import ModalAuth from '../components/auth/ModalAuth';
 
 import { useAuth } from '../context/AuthContext';
 
@@ -20,8 +22,19 @@ import {
   descartarViendoAPI 
 } from '../api';
 
+import { 
+  Users, 
+  Sparkles, 
+  Clock, 
+  ArrowRight, 
+  CheckCircle2, 
+  Flame, 
+  Tv 
+} from 'lucide-react';
+
 export default function Home({ actualizarTrigger }) {
   const { usuario } = useAuth();
+  const navigate = useNavigate();
 
   // 1. Datos del backend
   const [seriesActivas, setSeriesActivas] = useState([]);
@@ -32,9 +45,9 @@ export default function Home({ actualizarTrigger }) {
   const [busquedaHistorial, setBusquedaHistorial] = useState('');
   const [vistaTotal, setVistaTotal] = useState(false);
   const [serieSeleccionadaTotal, setSerieSeleccionadaTotal] = useState(null);
-  // Filtro social: lista de amigo_ids para filtrar (si está vacío pero activo = cualquiera)
   const [soloConAmigos, setSoloConAmigos] = useState(false);
   const [amigosFiltro, setAmigosFiltro] = useState([]);
+
   // 3. Navegación temporal
   const [anioSeleccionado, setAnioSeleccionado] = useState(null);
   const [mesSeleccionado, setMesSeleccionado] = useState(null);
@@ -43,6 +56,7 @@ export default function Home({ actualizarTrigger }) {
   const [serieParaEditar, setSerieParaEditar] = useState(null);
   const [itemDetalle, setItemDetalle] = useState(null);
   const [serieParaDetalleXRay, setSerieParaDetalleXRay] = useState(null);
+  const [modalAuthLandingAbierto, setModalAuthLandingAbierto] = useState(false);
 
   // 5. Borrado masivo
   const [modoSeleccion, setModoSeleccion] = useState(false);
@@ -58,16 +72,16 @@ export default function Home({ actualizarTrigger }) {
 
   const location = useLocation();
 
-useEffect(() => {
-  if (location.state?.vistaTotal !== undefined) {
-    setVistaTotal(location.state.vistaTotal);
-  }
-  if (location.state?.filtroTipo !== undefined) {
-    setFiltroTipo(location.state.filtroTipo);
-  }
-}, [location.state]);
+  useEffect(() => {
+    if (location.state?.vistaTotal !== undefined) {
+      setVistaTotal(location.state.vistaTotal);
+    }
+    if (location.state?.filtroTipo !== undefined) {
+      setFiltroTipo(location.state.filtroTipo);
+    }
+  }, [location.state]);
 
-const cargarDatos = useCallback(async () => {
+  const cargarDatos = useCallback(async () => {
     if (!usuario?.id) {
       setSeriesActivas([]);
       setTimeline([]);
@@ -82,8 +96,6 @@ const cargarDatos = useCallback(async () => {
       
       setSeriesActivas(Array.isArray(series) ? series : []);
       
-      // Si el historial llega vacío pero ya teníamos datos previos, mantenemos los anteriores
-      // evitando que el árbol colapse a "No hay registros"
       setTimeline((prev) => {
         const nuevoHistorial = Array.isArray(historial) ? historial : [];
         if (nuevoHistorial.length === 0 && prev.length > 0 && !filtroTipo) {
@@ -96,9 +108,9 @@ const cargarDatos = useCallback(async () => {
     }
   }, [usuario, filtroTipo]);
 
-useEffect(() => {
-  cargarDatos();
-}, [cargarDatos, actualizarTrigger]); // <-- Agrega actualizarTrigger aquí
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos, actualizarTrigger]);
 
   const arbolHistorial = useMemo(() => {
     const mapa = {};
@@ -132,10 +144,9 @@ useEffect(() => {
     );
   };
 
-const handleAvanzar = async (serie, amigos = []) => {
+  const handleAvanzar = async (serie, amigos = []) => {
     if (!usuario?.id) return;
     try {
-      // Determinamos si la tarjeta ya está proponiendo una nueva temporada
       const pasaDeTemporada = serie.siguiente_temporada && Number(serie.siguiente_temporada) > Number(serie.temporada);
 
       await avanzarCapituloAPI({
@@ -144,7 +155,7 @@ const handleAvanzar = async (serie, amigos = []) => {
         temporada: serie.siguiente_temporada ?? serie.temporada,
         episodio_actual: pasaDeTemporada ? 0 : (serie.episodio_actual ?? serie.episodio),
         plataforma: serie.plataforma,
-        amigos_etiquetados: amigos, // <--- ÚNICO CAMBIO: pasamos los amigos elegidos
+        amigos_etiquetados: amigos,
       });
       await cargarDatos();
     } catch (err) {
@@ -152,7 +163,7 @@ const handleAvanzar = async (serie, amigos = []) => {
     }
   };
 
-const solicitarEliminarLote = () => {
+  const solicitarEliminarLote = () => {
     if (seleccionadosParaBorrar.length === 0) return;
     setDialogoConfirmar({
       abierto: true,
@@ -161,12 +172,10 @@ const solicitarEliminarLote = () => {
       onConfirm: async () => {
         const idsABorrar = [...seleccionadosParaBorrar];
 
-        // 1. CERRAR EL CARTEL Y LA SELECCIÓN AL INSTANTE (0 ms)
         setDialogoConfirmar((prev) => ({ ...prev, abierto: false }));
         setModoSeleccion(false);
         setSeleccionadosParaBorrar([]);
 
-        // 2. Filtro visual inmediato de la serie en Total Histórico
         setSerieSeleccionadaTotal((prev) => {
           if (!prev) return null;
           const nuevosRegistros = prev.registros.filter((reg) => {
@@ -177,7 +186,6 @@ const solicitarEliminarLote = () => {
           return { ...prev, registros: nuevosRegistros };
         });
 
-        // 3. Petición en segundo plano al backend y recarga
         try {
           await eliminarLoteAPI(idsABorrar);
           await cargarDatos();
@@ -206,38 +214,245 @@ const solicitarEliminarLote = () => {
     });
   };
 
-// Bienvenida limpia y centrada si no ha iniciado sesión
+  // -------------------------------------------------------------
+  // LANDING PAGE CINEMÁTICA CUANDO NO HAY SESIÓN INICIADA
+  // -------------------------------------------------------------
   if (!usuario) {
     return (
-      <main className="min-h-[75vh] flex items-center justify-center px-4 py-12">
-        <div className="max-w-lg w-full flex flex-col items-center text-center space-y-5 bg-neutral-100/50 dark:bg-white/[0.02] border border-neutral-300/60 dark:border-white/10 rounded-3xl p-8 sm:p-10 shadow-xl backdrop-blur-md animate-fadeIn">
+      <main className="min-h-screen bg-transparent text-neutral-900 dark:text-neutral-100 selection:bg-rose-600 selection:text-white relative overflow-hidden transition-colors duration-300 w-full max-w-full">
+        
+        {/* Glow ambiental superior */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[800px] h-[350px] bg-gradient-to-b from-rose-500/15 via-rose-900/5 to-transparent blur-3xl pointer-events-none overflow-hidden" />
+
+        {/* HERO SECTION */}
+        <section className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-12 text-center space-y-7">
           
-          {/* Logo con resplandor */}
-          <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 mb-2">
-            <img 
-              src="/logo.png" 
-              alt="CineRewind Logo" 
-              className="w-20 h-20 object-contain drop-shadow-[0_0_20px_rgba(225,29,72,0.45)] transition-transform duration-300 hover:scale-105" 
-            />
+          <div className="space-y-3 max-w-3xl mx-auto">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-neutral-900 dark:text-white leading-[1.15] text-balance">
+              Todo lo que ves,{' '}
+              <span className="bg-gradient-to-r from-rose-500 via-rose-400 to-amber-400 bg-clip-text text-transparent">
+                organizado en un solo lugar.
+              </span>
+            </h1>
+            <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 max-w-xl mx-auto leading-relaxed text-balance pt-1">
+              Lleva el registro de tus series y películas. Documenta cada capítulo, la plataforma y con quién lo viste, y revive tu año con estadísticas interactivas.
+            </p>
           </div>
 
-          {/* Título principal centrado */}
-          <h1 className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white tracking-tight">
-            Lleva el registro de tus series y películas
-          </h1>
+          {/* Botones de acción principales */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1 w-full max-w-xs sm:max-w-none mx-auto">
+            <button
+              type="button"
+              onClick={() => setModalAuthLandingAbierto(true)}
+              className="w-full sm:w-auto px-7 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-extrabold text-sm shadow-lg shadow-rose-950/20 transition-all flex items-center justify-center gap-2 cursor-pointer group"
+            >
+              <span>Comenzar mi diario gratis</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/tendencias')}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-neutral-200/70 dark:bg-white/5 hover:bg-neutral-300/80 dark:hover:bg-white/10 text-neutral-800 dark:text-neutral-200 border border-neutral-300/70 dark:border-white/10 text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Flame className="w-4 h-4 text-amber-500" />
+              <span>Explorar Tendencias</span>
+            </button>
+          </div>
 
-          {/* Descripción */}
-          <p className="text-neutral-600 dark:text-neutral-400 text-sm leading-relaxed max-w-sm">
-            Inicia sesión o crea una cuenta para registrar lo que vas viendo, calcular tus horas totales y descubrir tendencias globales.
-          </p>
+          {/* SHOWCASE / MOCKUP EN VIVO RESPONSIVE */}
+          <div className="pt-6 max-w-4xl mx-auto">
+            <div className="relative rounded-2xl sm:rounded-3xl bg-white dark:bg-[#141620] border border-neutral-200 dark:border-white/10 p-4 sm:p-7 shadow-xl shadow-neutral-900/5 dark:shadow-2xl overflow-hidden text-left transition-colors">
+              
+              {/* Barra de ventana estilo Mac */}
+              <div className="flex items-center justify-between border-b border-neutral-200 dark:border-white/10 pb-3 sm:pb-4 mb-5">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-rose-500/80" />
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-500/80" />
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500/80" />
+                  <span className="text-[11px] sm:text-xs font-mono text-neutral-500 dark:text-neutral-400 ml-1.5 truncate">
+                    CineRewind Live Preview
+                  </span>
+                </div>
+              </div>
 
-        </div>
+              {/* Fila 1: Showcase de Viendo Actualmente */}
+              <div className="space-y-3 mb-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
+                    <Tv className="w-3.5 h-3.5 text-rose-500" /> Siguiendo actualmente
+                  </span>
+                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono">Seguimiento automático</span>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                  {/* Succession */}
+                  <div className="bg-neutral-100/80 dark:bg-[#1b1e2b] border border-neutral-200 dark:border-white/10 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 flex items-center gap-3">
+                    <img 
+                      src="https://image.tmdb.org/t/p/w500/z0XiwdrCQ9yVIr4O0pxzaAYRxdW.jpg" 
+                      alt="Succession" 
+                      className="w-11 h-15 sm:w-12 sm:h-16 rounded-lg object-cover flex-shrink-0 shadow-sm"
+                      loading="lazy"
+                    />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <h4 className="text-xs font-bold text-neutral-900 dark:text-white truncate">Succession</h4>
+                      <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                        <div className="w-[65%] h-full bg-rose-500 rounded-full" />
+                      </div>
+                      <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 block">Siguiente: T04 E03</span>
+                    </div>
+                  </div>
+
+                  {/* The Last of Us */}
+                  <div className="bg-neutral-100/80 dark:bg-[#1b1e2b] border border-neutral-200 dark:border-white/10 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 flex items-center gap-3">
+                    <img 
+                      src="https://image.tmdb.org/t/p/w500/dmo6TYuuJgaYinXBPjrgG9mB5od.jpg" 
+                      alt="The Last of Us" 
+                      className="w-11 h-15 sm:w-12 sm:h-16 rounded-lg object-cover flex-shrink-0 shadow-sm"
+                      loading="lazy"
+                    />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <h4 className="text-xs font-bold text-neutral-900 dark:text-white truncate">The Last of Us</h4>
+                      <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                        <div className="w-[85%] h-full bg-rose-500 rounded-full" />
+                      </div>
+                      <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 block">Siguiente: T01 E07</span>
+                    </div>
+                  </div>
+
+                  {/* Breaking Bad */}
+                  <div className="bg-neutral-100/80 dark:bg-[#1b1e2b] border border-neutral-200 dark:border-white/10 rounded-xl sm:rounded-2xl p-2.5 sm:p-3 flex items-center gap-3">
+                    <img 
+                      src="https://image.tmdb.org/t/p/w500/anFx9aTOOYqgS3v7x3R84Kz67ly.jpg" 
+                      alt="Breaking Bad" 
+                      className="w-11 h-15 sm:w-12 sm:h-16 rounded-lg object-cover flex-shrink-0 shadow-sm"
+                      loading="lazy"
+                    />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <h4 className="text-xs font-bold text-neutral-900 dark:text-white truncate">Breaking Bad</h4>
+                      <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                        <div className="w-[92%] h-full bg-rose-500 rounded-full" />
+                      </div>
+                      <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 block">Siguiente: T05 E15</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fila 2: Showcase de Línea de Tiempo */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-rose-500" /> Línea de tiempo
+                  </span>
+                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono">Historial cronológico</span>
+                </div>
+
+                <div className="bg-neutral-100/80 dark:bg-[#1b1e2b]/80 border border-neutral-200 dark:border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src="https://image.tmdb.org/t/p/w500/6izwz7rsy95ARzTR3poZ8H6c5pp.jpg" 
+                      alt="Dune: Part Two" 
+                      className="w-10 h-14 sm:w-11 sm:h-16 rounded-lg object-cover flex-shrink-0 shadow-sm"
+                      loading="lazy"
+                    />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-neutral-900 dark:text-white">Dune: Part Two</span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-600 text-white">MAX</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-neutral-500 dark:text-neutral-400">
+                        <span className="text-amber-500 font-bold">★ 5.0</span>
+                        <span>·</span>
+                        <span>18 Mar 2024</span>
+                        <span>·</span>
+                        <span>Película</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400 italic sm:max-w-xs truncate w-full sm:w-auto">
+                    "Espectáculo sonoro y visual supremo."
+                  </span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* FUNCIONES PRINCIPALES / PILARES */}
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16 border-t border-neutral-200 dark:border-white/10">
+          <div className="text-center space-y-1.5 mb-8 sm:mb-10">
+            <h2 className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white tracking-tight">
+              Todo para seguir lo que ves
+            </h2>
+            <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 max-w-lg mx-auto">
+              Seguimiento automático, co-visualización con amigos y estadísticas anuales.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
+            {/* Pilar 1 */}
+            <div className="bg-white dark:bg-[#141620] border border-neutral-200 dark:border-white/10 hover:border-rose-500/40 rounded-2xl p-5 space-y-2.5 transition-colors shadow-sm">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-neutral-900 dark:text-white text-base">Tracker Activo</h3>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                Marca un capítulo como visto y el sistema avanza automáticamente al siguiente sin perder el hilo de tus temporadas.
+              </p>
+            </div>
+
+            {/* Pilar 2 */}
+            <div className="bg-white dark:bg-[#141620] border border-neutral-200 dark:border-white/10 hover:border-rose-500/40 rounded-2xl p-5 space-y-2.5 transition-colors shadow-sm">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500">
+                <Users className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-neutral-900 dark:text-white text-base">Co-visualización</h3>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                Etiqueta a tus amigos al registrar una obra. Al confirmar, se agrega a su propio diario en un solo clic.
+              </p>
+            </div>
+
+            {/* Pilar 3 */}
+            <div className="bg-white dark:bg-[#141620] border border-neutral-200 dark:border-white/10 hover:border-rose-500/40 rounded-2xl p-5 space-y-2.5 transition-colors shadow-sm">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500">
+                <Clock className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-neutral-900 dark:text-white text-base">Línea de Tiempo</h3>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                Navega cronológicamente por años y meses, o busca en tu catálogo personal de manera inmediata.
+              </p>
+            </div>
+
+            {/* Pilar 4 */}
+            <div className="bg-white dark:bg-[#141620] border border-neutral-200 dark:border-white/10 hover:border-rose-500/40 rounded-2xl p-5 space-y-2.5 transition-colors shadow-sm">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-neutral-900 dark:text-white text-base">Wrapped & Estadísticas</h3>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                Descubre tus horas totales de pantalla, tu día preferido de reproducción, tu actor más visto y tu diagnóstico anual.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* MODAL AUTH DESDE EL LANDING */}
+        <ModalAuth 
+          isOpen={modalAuthLandingAbierto}
+          onClose={() => setModalAuthLandingAbierto(false)}
+        />
+
       </main>
     );
   }
 
+  // -------------------------------------------------------------
+  // VISTA PRINCIPAL CUANDO EL USUARIO TIENE SESIÓN INICIADA
+  // -------------------------------------------------------------
   return (
-    <main className="max-w-7xl mx-auto px-8 py-10 space-y-12">
+    <main className="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-10 space-y-10 sm:space-y-12">
       {/* 1. Carrusel de Series Activas */}
       <CarruselViendo 
         seriesActivas={seriesActivas}
@@ -255,55 +470,55 @@ const solicitarEliminarLote = () => {
       />
 
       {/* 2. Mi Diario Cinemático y Total Histórico */}
-      <section className="!mt-[65px] space-y-3">
-<HeaderHistorial 
-      vistaTotal={vistaTotal}
-      setVistaTotal={setVistaTotal}
-      serieSeleccionadaTotal={serieSeleccionadaTotal}
-      setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
-      anioSeleccionado={anioSeleccionado}
-      mesSeleccionado={mesSeleccionado}
-      onVolverAnios={() => { 
-        setAnioSeleccionado(null); 
-        setMesSeleccionado(null); 
-        setSerieSeleccionadaTotal(null);
-      }}
-      onVolverMeses={() => {
-        setMesSeleccionado(null);
-        setSerieSeleccionadaTotal(null);
-      }}
-      modoSeleccion={modoSeleccion}
-      setModoSeleccion={setModoSeleccion}
-      setSeleccionadosParaBorrar={setSeleccionadosParaBorrar}
-      filtroTipo={filtroTipo}
-      setFiltroTipo={setFiltroTipo}
-      busquedaHistorial={busquedaHistorial}
-      setBusquedaHistorial={setBusquedaHistorial}
-      soloConAmigos={soloConAmigos}               // <--- NUEVO
-      setSoloConAmigos={setSoloConAmigos}         // <--- NUEVO
-      amigosFiltro={amigosFiltro}                 // <--- NUEVO
-      setAmigosFiltro={setAmigosFiltro}           // <--- NUEVO
-    />
+      <section className="!mt-[45px] sm:!mt-[65px] space-y-3">
+        <HeaderHistorial 
+          vistaTotal={vistaTotal}
+          setVistaTotal={setVistaTotal}
+          serieSeleccionadaTotal={serieSeleccionadaTotal}
+          setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
+          anioSeleccionado={anioSeleccionado}
+          mesSeleccionado={mesSeleccionado}
+          onVolverAnios={() => { 
+            setAnioSeleccionado(null); 
+            setMesSeleccionado(null); 
+            setSerieSeleccionadaTotal(null);
+          }}
+          onVolverMeses={() => {
+            setMesSeleccionado(null);
+            setSerieSeleccionadaTotal(null);
+          }}
+          modoSeleccion={modoSeleccion}
+          setModoSeleccion={setModoSeleccion}
+          setSeleccionadosParaBorrar={setSeleccionadosParaBorrar}
+          filtroTipo={filtroTipo}
+          setFiltroTipo={setFiltroTipo}
+          busquedaHistorial={busquedaHistorial}
+          setBusquedaHistorial={setBusquedaHistorial}
+          soloConAmigos={soloConAmigos}
+          setSoloConAmigos={setSoloConAmigos}
+          amigosFiltro={amigosFiltro}
+          setAmigosFiltro={setAmigosFiltro}
+        />
 
-<GrillaHistorial 
-      vistaTotal={vistaTotal}
-      serieSeleccionadaTotal={serieSeleccionadaTotal}
-      setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
-      anioSeleccionado={anioSeleccionado}
-      mesSeleccionado={mesSeleccionado}
-      arbolHistorial={arbolHistorial}
-      listaAnios={listaAnios}
-      timelineCompleto={timeline}
-      onSeleccionarAnio={(anio) => setAnioSeleccionado(anio)}
-      onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
-      modoSeleccion={modoSeleccion}
-      seleccionadosParaBorrar={seleccionadosParaBorrar}
-      onToggleItem={toggleSeleccionItem}
-      onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
-      busquedaHistorial={busquedaHistorial}
-      soloConAmigos={soloConAmigos}               // <--- NUEVO
-      amigosFiltro={amigosFiltro}                 // <--- NUEVO
-    />
+        <GrillaHistorial 
+          vistaTotal={vistaTotal}
+          serieSeleccionadaTotal={serieSeleccionadaTotal}
+          setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
+          anioSeleccionado={anioSeleccionado}
+          mesSeleccionado={mesSeleccionado}
+          arbolHistorial={arbolHistorial}
+          listaAnios={listaAnios}
+          timelineCompleto={timeline}
+          onSeleccionarAnio={(anio) => setAnioSeleccionado(anio)}
+          onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
+          modoSeleccion={modoSeleccion}
+          seleccionadosParaBorrar={seleccionadosParaBorrar}
+          onToggleItem={toggleSeleccionItem}
+          onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
+          busquedaHistorial={busquedaHistorial}
+          soloConAmigos={soloConAmigos}
+          amigosFiltro={amigosFiltro}
+        />
       </section>
 
       {/* 3. Barra Flotante de Borrado Masivo */}
@@ -327,32 +542,30 @@ const solicitarEliminarLote = () => {
         />
       )}
 
-{serieParaDetalleXRay && (
-    <ModalDetalleEpisodioViendo 
-      serie={serieParaDetalleXRay}
-      onClose={() => setSerieParaDetalleXRay(null)}
-      onMarcarVisto={handleAvanzar}
-      onSeleccionarObra={(obraDelActor) => {
-        setSerieParaDetalleXRay(null);
-        setSerieParaEditar(obraDelActor); // Abre inmediatamente la ficha para registrarla
-      }}
-    />
-  )}
+      {serieParaDetalleXRay && (
+        <ModalDetalleEpisodioViendo 
+          serie={serieParaDetalleXRay}
+          onClose={() => setSerieParaDetalleXRay(null)}
+          onMarcarVisto={handleAvanzar}
+          onSeleccionarObra={(obraDelActor) => {
+            setSerieParaDetalleXRay(null);
+            setSerieParaEditar(obraDelActor);
+          }}
+        />
+      )}
 
-{itemDetalle && (
-  <ModalDetalleTimeline 
-    item={itemDetalle}
-    todasLasVisualizaciones={timeline} 
-    onClose={() => setItemDetalle(null)}
-    onActualizado={() => { cargarDatos(); setItemDetalle(null); }} 
-    onSeleccionarObra={(obraDelActor) => {
-      // 1. Cierra el modal de detalle del timeline
-      setItemDetalle(null);
-      // 2. Abre ModalRegistrar con la película/serie seleccionada
-      setSerieParaEditar(obraDelActor);
-    }}
-  />
-)}
+      {itemDetalle && (
+        <ModalDetalleTimeline 
+          item={itemDetalle}
+          todasLasVisualizaciones={timeline} 
+          onClose={() => setItemDetalle(null)}
+          onActualizado={() => { cargarDatos(); setItemDetalle(null); }} 
+          onSeleccionarObra={(obraDelActor) => {
+            setItemDetalle(null);
+            setSerieParaEditar(obraDelActor);
+          }}
+        />
+      )}
 
       <ModalConfirmar
         isOpen={dialogoConfirmar.abierto}

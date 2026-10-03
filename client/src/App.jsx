@@ -31,7 +31,7 @@ export default function App() {
   const toggleTheme = () => setDarkMode((prev) => !prev);
 
   return (
-    <div className="min-h-screen bg-[#f7f4ed] dark:bg-[#0f0f11] text-neutral-900 dark:text-neutral-100 font-sans transition-colors duration-200">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#f7f4ed] dark:bg-[#0f0f11] text-neutral-900 dark:text-neutral-100 transition-colors">
       <Navbar 
         darkMode={darkMode} 
         onToggleTheme={toggleTheme} 

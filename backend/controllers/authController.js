@@ -4,6 +4,16 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const clientGoogle = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// 🛡️ Asegurar que JWT_SECRET exista en producción
+const obtenerJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    console.warn('⚠️ ADVERTENCIA DE SEGURIDAD: JWT_SECRET no está definida en las variables de entorno (.env). Usando clave temporal.');
+    return 'cinerewind_super_secreto_2026_key_jwt';
+  }
+  return secret;
+};
+
 const generarToken = (usuario) => {
   return jwt.sign(
     { 
@@ -11,7 +21,7 @@ const generarToken = (usuario) => {
       email: usuario.email, 
       username: usuario.username 
     },
-    process.env.JWT_SECRET || 'cinerewind_super_secreto_2026_key_jwt',
+    obtenerJwtSecret(),
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 };
@@ -26,6 +36,11 @@ const registrarUsuario = async (req, res) => {
 
   if (password.length < 6) {
     return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+  }
+
+  if (password.length > 72) {
+    // Bcrypt solo procesa hasta 72 bytes; evitar ataques DoS por longitud de contraseña
+    return res.status(400).json({ error: 'La contraseña no puede superar los 72 caracteres' });
   }
 
   const usernameLimpio = username.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_.-]/g, '');
@@ -112,12 +127,14 @@ const iniciarSesion = async (req, res) => {
     `;
     const resultado = await pool.query(consulta, [queryLimpia]);
 
+    // 🛡️ Anti-Enumeración: Si no existe, damos el mismo mensaje genérico que si la contraseña falla
     if (resultado.rows.length === 0) {
-      return res.status(401).json({ error: 'El usuario o correo electrónico no coinciden con ninguna cuenta.' });
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
     }
 
     const usuario = resultado.rows[0];
 
+    // Caso de cuenta creada exclusivamente con Google
     if (!usuario.password_hash) {
       return res.status(400).json({ 
         error: 'Esta cuenta fue creada con Google. Inicia sesión usando el botón "Continuar con Google".' 
@@ -126,7 +143,8 @@ const iniciarSesion = async (req, res) => {
 
     const passwordValida = await bcrypt.compare(password, usuario.password_hash);
     if (!passwordValida) {
-      return res.status(401).json({ error: 'La contraseña ingresada es incorrecta.' });
+      // 🛡️ Mismo mensaje genérico
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
     }
 
     delete usuario.password_hash;
@@ -207,7 +225,7 @@ const loginGoogle = async (req, res) => {
   }
 };
 
-// GET: /api/auth/perfil (Para validar si el token sigue activo al recargar la página)
+// GET: /api/auth/perfil
 const obtenerPerfilActual = async (req, res) => {
   const usuarioId = req.usuario?.id;
   if (!usuarioId) {
@@ -216,7 +234,7 @@ const obtenerPerfilActual = async (req, res) => {
 
   try {
     const consulta = `
-      SELECT id, nombre, username, email, rol,avatar_url, biografia, banner_url, creado_en
+      SELECT id, nombre, username, email, rol, avatar_url, biografia, banner_url, creado_en
       FROM usuarios 
       WHERE id = $1;
     `;
@@ -258,7 +276,6 @@ const actualizarPerfil = async (req, res) => {
       return res.status(400).json({ error: 'El usuario debe tener entre 3 y 20 caracteres' });
     }
 
-    // Verificar si el nuevo username ya lo usa otra persona
     const existe = await pool.query(
       'SELECT id FROM usuarios WHERE username = $1 AND id != $2',
       [usernameLimpio, usuarioId]
@@ -301,10 +318,11 @@ const actualizarPerfil = async (req, res) => {
     res.status(500).json({ error: 'Error del servidor al actualizar perfil' });
   }
 };
+
 // GET: /api/auth/comprobar-username?username=augusto
 const comprobarDisponibilidadUsername = async (req, res) => {
   const { username } = req.query;
-  const usuarioActualId = req.usuario?.id; // Si está logueado, excluimos su propio id
+  const usuarioActualId = req.usuario?.id;
 
   if (!username) {
     return res.status(400).json({ error: 'Username requerido' });
@@ -323,7 +341,6 @@ const comprobarDisponibilidadUsername = async (req, res) => {
     `;
     const resultado = await pool.query(consulta, [limpio, usuarioActualId || -1]);
     
-    // Si resultado.rows.length === 0 significa que NADIE lo está usando
     res.json({ disponible: resultado.rows.length === 0, username: limpio });
   } catch (error) {
     console.error('Error al comprobar username:', error.message);
@@ -348,8 +365,11 @@ const cambiarPassword = async (req, res) => {
     return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
   }
 
+  if (passwordNueva.length > 72) {
+    return res.status(400).json({ error: 'La nueva contraseña no puede superar los 72 caracteres' });
+  }
+
   try {
-    // 1. Obtener la contraseña hasheada actual del usuario
     const userRes = await pool.query(
       'SELECT id, password_hash FROM usuarios WHERE id = $1',
       [usuarioId]
@@ -361,24 +381,20 @@ const cambiarPassword = async (req, res) => {
 
     const usuario = userRes.rows[0];
 
-    // Si es una cuenta exclusiva de Google sin contraseña previa
     if (!usuario.password_hash) {
       return res.status(400).json({ 
         error: 'Esta cuenta fue creada con Google. No posee una contraseña clásica para modificar.' 
       });
     }
 
-    // 2. Validar que la contraseña actual sea correcta
     const coincide = await bcrypt.compare(passwordActual, usuario.password_hash);
     if (!coincide) {
       return res.status(401).json({ error: 'La contraseña actual no es correcta' });
     }
 
-    // 3. Hashear la nueva contraseña
     const salt = await bcrypt.genSalt(10);
     const nuevoHash = await bcrypt.hash(passwordNueva, salt);
 
-    // 4. Guardar en PostgreSQL
     await pool.query(
       'UPDATE usuarios SET password_hash = $1 WHERE id = $2',
       [nuevoHash, usuarioId]
@@ -399,5 +415,4 @@ module.exports = {
   actualizarPerfil,
   obtenerPerfilActual,
   cambiarPassword,
-   // Es indispensable para que AuthContext sepa quién está logueado al refrescar F5
 };

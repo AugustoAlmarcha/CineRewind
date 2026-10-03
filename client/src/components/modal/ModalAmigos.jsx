@@ -6,12 +6,12 @@ import {
   responderSolicitudAmistadAPI,
   obtenerAmigosAPI,
   eliminarAmigoAPI,
-  obtenerInvitacionesCovisionAPI,     // <--- AGREGAR
+  obtenerInvitacionesCovisionAPI,
   responderInvitacionCovisionAPI
 } from '../../api';
 
 export default function ModalAmigos({ onClose, onActualizado }) {
-  const [pestana, setPestana] = useState('buscar'); // 'buscar' | 'pendientes' | 'amigos'
+  const [pestana, setPestana] = useState('buscar'); // 'buscar' | 'pendientes' | 'amigos' | 'covisiones'
   const [query, setQuery] = useState('');
   const [resultados, setResultados] = useState([]);
   const [pendientes, setPendientes] = useState([]);
@@ -32,12 +32,12 @@ export default function ModalAmigos({ onClose, onActualizado }) {
     }, 3000);
   };
 
-const cargarListas = async () => {
+  const cargarListas = async () => {
     try {
       const [listaPendientes, listaAmigos, listaInvitaciones] = await Promise.all([
         obtenerSolicitudesPendientesAPI(),
         obtenerAmigosAPI(),
-        obtenerInvitacionesCovisionAPI(), // <--- Consulta co-visiones
+        obtenerInvitacionesCovisionAPI(),
       ]);
       setPendientes(Array.isArray(listaPendientes) ? listaPendientes : []);
       setAmigos(Array.isArray(listaAmigos) ? listaAmigos : []);
@@ -95,7 +95,7 @@ const cargarListas = async () => {
     }
   };
 
-const handleResponderCovision = async (covisualizacionId, accion) => {
+  const handleResponderCovision = async (covisualizacionId, accion) => {
     try {
       await responderInvitacionCovisionAPI(covisualizacionId, accion);
       await cargarListas();
@@ -128,9 +128,14 @@ const handleResponderCovision = async (covisualizacionId, accion) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div className="relative bg-[#fbf9f4] dark:bg-[#141419] border border-neutral-300 dark:border-white/10 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] text-neutral-900 dark:text-white transition-colors duration-300">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
+      <div className="relative bg-[#fbf9f4] dark:bg-[#141419] border-t sm:border border-neutral-300 dark:border-white/10 rounded-t-3xl sm:rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col h-[94vh] sm:h-auto sm:max-h-[85vh] text-neutral-900 dark:text-white transition-colors duration-300">
         
+        {/* Manija táctil superior para celulares */}
+        <div className="pt-2.5 pb-1 sm:hidden flex justify-center flex-shrink-0">
+          <div className="w-10 h-1 bg-neutral-300 dark:bg-white/20 rounded-full" />
+        </div>
+
         {/* Toast Flotante Personalizado */}
         {notificacion && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 animate-bounce">
@@ -181,74 +186,86 @@ const handleResponderCovision = async (covisualizacionId, accion) => {
         )}
 
         {/* Cabecera */}
-        <div className="p-5 border-b border-neutral-200 dark:border-white/10 flex justify-between items-center bg-[#f2eee3] dark:bg-[#181820]">
+        <div className="p-4 sm:p-5 border-b border-neutral-200 dark:border-white/10 flex justify-between items-center bg-[#f2eee3] dark:bg-[#181820] flex-shrink-0">
           <div>
             <span className="text-[10px] font-mono text-rose-600 dark:text-rose-500 uppercase font-black tracking-widest">
               Comunidad Cinéfila
             </span>
-            <h3 className="text-xl font-black">Conexiones & Amigos</h3>
+            <h3 className="text-lg sm:text-xl font-black">Conexiones & Amigos</h3>
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white flex items-center justify-center text-sm font-bold transition cursor-pointer"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white flex items-center justify-center text-xs sm:text-sm font-bold transition cursor-pointer"
           >
             ✕
           </button>
         </div>
 
-        {/* Pestañas */}
-        <div className="flex border-b border-neutral-200 dark:border-white/10 bg-[#f7f4ed] dark:bg-[#16161c] px-4 pt-2 gap-2">
+        {/* Pestañas (Scroll horizontal fluido con flex-nowrap y flex-shrink-0) */}
+        <div className="flex border-b border-neutral-200 dark:border-white/10 bg-[#f7f4ed] dark:bg-[#16161c] px-3 sm:px-4 pt-2 gap-1.5 sm:gap-2 overflow-x-auto scrollbar-thin flex-nowrap flex-shrink-0 select-none">
           <button
+            type="button"
             onClick={() => setPestana('buscar')}
-            className={`pb-3 px-4 text-xs font-black uppercase tracking-wider transition border-b-2 cursor-pointer ${
+            className={`pb-2.5 sm:pb-3 px-3 sm:px-4 text-[11px] sm:text-xs font-black uppercase tracking-wider transition border-b-2 cursor-pointer flex-shrink-0 whitespace-nowrap flex items-center gap-1.5 ${
               pestana === 'buscar'
                 ? 'border-rose-600 text-rose-600 dark:border-rose-500 dark:text-rose-500'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
-            🔍 Buscar Cinéfilos
+            <span>🔍</span>
+            <span>Buscar</span>
+            <span className="hidden sm:inline">Cinéfilos</span>
           </button>
+          
           <button
+            type="button"
             onClick={() => setPestana('pendientes')}
-            className={`pb-3 px-4 text-xs font-black uppercase tracking-wider transition border-b-2 flex items-center gap-1.5 cursor-pointer ${
+            className={`pb-2.5 sm:pb-3 px-3 sm:px-4 text-[11px] sm:text-xs font-black uppercase tracking-wider transition border-b-2 flex items-center gap-1.5 cursor-pointer flex-shrink-0 whitespace-nowrap ${
               pestana === 'pendientes'
                 ? 'border-rose-600 text-rose-600 dark:border-rose-500 dark:text-rose-500'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
-            📬 Solicitudes
+            <span>📬</span>
+            <span>Solicitudes</span>
             {pendientes.length > 0 && (
               <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[10px] font-bold">
                 {pendientes.length}
               </span>
             )}
           </button>
+          
           <button
+            type="button"
             onClick={() => setPestana('amigos')}
-            className={`pb-3 px-4 text-xs font-black uppercase tracking-wider transition border-b-2 cursor-pointer ${
+            className={`pb-2.5 sm:pb-3 px-3 sm:px-4 text-[11px] sm:text-xs font-black uppercase tracking-wider transition border-b-2 flex items-center gap-1.5 cursor-pointer flex-shrink-0 whitespace-nowrap ${
               pestana === 'amigos'
                 ? 'border-rose-600 text-rose-600 dark:border-rose-500 dark:text-rose-500'
                 : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
-            👥 Mis Amigos ({amigos.length})
+            <span>👥</span>
+            <span>Amigos</span>
+            <span className="text-[10px] opacity-75">({amigos.length})</span>
           </button>
-<button
-        type="button"
-        onClick={() => setPestana('covisiones')}
-        className={`pb-3 px-4 text-xs font-black uppercase tracking-wider transition border-b-2 flex items-center gap-1.5 cursor-pointer ${
-          pestana === 'covisiones'
-            ? 'border-rose-600 text-rose-600 dark:border-rose-500 dark:text-rose-500'
-            : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-        }`}
-      >
-        🎬 Co-visiones
-        {invitaciones.length > 0 && (
-          <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[10px] font-bold animate-pulse">
-            {invitaciones.length}
-          </span>
-        )}
-      </button>
+          
+          <button
+            type="button"
+            onClick={() => setPestana('covisiones')}
+            className={`pb-2.5 sm:pb-3 px-3 sm:px-4 text-[11px] sm:text-xs font-black uppercase tracking-wider transition border-b-2 flex items-center gap-1.5 cursor-pointer flex-shrink-0 whitespace-nowrap ${
+              pestana === 'covisiones'
+                ? 'border-rose-600 text-rose-600 dark:border-rose-500 dark:text-rose-500'
+                : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+            }`}
+          >
+            <span>🎬</span>
+            <span>Co-visiones</span>
+            {invitaciones.length > 0 && (
+              <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[10px] font-bold animate-pulse">
+                {invitaciones.length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Contenido */}
@@ -416,8 +433,8 @@ const handleResponderCovision = async (covisualizacionId, accion) => {
               )}
             </div>
           )}
-          {/* PESTAÑA: CO-VISIONES */}
-{/* PESTAÑA: CO-VISIONES REDISEÑADA (TARJETAS GRANDES) */}
+
+          {/* PESTAÑA: CO-VISIONES REDISEÑADA (TARJETAS GRANDES) */}
           {pestana === 'covisiones' && (
             <div className="space-y-4">
               {invitaciones.length === 0 ? (
@@ -434,12 +451,12 @@ const handleResponderCovision = async (covisualizacionId, accion) => {
                 invitaciones.map((inv) => (
                   <div
                     key={inv.covisualizacion_id}
-                    className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#1a1a24] border border-neutral-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between shadow-sm gap-4 transition hover:border-rose-500/30"
+                    className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-[#1a1a24] border border-neutral-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between shadow-xs gap-3 sm:gap-4 transition hover:border-rose-500/30"
                   >
-                    {/* Izquierda: Portada Grande + Información */}
-                    <div className="flex items-start sm:items-center gap-4">
-                      {/* Portada en proporción 2:3 amplia */}
-                      <div className="w-20 sm:w-24 aspect-[2/3] bg-neutral-900 rounded-2xl overflow-hidden flex-shrink-0 shadow-md border border-neutral-200 dark:border-white/10">
+                    {/* Izquierda: Portada + Información */}
+                    <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+                      {/* Portada en proporción 2:3 */}
+                      <div className="w-16 sm:w-24 aspect-[2/3] bg-neutral-900 rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-md border border-neutral-200 dark:border-white/10">
                         {inv.poster_path ? (
                           <img
                             src={

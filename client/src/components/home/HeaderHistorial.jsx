@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { obtenerAmigosAPI } from '../../api';
-
+import { Calendar, Layers, Film, Tv, Users, Trash2, X , Search} from 'lucide-react';
 export default function HeaderHistorial({
   vistaTotal,
   setVistaTotal,
@@ -74,7 +74,7 @@ export default function HeaderHistorial({
                 : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
-            Diario por Fechas
+            <span className="flex items-center gap-1.5"> Diario por Fecha</span>
           </button>
           
           <button
@@ -92,7 +92,7 @@ export default function HeaderHistorial({
                 : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
-            Total Histórico
+            <span className="flex items-center gap-1.5"> Total Histórico</span>
           </button>
         </div>
 
@@ -141,14 +141,15 @@ export default function HeaderHistorial({
       {/* Derecha: Buscador + Botón Con Amigos + Selección masiva + Filtro tipo */}
       <div className="flex items-center gap-3 flex-wrap">
         
-        {/* Buscador de título */}
-        <div className="relative">
+{/* Buscador de título */}
+        <div className="relative flex items-center">
+          <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 pointer-events-none" />
           <input
             type="text"
             value={busquedaHistorial}
             onChange={(e) => setBusquedaHistorial(e.target.value)}
-            placeholder="🔍 Buscar título..."
-            className="bg-neutral-100 dark:bg-[#18181e] border border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white text-xs rounded-xl px-3 py-2 w-44 sm:w-52 focus:outline-none focus:border-rose-500 transition"
+            placeholder="Buscar título..."
+            className="bg-neutral-100 dark:bg-[#18181e] border border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white text-xs rounded-xl pl-8 pr-7 py-2 w-44 sm:w-52 focus:outline-none focus:border-rose-500 transition"
           />
           {busquedaHistorial && (
             <button
@@ -181,7 +182,7 @@ export default function HeaderHistorial({
               } ${soloConAmigos ? 'rounded-r-none' : ''}`}
               title="Filtrar por co-visualizaciones"
             >
-              <span>👥</span>
+              <Users className="w-4 h-4" />
               <span>
                 {soloConAmigos
                   ? amigosFiltro.length > 0
@@ -297,7 +298,7 @@ export default function HeaderHistorial({
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
-            Películas
+            <span className="flex items-center gap-1.5"><Film className="w-3.5 h-3.5" /> Películas</span>
           </button>
           <button
             type="button"
@@ -308,7 +309,7 @@ export default function HeaderHistorial({
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
-            Series
+            <span className="flex items-center gap-1.5"><Tv className="w-3.5 h-3.5" /> Series</span>
           </button>
         </div>
 

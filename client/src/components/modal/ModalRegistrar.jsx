@@ -14,14 +14,13 @@ import {
   alternarPendienteAPI    
 } from '../../api';
 import { obtenerFechaHoyLocal } from '../../utils/fechas';
-import SelectorPlataformaFecha from './SelectorPlataformaFecha';
+import BarraConfiguracionRegistro from './BarraConfiguracionRegistro';
 import ListaEpisodios from './ListaEpisodios';
-import GaleriaRepartoPrincipal from './GaleriaRepartoPrincipal';
 import SelectorTemporadaBarra from './SelectorTemporadaBarra';
 import VistaRegistroPelicula from './VistaRegistroPelicula';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
 import ModalActoresEpisodio from './ModalActoresEpisodio';
-import SelectorAmigosEtiquetar from './SelectorAmigosEtiquetar'; // <-- IMPORTACIÓN NUEVA
+import { Bookmark, Check, X, AlertCircle } from 'lucide-react';
 
 export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, onCambiarObra }) {
   const { usuario } = useAuth();
@@ -52,15 +51,15 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
   const [episodiosYaVistos, setEpisodiosYaVistos] = useState([]);
   const [episodiosSeleccionados, setEpisodiosSeleccionados] = useState([]);
 
-  // Estado para co-visualización (amigos etiquetados)
+  // Estado para co-visualización
   const [amigosSeleccionados, setAmigosSeleccionados] = useState([]);
-const [vistoConTexto, setVistoConTexto] = useState('');
+  const [vistoConTexto, setVistoConTexto] = useState('');
   const [errorRegistro, setErrorRegistro] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [esPendiente, setEsPendiente] = useState(false);
   const [cargandoPendiente, setCargandoPendiente] = useState(false);
 
-  // Comprobar si la obra ya está guardada en la lista de pendientes
+  // Comprobar estado en pendientes
   useEffect(() => {
     if (!usuario?.id || !tmdbIdReal) return;
     let cancelado = false;
@@ -83,7 +82,6 @@ const [vistoConTexto, setVistoConTexto] = useState('');
     return () => { cancelado = true; };
   }, [tmdbIdReal, usuario?.id]);
 
-  // Manejar el clic del botón Guardar/Quitar de pendientes
   const handleTogglePendiente = async () => {
     if (!usuario) {
       setErrorRegistro('Debes iniciar sesión para guardar títulos en tus pendientes.');
@@ -107,7 +105,6 @@ const [vistoConTexto, setVistoConTexto] = useState('');
   };
 
   const [repartoActores, setRepartoActores] = useState([]);
-  const [mostrarActores, setMostrarActores] = useState(false);
   const [actorParaFilmografia, setActorParaFilmografia] = useState(null);
   const [actoresEpisodioModal, setActoresEpisodioModal] = useState(null);
 
@@ -125,7 +122,7 @@ const [vistoConTexto, setVistoConTexto] = useState('');
     }
   };
 
-  // 1. Obtener detalles de la obra y proveedores
+  // Cargar ficha y plataformas de TMDb
   useEffect(() => {
     if (!tmdbIdReal || isNaN(tmdbIdReal) || tmdbIdReal <= 0) return;
     let cancelado = false;
@@ -164,7 +161,7 @@ const [vistoConTexto, setVistoConTexto] = useState('');
     return () => { cancelado = true; };
   }, [tmdbIdReal, esSerie, usuario?.id]);
 
-  // 2. Obtener episodios de la temporada y capítulos vistos
+  // Cargar episodios de la temporada seleccionada
   useEffect(() => {
     if (!esSerie || !tmdbIdReal || isNaN(tmdbIdReal) || tmdbIdReal <= 0 || !temporadaSeleccionada) return;
 
@@ -268,7 +265,6 @@ const [vistoConTexto, setVistoConTexto] = useState('');
         total_episodios_temporada: datosTemporada?.episodios?.length || null,
         amigos_etiquetados: amigosSeleccionados,
         visto_con_texto: vistoConTexto.trim() || null,
-        
       });
 
       if (plataforma && plataforma !== 'Sin plataforma') {
@@ -330,101 +326,103 @@ const [vistoConTexto, setVistoConTexto] = useState('');
   const listaTemporadas = Array.from({ length: Math.max(1, totalTemporadas) }, (_, i) => i + 1);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-[#fcfaf7] dark:bg-[#141418] border border-neutral-300 dark:border-white/10 rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white my-auto transition-colors">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md sm:p-4 select-none animate-fadeIn">
+      <div className="bg-[#fcfaf7] dark:bg-[#141418] border-t sm:border border-neutral-300 dark:border-white/10 rounded-t-3xl sm:rounded-3xl max-w-3xl w-full h-[94vh] sm:h-[88vh] flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white transition-colors relative">
         
-        {/* Cabecera */}
-        <div className="p-6 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        {/* Cabecera compacta */}
+        <div className="p-3.5 sm:p-4 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between gap-3 bg-[#fcfaf7] dark:bg-[#141418] z-20 flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <img 
               src={obraActual?.poster_path} 
               alt={obraActual?.titulo} 
-              className="w-14 h-20 object-cover rounded-xl shadow-md border border-black/10 dark:border-white/10" 
+              className="w-10 h-14 sm:w-11 sm:h-16 object-cover rounded-xl shadow-md border border-black/10 dark:border-white/10 flex-shrink-0" 
             />
-            <div>
-              <span className="text-xs font-bold text-rose-600 dark:text-rose-500 uppercase tracking-wider">{obraActual?.tipo}</span>
-              <h2 className="text-2xl font-black">{obraActual?.titulo}</h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">{obraActual?.anio}</p>
+            <div className="min-w-0">
+              <span className="text-[10px] font-black text-rose-600 dark:text-rose-500 uppercase tracking-widest block">
+                {obraActual?.tipo}
+              </span>
+              <h2 className="text-base sm:text-xl font-black truncate leading-tight">
+                {obraActual?.titulo}
+              </h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono">
+                {obraActual?.anio}
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {/* Botón Guardar en Pendientes */}
+
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               type="button"
               disabled={cargandoPendiente}
               onClick={handleTogglePendiente}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50 ${
+              className={`p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50 ${
                 esPendiente
-                  ? 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-600/30'
-                  : 'bg-neutral-200 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-white/20'
+                  ? 'bg-rose-600 text-white hover:bg-rose-700'
+                  : 'bg-neutral-200/80 dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-white/15'
               }`}
-              title={esPendiente ? 'Quitar de mi lista de pendientes' : 'Guardar para ver más tarde'}
+              title={esPendiente ? 'Quitar de pendientes' : 'Ver más tarde'}
             >
-              <span>{esPendiente ? '✓' : '🔖'}</span>
-              <span>{esPendiente ? 'En Pendientes' : 'Ver Más Tarde'}</span>
+              {esPendiente ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{esPendiente ? 'En Pendientes' : 'Ver Más Tarde'}</span>
             </button>
 
-            {/* Botón Cerrar */}
             <button 
               type="button" 
               onClick={onClose} 
-              className="w-9 h-9 rounded-full bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white flex items-center justify-center transition cursor-pointer"
+              className="w-8 h-8 rounded-xl bg-neutral-200/80 dark:bg-white/10 hover:bg-rose-600 hover:text-white flex items-center justify-center transition cursor-pointer text-neutral-600 dark:text-neutral-300"
             >
-              ✕
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Selector Plataforma y Fecha */}
-        <SelectorPlataformaFecha 
-          plataforma={plataforma}
-          setPlataforma={setPlataforma}
-          fechaVisto={fechaVisto}
-          setFechaVisto={setFechaVisto}
-          noRecuerdaFecha={noRecuerdaFecha}
-          onToggleNoRecuerda={handleToggleNoRecuerda}
-        />
-
-        {/* Co-visualización: Selector de Amigos */}
-<SelectorAmigosEtiquetar
-          amigosSeleccionados={amigosSeleccionados}
-          setAmigosSeleccionados={setAmigosSeleccionados}
-          vistoConTexto={vistoConTexto}
-          setVistoConTexto={setVistoConTexto}
-        />
-
-        {/* Galería de Actores */}
-        <GaleriaRepartoPrincipal 
-          reparto={repartoActores}
-          mostrar={mostrarActores}
-          onToggleMostrar={() => setMostrarActores(!mostrarActores)}
-          onSeleccionarActor={(actor) => setActorParaFilmografia(actor)}
-        />
-
-        {/* Alerta de Error */}
+        {/* Alerta de error */}
         {errorRegistro && (
-          <div className="mx-6 mt-4 p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold rounded-2xl flex items-center justify-between gap-3 animate-fadeIn">
-            <span>⚠️ {errorRegistro}</span>
+          <div className="mx-4 mt-3 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold rounded-2xl flex items-center justify-between gap-3 animate-fadeIn flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{errorRegistro}</span>
+            </div>
             <button 
               type="button" 
               onClick={() => setErrorRegistro(null)} 
               className="text-rose-500 hover:text-rose-700 font-black cursor-pointer px-1"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
 
-        {/* Contenido Principal */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+        {/* Contenedor desplazable con los chips horizontales */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+          
+          {/* Barra compacta de micro-chips */}
+          <BarraConfiguracionRegistro
+            plataforma={plataforma}
+            setPlataforma={setPlataforma}
+            fechaVisto={fechaVisto}
+            setFechaVisto={setFechaVisto}
+            noRecuerdaFecha={noRecuerdaFecha}
+            onToggleNoRecuerda={handleToggleNoRecuerda}
+            amigosSeleccionados={amigosSeleccionados}
+            setAmigosSeleccionados={setAmigosSeleccionados}
+            vistoConTexto={vistoConTexto}
+            setVistoConTexto={setVistoConTexto}
+            repartoActores={repartoActores}
+            onSeleccionarActor={(actor) => setActorParaFilmografia(actor)}
+          />
+
+          {/* Temporadas y episodios o vista de película */}
           {!esSerie ? (
-            <VistaRegistroPelicula 
-              sinopsis={obraActual?.sinopsis}
-              guardando={guardando}
-              onGuardar={handleGuardarPelicula}
-            />
+            <div className="pt-2">
+              <VistaRegistroPelicula 
+                sinopsis={obraActual?.sinopsis}
+                guardando={guardando}
+                onGuardar={handleGuardarPelicula}
+              />
+            </div>
           ) : (
-            <>
+            <div className="space-y-4 pt-1">
               <SelectorTemporadaBarra 
                 listaTemporadas={listaTemporadas}
                 temporadaSeleccionada={temporadaSeleccionada}
@@ -434,8 +432,8 @@ const [vistoConTexto, setVistoConTexto] = useState('');
               />
 
               {cargandoEpisodios ? (
-                <div className="py-16 text-center text-neutral-400 text-sm animate-pulse">
-                  Cargando capítulos...
+                <div className="py-12 text-center text-neutral-400 text-xs font-mono animate-pulse">
+                  Cargando episodios de la temporada...
                 </div>
               ) : (
                 <ListaEpisodios 
@@ -446,28 +444,35 @@ const [vistoConTexto, setVistoConTexto] = useState('');
                   onVerActoresCapitulo={handleVerActoresCapitulo}
                 />
               )}
-            </>
+            </div>
           )}
         </div>
 
-        {/* Barra Flotante Inferior para Series */}
+        {/* Barra inferior fija para guardar */}
         {esSerie && episodiosSeleccionados.length > 0 && (
-          <div className="p-4 bg-neutral-100 dark:bg-[#18181e] border-t border-neutral-200 dark:border-white/10 flex items-center justify-between px-8">
-            <span className="text-sm font-bold text-neutral-700 dark:text-neutral-300">
-              {episodiosSeleccionados.length} {episodiosSeleccionados.length === 1 ? 'capítulo restante seleccionado' : 'capítulos restantes seleccionados'}
+          <div className="p-3.5 sm:p-4 bg-[#fcfaf7] dark:bg-[#18181e] border-t border-neutral-300/80 dark:border-white/10 flex items-center justify-between gap-3 px-4 sm:px-6 flex-shrink-0 z-20">
+            <span className="text-xs sm:text-sm font-bold text-neutral-700 dark:text-neutral-200">
+              {episodiosSeleccionados.length} {episodiosSeleccionados.length === 1 ? 'capítulo seleccionado' : 'capítulos seleccionados'}
             </span>
             <button 
               type="button" 
               disabled={guardando} 
               onClick={handleGuardarSeleccionados} 
-              className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-extrabold px-6 py-2.5 rounded-xl shadow-lg transition cursor-pointer text-sm disabled:opacity-50"
+              className="bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-black px-4 sm:px-6 py-2.5 rounded-xl shadow-lg transition cursor-pointer text-xs sm:text-sm flex items-center gap-2 disabled:opacity-50"
             >
-              {guardando ? 'Guardando...' : '✓ Guardar seleccionados'}
+              {guardando ? (
+                <span>Guardando...</span>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Guardar seleccionados</span>
+                </>
+              )}
             </button>
           </div>
         )}
 
-        {/* Submodal: Filmografía del Actor */}
+        {/* Modales secundarios */}
         {actorParaFilmografia && (
           <ModalFilmografiaActor 
             actor={actorParaFilmografia} 
@@ -481,7 +486,6 @@ const [vistoConTexto, setVistoConTexto] = useState('');
           />
         )}
 
-        {/* Submodal: Reparto del Capítulo */}
         {actoresEpisodioModal && (
           <ModalActoresEpisodio 
             datos={actoresEpisodioModal} 

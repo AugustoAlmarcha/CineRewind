@@ -1,13 +1,18 @@
 const pool = require('../config/db');
 
-// Helper para obtener el ID real desde el token JWT o respaldo en body/params
+// 🛡️ Helper seguro: Prioriza SIEMPRE el token autenticado para evitar suplantaciones (IDOR)
 const resolverUsuarioId = (req) => {
-  return req.usuario?.id || req.body?.usuario_id || req.params?.usuario_id;
+  return req.usuario?.id || req.params?.usuario_id || null;
 };
 
 // POST: Registrar una película o serie individual (con soporte para Co-visualización)
 const registrarVisualizacion = async (req, res) => {
-  const usuario_id = resolverUsuarioId(req);
+  // 🛡️ Obligatorio que venga del token verificado
+  const usuario_id = req.usuario?.id;
+  if (!usuario_id) {
+    return res.status(401).json({ error: 'Acceso no autorizado: debes iniciar sesión' });
+  }
+
   const {
     tmdb_id,
     tipo,
@@ -19,11 +24,11 @@ const registrarVisualizacion = async (req, res) => {
     temporada,
     episodio,
     es_final_temporada,
-    amigos_etiquetados, // <-- Array de IDs de amigos: [2, 5]
+    amigos_etiquetados, // Array de IDs de amigos
     visto_con_texto,
   } = req.body;
 
-  if (!usuario_id || !tmdb_id || !tipo || !titulo || !fecha_visto) {
+  if (!tmdb_id || !tipo || !titulo || !fecha_visto) {
     return res.status(400).json({ error: 'Faltan campos obligatorios' });
   }
 
@@ -90,7 +95,7 @@ const registrarVisualizacion = async (req, res) => {
       tempNum,
       epNum,
       Boolean(es_final_temporada),
-      visto_con_texto || null
+      visto_con_texto ? String(visto_con_texto).trim() : null
     ]);
 
     const visualizacionId = resHistorial.rows[0].id;
@@ -169,7 +174,6 @@ const obtenerTimeline = async (req, res) => {
         o.poster_path AS poster_serie,
         o.poster_path AS poster_obra,
         COALESCE(h.foto_episodio, o.poster_path, '') AS poster_path,
-        -- Subconsulta para traer los amigos etiquetados
         COALESCE(
           (
             SELECT json_agg(
@@ -237,13 +241,14 @@ const eliminarVisualizacion = async (req, res) => {
   const { id } = req.params;
   const usuario_id = req.usuario?.id;
 
-  try {
-    const query = usuario_id
-      ? 'DELETE FROM historial_visualizaciones WHERE id = $1 AND usuario_id = $2 RETURNING *;'
-      : 'DELETE FROM historial_visualizaciones WHERE id = $1 RETURNING *;';
-    const params = usuario_id ? [id, usuario_id] : [id];
+  if (!usuario_id) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
 
-    const resultado = await pool.query(query, params);
+  try {
+    // 🛡️ Siempre restringido por usuario_id para evitar borrar datos ajenos
+    const query = 'DELETE FROM historial_visualizaciones WHERE id = $1 AND usuario_id = $2 RETURNING *;';
+    const resultado = await pool.query(query, [id, usuario_id]);
 
     if (resultado.rowCount === 0) {
       return res.status(404).json({ error: 'El registro no existe o no tienes permiso para eliminarlo' });
@@ -257,7 +262,12 @@ const eliminarVisualizacion = async (req, res) => {
 
 // POST: Registrar lote de capítulos con etiquetado de amigos
 const registrarLoteVisualizaciones = async (req, res) => {
-  const usuario_id = resolverUsuarioId(req);
+  // 🛡️ Siempre del usuario autenticado
+  const usuario_id = req.usuario?.id;
+  if (!usuario_id) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+
   const { 
     tmdb_id, 
     titulo, 
@@ -268,11 +278,11 @@ const registrarLoteVisualizaciones = async (req, res) => {
     fecha_visto, 
     fotos_episodios, 
     total_episodios_temporada,
-    amigos_etiquetados, // <-- Array de IDs de amigos
-    visto_con_texto,    // <-- Acompañantes manuales sin cuenta ("Mamá", "Hermana")
+    amigos_etiquetados,
+    visto_con_texto,
   } = req.body;
 
-  if (!usuario_id || !tmdb_id || !titulo || !temporada || !Array.isArray(episodios) || episodios.length === 0) {
+  if (!tmdb_id || !titulo || !temporada || !Array.isArray(episodios) || episodios.length === 0) {
     return res.status(400).json({ error: 'Faltan datos requeridos para el registro múltiple' });
   }
 
@@ -325,7 +335,7 @@ const registrarLoteVisualizaciones = async (req, res) => {
             ep, 
             fotoEp, 
             esFinTemp,
-            visto_con_texto ? String(visto_con_texto).trim() : null // <-- $9
+            visto_con_texto ? String(visto_con_texto).trim() : null
           ]
         );
         visualizacionId = insercion.rows[0].id;
@@ -333,7 +343,6 @@ const registrarLoteVisualizaciones = async (req, res) => {
         visualizacionId = existe.rows[0].id;
       }
 
-      // HU-10: Asignar amigos a cada capítulo procesado
       if (Array.isArray(amigos_etiquetados) && amigos_etiquetados.length > 0) {
         for (const amigoId of amigos_etiquetados) {
           const idAmigoNum = parseInt(amigoId, 10);
@@ -379,8 +388,12 @@ const registrarLoteVisualizaciones = async (req, res) => {
 
 // GET: Obtener capítulos ya vistos de una temporada
 const obtenerEpisodiosVistosTemporada = async (req, res) => {
-  const usuario_id = req.params.usuario_id || req.usuario?.id;
+  const usuario_id = req.usuario?.id || req.params.usuario_id;
   const { tmdb_id, temporada } = req.params;
+
+  if (!usuario_id) {
+    return res.status(400).json({ error: 'ID de usuario requerido' });
+  }
 
   try {
     const query = `
@@ -398,13 +411,13 @@ const obtenerEpisodiosVistosTemporada = async (req, res) => {
   }
 };
 
-// PATCH: Guardar o actualizar reseña y puntuación
 // PATCH: Guardar o actualizar reseña, calificación, plataforma y co-visualizaciones
 const actualizarReseniaYCalificacion = async (req, res) => {
   const { id } = req.params;
-  const { calificacion, resenia, plataforma, amigos_etiquetados,visto_con_texto } = req.body;
-  const usuario_id = resolverUsuarioId(req);
-
+  const { calificacion, resenia, plataforma, amigos_etiquetados, visto_con_texto } = req.body;
+  
+  // 🛡️ Siempre del token autenticado
+  const usuario_id = req.usuario?.id;
   if (!usuario_id) {
     return res.status(401).json({ error: 'Sesión no válida o usuario no autenticado' });
   }
@@ -415,13 +428,13 @@ const actualizarReseniaYCalificacion = async (req, res) => {
   }
 
   try {
-    // 1. Actualizar datos propios de la visualización
+    // 🛡️ Se corrigió la coma faltante en SQL entre plataforma y visto_con_texto
     const query = `
       UPDATE historial_visualizaciones
       SET 
         calificacion = COALESCE($1, calificacion),
         resenia = COALESCE($2, resenia),
-        plataforma = COALESCE($3, plataforma)
+        plataforma = COALESCE($3, plataforma),
         visto_con_texto = $4
       WHERE id = $5 AND usuario_id = $6
       RETURNING *;
@@ -437,12 +450,10 @@ const actualizarReseniaYCalificacion = async (req, res) => {
     ]);
 
     if (resultado.rowCount === 0) {
-      return res.status(404).json({ error: 'Registro no encontrado o no pertenece al usuario' });
+      return res.status(404).json({ error: 'Registro no encontrado o no pertenece a tu cuenta' });
     }
 
-    // 2. Sincronizar amigos en covisualizaciones si se pasaron en el cuerpo
     if (Array.isArray(amigos_etiquetados)) {
-      // Amigos que ya estaban asignados a esta visualización
       const actualesRes = await pool.query(
         'SELECT amigo_id FROM covisualizaciones WHERE visualizacion_id = $1',
         [visualizacionIdNum]
@@ -450,7 +461,6 @@ const actualizarReseniaYCalificacion = async (req, res) => {
       const actualesIds = actualesRes.rows.map((r) => r.amigo_id);
       const nuevosIds = amigos_etiquetados.map((id) => Number(id)).filter((id) => id && id !== usuario_id);
 
-      // Eliminar amigos desmarcados
       const paraEliminar = actualesIds.filter((id) => !nuevosIds.includes(id));
       if (paraEliminar.length > 0) {
         await pool.query(
@@ -459,7 +469,6 @@ const actualizarReseniaYCalificacion = async (req, res) => {
         );
       }
 
-      // Insertar nuevos amigos etiquetados en estado 'pendiente'
       for (const amigoId of nuevosIds) {
         await pool.query(
           `INSERT INTO covisualizaciones (visualizacion_id, amigo_id, estado)
@@ -480,22 +489,22 @@ const actualizarReseniaYCalificacion = async (req, res) => {
   }
 };
 
-// DELETE: Eliminar lote
+// DELETE: Eliminar lote de forma segura
 const eliminarLoteVisualizaciones = async (req, res) => {
   const { ids } = req.body;
   const usuario_id = req.usuario?.id;
+
+  if (!usuario_id) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
 
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ error: 'Debes enviar un arreglo de IDs a eliminar' });
   }
 
   try {
-    const query = usuario_id
-      ? 'DELETE FROM historial_visualizaciones WHERE id = ANY($1::int[]) AND usuario_id = $2 RETURNING id;'
-      : 'DELETE FROM historial_visualizaciones WHERE id = ANY($1::int[]) RETURNING id;';
-    const params = usuario_id ? [ids, usuario_id] : [ids];
-
-    const resultado = await pool.query(query, params);
+    const query = 'DELETE FROM historial_visualizaciones WHERE id = ANY($1::int[]) AND usuario_id = $2 RETURNING id;';
+    const resultado = await pool.query(query, [ids, usuario_id]);
 
     res.json({
       mensaje: `Se eliminaron ${resultado.rowCount} registros correctamente`,
@@ -509,7 +518,7 @@ const eliminarLoteVisualizaciones = async (req, res) => {
 
 // PATCH: Actualizar plataforma masivamente para una serie
 const actualizarPlataformaSerie = async (req, res) => {
-  const usuario_id = resolverUsuarioId(req);
+  const usuario_id = req.usuario?.id;
   const { obra_id, plataforma, solo_vacios } = req.body;
 
   if (!usuario_id || !obra_id || !plataforma) {
@@ -674,6 +683,7 @@ const obtenerRecordsUsuario = async (req, res) => {
     res.status(500).json({ error: 'Error del servidor al obtener récords' });
   }
 };
+
 // HU-13: Wrapped Anual / Mensual con Elenco Real de TMDb y Diagnóstico de IA
 const obtenerWrappedPeriodo = async (req, res) => {
   try {
@@ -778,7 +788,7 @@ const obtenerWrappedPeriodo = async (req, res) => {
     const diasNombres = ['Domingos', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados'];
     const diaTop = resDiaSemana.rows[0] ? diasNombres[resDiaSemana.rows[0].dia_numero] : null;
 
-    // 5. OBTENER AÑOS REALES QUE TIENEN HISTORIAL (Para el selector dinámico)
+    // 5. Años reales con historial
     const resAnios = await pool.query(`
       SELECT DISTINCT EXTRACT(YEAR FROM fecha_visto)::INT AS anio
       FROM historial_visualizaciones
@@ -787,12 +797,11 @@ const obtenerWrappedPeriodo = async (req, res) => {
     `, [usuarioId]);
     const aniosDisponibles = resAnios.rows.map((r) => r.anio);
 
-    // 6. BUSCAR EL ACTOR Y DIRECTOR REAL EN TMDB (Para que nunca más invente nombres)
+    // 6. Créditos reales de TMDb
     let actorReal = null;
     let directorReal = null;
     const apiKeyTMDB = process.env.TMDB_API_KEY;
 
-    // Buscamos el protagonista de la serie reina o la película reina en TMDb
     const obraParaCreditos = topSerie || topPelicula;
     if (obraParaCreditos && obraParaCreditos.tmdb_id && apiKeyTMDB) {
       try {
@@ -801,7 +810,6 @@ const obtenerWrappedPeriodo = async (req, res) => {
         const resCreditos = await fetch(tmdbUrl);
         if (resCreditos.ok) {
           const dataCreditos = await resCreditos.json();
-          // Actor principal (Top 1 del cast)
           if (dataCreditos.cast && dataCreditos.cast.length > 0) {
             const p = dataCreditos.cast[0];
             actorReal = {
@@ -811,7 +819,6 @@ const obtenerWrappedPeriodo = async (req, res) => {
               obra: obraParaCreditos.titulo
             };
           }
-          // Director / Creador
           const dir = dataCreditos.crew?.find((c) => c.job === 'Director' || c.job === 'Executive Producer');
           if (dir) {
             directorReal = {
@@ -826,13 +833,13 @@ const obtenerWrappedPeriodo = async (req, res) => {
       }
     }
 
-    // 7. CONSULTAR A GEMINI PARA EL VEREDICTO CINÉFILO REAL
+    // 7. Veredicto con Gemini (con modelo gemini-3.8-flash y fallback a 3.1-flash-lite)
     let veredictoIA = null;
     const geminiKey = process.env.GEMINI_API_KEY;
 
     if (geminiKey) {
       try {
-        const resumen = `
+        const resumenHistorial = `
           El usuario consumió en el año/período ${anioNum}:
           - Horas de pantalla: ${horasTotales}h
           - Capítulos de series: ${episodios}
@@ -846,7 +853,7 @@ const obtenerWrappedPeriodo = async (req, res) => {
         const prompt = `
           Eres un crítico de cine prestigioso, mordaz y con un humor sofisticado de festival internacional (estilo Letterboxd / premios Oscar).
           Evalúa el siguiente historial:
-          ${resumen}
+          ${resumenHistorial}
 
           Genera un diagnóstico en formato JSON puro (sin etiquetas markdown ni texto extra):
           {
@@ -856,8 +863,8 @@ const obtenerWrappedPeriodo = async (req, res) => {
           }
         `;
 
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        let geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -868,20 +875,30 @@ const obtenerWrappedPeriodo = async (req, res) => {
           }
         );
 
+        if (!geminiRes.ok) {
+          geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${geminiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { responseMimeType: 'application/json' }
+              }),
+            }
+          );
+        }
+
         if (geminiRes.ok) {
           const geminiData = await geminiRes.json();
           const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
           if (rawText) veredictoIA = JSON.parse(rawText);
-        } else {
-          const errBody = await geminiRes.text();
-          console.error('Error devuelto por la API de Gemini:', geminiRes.status, errBody);
         }
       } catch (errIA) {
-        console.error('Fallo en la llamada a Gemini:', errIA.message);
+        console.warn('Fallo en la llamada a Gemini, usando veredicto de respaldo:', errIA.message);
       }
     }
 
-    // Respaldo de seguridad solo si no hay internet o clave
     if (!veredictoIA) {
       veredictoIA = {
         arquetipo: horasTotales > 40 ? 'Espectador Obsesivo' : 'Cinéfilo Selecto',

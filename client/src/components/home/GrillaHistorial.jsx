@@ -4,6 +4,7 @@ import VistaCatalogoTotal from './VistaCatalogoTotal';
 import VistaSelectorCarpetas from './VistaSelectorCarpetas';
 import VistaFeedMes from './VistaFeedMes';
 
+
 const NOMBRES_MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
