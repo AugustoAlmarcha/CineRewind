@@ -474,23 +474,23 @@ export const obtenerMetricasAdminAPI = async () => {
   return data;
 };
 
-// HU-13: Obtener estadísticas de Wrapped (anual o mensual)
 export const obtenerWrappedPeriodoAPI = async (anio, mes = null) => {
   const token = localStorage.getItem('cinerewind_token');
   const url = mes 
-    ? `/api/historial/wrapped?anio=${anio}&mes=${mes}`
-    : `/api/historial/wrapped?anio=${anio}`;
+    ? `/api/historial/wrapped-periodo?anio=${anio}&mes=${mes}`
+    : `/api/historial/wrapped-periodo?anio=${anio}`;
 
   const res = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
   });
 
-  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.error || 'Error al obtener estadísticas del período');
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al obtener Wrapped');
   }
-  return data;
+
+  return await res.json();
 };

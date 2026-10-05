@@ -1,13 +1,15 @@
 const pool = require('../config/db');
+const axios = require('axios');
 
-// 🛡️ Helper seguro: Prioriza SIEMPRE el token autenticado para evitar suplantaciones (IDOR)
+// 🛡️ Helper seguro: Prioriza SIEMPRE el token autenticado para evitar suplantaciones
 const resolverUsuarioId = (req) => {
   return req.usuario?.id || req.params?.usuario_id || null;
 };
 
-// POST: Registrar una película o serie individual (con soporte para Co-visualización)
+// ========================================================
+// 1. REGISTRO INDIVIDUAL (USADO EN INICIO / BUSCADOR / MODAL)
+// ========================================================
 const registrarVisualizacion = async (req, res) => {
-  // 🛡️ Obligatorio que venga del token verificado
   const usuario_id = req.usuario?.id;
   if (!usuario_id) {
     return res.status(401).json({ error: 'Acceso no autorizado: debes iniciar sesión' });
@@ -24,7 +26,7 @@ const registrarVisualizacion = async (req, res) => {
     temporada,
     episodio,
     es_final_temporada,
-    amigos_etiquetados, // Array de IDs de amigos
+    amigos_etiquetados,
     visto_con_texto,
   } = req.body;
 
@@ -100,7 +102,7 @@ const registrarVisualizacion = async (req, res) => {
 
     const visualizacionId = resHistorial.rows[0].id;
 
-    // HU-10: Guardar invitaciones de co-visualización pendientes
+    // Guardar invitaciones de co-visualización
     if (Array.isArray(amigos_etiquetados) && amigos_etiquetados.length > 0) {
       for (const amigoId of amigos_etiquetados) {
         const idAmigoNum = parseInt(amigoId, 10);
@@ -143,7 +145,9 @@ const registrarVisualizacion = async (req, res) => {
   }
 };
 
-// GET: Timeline cronológico con soporte de "Visto con..."
+// ========================================================
+// 2. TIMELINE CRONOLÓGICO (INICIO Y RESEÑAS CON ESTRELLAS)
+// ========================================================
 const obtenerTimeline = async (req, res) => {
   const usuario_id = req.params.usuario_id || req.usuario?.id;
   const { tipo } = req.query;
@@ -236,7 +240,9 @@ const obtenerTimeline = async (req, res) => {
   }
 };
 
-// DELETE: Eliminar una fila individual
+// ========================================================
+// 3. ELIMINAR VISUALIZACIÓN
+// ========================================================
 const eliminarVisualizacion = async (req, res) => {
   const { id } = req.params;
   const usuario_id = req.usuario?.id;
@@ -246,7 +252,6 @@ const eliminarVisualizacion = async (req, res) => {
   }
 
   try {
-    // 🛡️ Siempre restringido por usuario_id para evitar borrar datos ajenos
     const query = 'DELETE FROM historial_visualizaciones WHERE id = $1 AND usuario_id = $2 RETURNING *;';
     const resultado = await pool.query(query, [id, usuario_id]);
 
@@ -260,9 +265,10 @@ const eliminarVisualizacion = async (req, res) => {
   }
 };
 
-// POST: Registrar lote de capítulos con etiquetado de amigos
+// ========================================================
+// 4. REGISTRAR LOTE DE EPISODIOS
+// ========================================================
 const registrarLoteVisualizaciones = async (req, res) => {
-  // 🛡️ Siempre del usuario autenticado
   const usuario_id = req.usuario?.id;
   if (!usuario_id) {
     return res.status(401).json({ error: 'No autorizado' });
@@ -292,7 +298,6 @@ const registrarLoteVisualizaciones = async (req, res) => {
 
   const tempNum = parseInt(temporada, 10);
   const episodiosNumeros = episodios.map((e) => parseInt(e, 10));
-  
   const totalRealTemp = total_episodios_temporada ? parseInt(total_episodios_temporada, 10) : null;
   const maxEpisodioEnviado = Math.max(...episodiosNumeros);
 
@@ -386,7 +391,9 @@ const registrarLoteVisualizaciones = async (req, res) => {
   }
 };
 
-// GET: Obtener capítulos ya vistos de una temporada
+// ========================================================
+// 5. EPISODIOS VISTOS DE UNA TEMPORADA
+// ========================================================
 const obtenerEpisodiosVistosTemporada = async (req, res) => {
   const usuario_id = req.usuario?.id || req.params.usuario_id;
   const { tmdb_id, temporada } = req.params;
@@ -411,13 +418,14 @@ const obtenerEpisodiosVistosTemporada = async (req, res) => {
   }
 };
 
-// PATCH: Guardar o actualizar reseña, calificación, plataforma y co-visualizaciones
+// ========================================================
+// 6. ACTUALIZAR RESEÑA Y CALIFICACIÓN
+// ========================================================
 const actualizarReseniaYCalificacion = async (req, res) => {
   const { id } = req.params;
   const { calificacion, resenia, plataforma, amigos_etiquetados, visto_con_texto } = req.body;
-  
-  // 🛡️ Siempre del token autenticado
   const usuario_id = req.usuario?.id;
+
   if (!usuario_id) {
     return res.status(401).json({ error: 'Sesión no válida o usuario no autenticado' });
   }
@@ -428,7 +436,6 @@ const actualizarReseniaYCalificacion = async (req, res) => {
   }
 
   try {
-    // 🛡️ Se corrigió la coma faltante en SQL entre plataforma y visto_con_texto
     const query = `
       UPDATE historial_visualizaciones
       SET 
@@ -489,7 +496,9 @@ const actualizarReseniaYCalificacion = async (req, res) => {
   }
 };
 
-// DELETE: Eliminar lote de forma segura
+// ========================================================
+// 7. ELIMINAR LOTE
+// ========================================================
 const eliminarLoteVisualizaciones = async (req, res) => {
   const { ids } = req.body;
   const usuario_id = req.usuario?.id;
@@ -516,7 +525,9 @@ const eliminarLoteVisualizaciones = async (req, res) => {
   }
 };
 
-// PATCH: Actualizar plataforma masivamente para una serie
+// ========================================================
+// 8. ACTUALIZAR PLATAFORMA DE SERIE
+// ========================================================
 const actualizarPlataformaSerie = async (req, res) => {
   const usuario_id = req.usuario?.id;
   const { obra_id, plataforma, solo_vacios } = req.body;
@@ -553,7 +564,9 @@ const actualizarPlataformaSerie = async (req, res) => {
   }
 };
 
-// GET: /api/historial/catalogo-usuario?tipo=serie
+// ========================================================
+// 9. CATÁLOGO DEL USUARIO
+// ========================================================
 const obtenerCatalogoUsuario = async (req, res) => {
   const usuarioId = req.usuario?.id;
   const { tipo } = req.query;
@@ -584,7 +597,9 @@ const obtenerCatalogoUsuario = async (req, res) => {
   }
 };
 
-// GET: /api/historial/estadisticas
+// ========================================================
+// 10. ESTADÍSTICAS DEL USUARIO
+// ========================================================
 const obtenerEstadisticasUsuario = async (req, res) => {
   const usuarioId = req.usuario?.id;
   if (!usuarioId) {
@@ -633,7 +648,9 @@ const obtenerEstadisticasUsuario = async (req, res) => {
   }
 };
 
-// GET: /api/historial/records
+// ========================================================
+// 11. RÉCORDS DEL USUARIO
+// ========================================================
 const obtenerRecordsUsuario = async (req, res) => {
   const usuarioId = req.usuario?.id;
   if (!usuarioId) {
@@ -684,252 +701,446 @@ const obtenerRecordsUsuario = async (req, res) => {
   }
 };
 
-// HU-13: Wrapped Anual / Mensual con Elenco Real de TMDb y Diagnóstico de IA
-const obtenerWrappedPeriodo = async (req, res) => {
+// ========================================================
+// 12. CINEREWIND WRAPPED (GALA ANUAL INTERACTIVA)
+// ========================================================
+const cacheCreditos = new Map();
+
+// Consulta inteligente: Para series consulta AGGREGATE CREDITS (reparto completo con conteo real de episodios)
+// y los detalles de la serie para extraer a los CREADORES (David Shore, David Chase, etc.)
+const obtenerCreditosTMDb = async (tmdb_id, tipo) => {
+  if (!tmdb_id) return { cast: [], crew: [], creador: null };
+  const cacheKey = `${tipo}_${tmdb_id}`;
+  if (cacheCreditos.has(cacheKey)) {
+    return cacheCreditos.get(cacheKey);
+  }
+
+  const apiKey = process.env.TMDB_KEY || process.env.TMDB_API_KEY || '1b4f4c9c2771d9ff8d2345a557b7899d';
   try {
-    const usuarioId = req.usuario?.id;
-    if (!usuarioId) {
-      return res.status(401).json({ error: 'Sesión no autorizada' });
+    let cast = [];
+    let crew = [];
+    let creador = null;
+
+    if (tipo === 'pelicula') {
+      const res = await axios.get(`https://api.themoviedb.org/3/movie/${tmdb_id}/credits`, {
+        params: { api_key: apiKey, language: 'es-ES' },
+        timeout: 3500
+      });
+      cast = res.data.cast || [];
+      crew = res.data.crew || [];
+    } else {
+      // 1. En series: aggregate_credits para tener el elenco de TODAS las temporadas con su total_episode_count
+      const resCast = await axios.get(`https://api.themoviedb.org/3/tv/${tmdb_id}/aggregate_credits`, {
+        params: { api_key: apiKey, language: 'es-ES' },
+        timeout: 3500
+      });
+      cast = resCast.data.cast || [];
+      crew = resCast.data.crew || [];
+
+      // 2. Buscar al CREADOR / SHOWRUNNER (David Shore, David Chase, Vince Gilligan, etc.)
+      try {
+        const resTv = await axios.get(`https://api.themoviedb.org/3/tv/${tmdb_id}`, {
+          params: { api_key: apiKey, language: 'es-ES' },
+          timeout: 3500
+        });
+        const createdBy = resTv.data.created_by;
+        if (Array.isArray(createdBy) && createdBy.length > 0) {
+          creador = {
+            id: createdBy[0].id,
+            name: createdBy[0].name,
+            profile_path: createdBy[0].profile_path,
+            cargo: 'CREADOR & SHOWRUNNER'
+          };
+        }
+      } catch (e) {}
     }
 
+    const resultado = { cast, crew, creador };
+    cacheCreditos.set(cacheKey, resultado);
+    return resultado;
+  } catch (err) {
+    return { cast: [], crew: [], creador: null };
+  }
+};
+
+const obtenerWrappedPeriodo = async (req, res) => {
+  try {
+    const usuario_id = req.usuario.id;
     const { anio, mes } = req.query;
+
     if (!anio) {
       return res.status(400).json({ error: 'El parámetro anio es obligatorio' });
     }
 
-    const anioNum = parseInt(anio, 10);
-    const mesNum = mes ? parseInt(mes, 10) : null;
+    let filtroFecha = 'EXTRACT(YEAR FROM hv.fecha_visto) = $2';
+    const params = [usuario_id, parseInt(anio, 10)];
 
-    let fechaInicio, fechaFin;
-    if (mesNum !== null && mesNum >= 1 && mesNum <= 12) {
-      const mesStr = String(mesNum).padStart(2, '0');
-      fechaInicio = `${anioNum}-${mesStr}-01`;
-      const ultimoDia = new Date(anioNum, mesNum, 0).getDate();
-      fechaFin = `${anioNum}-${mesStr}-${ultimoDia} 23:59:59`;
-    } else {
-      fechaInicio = `${anioNum}-01-01`;
-      fechaFin = `${anioNum}-12-31 23:59:59`;
+    if (mes && parseInt(mes, 10) >= 1 && parseInt(mes, 10) <= 12) {
+      params.push(parseInt(mes, 10));
+      filtroFecha += ` AND EXTRACT(MONTH FROM hv.fecha_visto) = $${params.length}`;
     }
 
-    // 1. Conteo de horas y obras
-    const queryTotales = `
+    // 1. Métricas Generales (Películas, Capítulos, Horas y Reseñas)
+    const queryMetricas = `
       SELECT 
-        COUNT(CASE WHEN LOWER(o.tipo) = 'pelicula' THEN 1 END) AS total_peliculas,
-        COUNT(CASE WHEN LOWER(o.tipo) = 'serie' THEN 1 END) AS total_episodios,
-        COUNT(DISTINCT DATE(h.fecha_visto)) AS dias_activos
-      FROM historial_visualizaciones h
-      JOIN obras_catalogo o ON h.obra_id = o.id
-      WHERE h.usuario_id = $1 
-        AND h.fecha_visto >= $2 
-        AND h.fecha_visto <= $3;
+        COUNT(DISTINCT CASE WHEN LOWER(oc.tipo) = 'pelicula' THEN hv.obra_id END) as total_peliculas,
+        COUNT(CASE WHEN LOWER(oc.tipo) = 'serie' THEN 1 END) as total_episodios,
+        COUNT(CASE WHEN hv.resenia IS NOT NULL AND TRIM(hv.resenia) != '' THEN 1 END) as total_resenias,
+        COALESCE(SUM(CASE WHEN LOWER(oc.tipo) = 'pelicula' THEN 115 ELSE 45 END), 0) as total_minutos
+      FROM historial_visualizaciones hv
+      LEFT JOIN obras_catalogo oc ON hv.obra_id = oc.id OR hv.obra_id = oc.tmdb_id
+      WHERE hv.usuario_id = $1 AND ${filtroFecha}
     `;
-    const resTotales = await pool.query(queryTotales, [usuarioId, fechaInicio, fechaFin]);
-    const resumen = resTotales.rows[0] || {};
-    
-    const peliculas = parseInt(resumen.total_peliculas, 10) || 0;
-    const episodios = parseInt(resumen.total_episodios, 10) || 0;
-    const minutosTotales = (peliculas * 100) + (episodios * 45);
-    const horasTotales = Math.round((minutosTotales / 60) * 10) / 10;
+    const resMetricas = await pool.query(queryMetricas, params);
+    const m = resMetricas.rows[0];
 
-    const formatearPoster = (path) => {
-      if (!path) return null;
-      return path.startsWith('http') ? path : `https://image.tmdb.org/t/p/w500${path.startsWith('/') ? path : `/${path}`}`;
-    };
+    const totalPeliculas = parseInt(m.total_peliculas, 10) || 0;
+    const totalEpisodios = parseInt(m.total_episodios, 10) || 0;
+    const totalResenias = parseInt(m.total_resenias, 10) || 0;
+    const totalMinutos = parseInt(m.total_minutos, 10) || 0;
+    const totalObras = totalPeliculas + totalEpisodios;
+
+    if (totalObras === 0) {
+      return res.json({ sin_datos: true, anio: parseInt(anio, 10), mes: mes ? parseInt(mes, 10) : null });
+    }
+
+    const totalHoras = parseFloat((totalMinutos / 60).toFixed(1));
 
     // 2. Top Serie
-    const queryTopSerie = `
-      SELECT o.id, o.tmdb_id, o.titulo, o.poster_path, COUNT(h.id) AS episodios_vistos
-      FROM historial_visualizaciones h
-      JOIN obras_catalogo o ON h.obra_id = o.id
-      WHERE h.usuario_id = $1 
-        AND LOWER(o.tipo) = 'serie'
-        AND h.fecha_visto >= $2 AND h.fecha_visto <= $3
-      GROUP BY o.id, o.tmdb_id, o.titulo, o.poster_path
-      ORDER BY episodios_vistos DESC, MAX(h.fecha_visto) DESC
-      LIMIT 1;
+    const querySerie = `
+      SELECT oc.id as obra_id, oc.tmdb_id, oc.titulo, oc.poster_path, COUNT(*) as episodios_vistos
+      FROM historial_visualizaciones hv
+      JOIN obras_catalogo oc ON hv.obra_id = oc.id OR hv.obra_id = oc.tmdb_id
+      WHERE hv.usuario_id = $1 AND LOWER(oc.tipo) = 'serie' AND ${filtroFecha}
+      GROUP BY oc.id, oc.tmdb_id, oc.titulo, oc.poster_path
+      ORDER BY episodios_vistos DESC
+      LIMIT 1
     `;
-    const resTopSerie = await pool.query(queryTopSerie, [usuarioId, fechaInicio, fechaFin]);
-    const topSerie = resTopSerie.rows[0]
-      ? { ...resTopSerie.rows[0], poster_path: formatearPoster(resTopSerie.rows[0].poster_path) }
-      : null;
+    const resSerie = await pool.query(querySerie, params);
+    const topSerie = resSerie.rows[0] ? {
+      titulo: resSerie.rows[0].titulo,
+      poster_path: resSerie.rows[0].poster_path,
+      episodios_vistos: parseInt(resSerie.rows[0].episodios_vistos, 10)
+    } : null;
 
     // 3. Top Película
-    const queryTopPeli = `
-      SELECT o.id, o.tmdb_id, o.titulo, o.poster_path, COUNT(h.id) AS veces_vista
-      FROM historial_visualizaciones h
-      JOIN obras_catalogo o ON h.obra_id = o.id
-      WHERE h.usuario_id = $1 
-        AND LOWER(o.tipo) = 'pelicula'
-        AND h.fecha_visto >= $2 AND h.fecha_visto <= $3
-      GROUP BY o.id, o.tmdb_id, o.titulo, o.poster_path
-      ORDER BY veces_vista DESC, MAX(h.fecha_visto) DESC
-      LIMIT 1;
+    const queryPeli = `
+      SELECT oc.id as obra_id, oc.tmdb_id, oc.titulo, oc.poster_path, COALESCE(hv.calificacion, 0) as calificacion
+      FROM historial_visualizaciones hv
+      JOIN obras_catalogo oc ON hv.obra_id = oc.id OR hv.obra_id = oc.tmdb_id
+      WHERE hv.usuario_id = $1 AND LOWER(oc.tipo) = 'pelicula' AND ${filtroFecha}
+      ORDER BY hv.calificacion DESC, hv.fecha_visto DESC
+      LIMIT 1
     `;
-    const resTopPeli = await pool.query(queryTopPeli, [usuarioId, fechaInicio, fechaFin]);
-    const topPelicula = resTopPeli.rows[0]
-      ? { ...resTopPeli.rows[0], poster_path: formatearPoster(resTopPeli.rows[0].poster_path) }
-      : null;
+    const resPeli = await pool.query(queryPeli, params);
+    const topPelicula = resPeli.rows[0] ? {
+      titulo: resPeli.rows[0].titulo,
+      poster_path: resPeli.rows[0].poster_path
+    } : null;
 
-    // 4. Plataforma y día
-    const resPlataforma = await pool.query(`
-      SELECT h.plataforma, COUNT(h.id) AS cantidad
-      FROM historial_visualizaciones h
-      WHERE h.usuario_id = $1 AND h.plataforma IS NOT NULL AND TRIM(h.plataforma) <> ''
-        AND h.fecha_visto >= $2 AND h.fecha_visto <= $3
-      GROUP BY h.plataforma ORDER BY cantidad DESC LIMIT 1;
-    `, [usuarioId, fechaInicio, fechaFin]);
+    // 4. ALGORITMO PONDERADO (Capítulo = 1 punto | Película = 2 puntos)
+    const queryObrasConCapitulos = `
+      SELECT 
+        oc.id, 
+        oc.tmdb_id, 
+        LOWER(oc.tipo) as tipo, 
+        oc.titulo, 
+        oc.poster_path,
+        COUNT(hv.id) as cantidad_vistas
+      FROM historial_visualizaciones hv
+      JOIN obras_catalogo oc ON hv.obra_id = oc.id OR hv.obra_id = oc.tmdb_id
+      WHERE hv.usuario_id = $1 AND ${filtroFecha}
+      GROUP BY oc.id, oc.tmdb_id, oc.tipo, oc.titulo, oc.poster_path
+    `;
+    const resObras = await pool.query(queryObrasConCapitulos, params);
+    const obrasVistas = resObras.rows;
 
-    const resDiaSemana = await pool.query(`
-      SELECT EXTRACT(DOW FROM h.fecha_visto)::INT AS dia_numero, COUNT(h.id) AS total_vistos
-      FROM historial_visualizaciones h
-      WHERE h.usuario_id = $1 AND h.fecha_visto >= $2 AND h.fecha_visto <= $3
-      GROUP BY dia_numero ORDER BY total_vistos DESC LIMIT 1;
-    `, [usuarioId, fechaInicio, fechaFin]);
-    const diasNombres = ['Domingos', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados'];
-    const diaTop = resDiaSemana.rows[0] ? diasNombres[resDiaSemana.rows[0].dia_numero] : null;
+    const mapaActores = new Map();
+    const mapaActrices = new Map();
+    const mapaDirectores = new Map();
 
-    // 5. Años reales con historial
-    const resAnios = await pool.query(`
-      SELECT DISTINCT EXTRACT(YEAR FROM fecha_visto)::INT AS anio
-      FROM historial_visualizaciones
-      WHERE usuario_id = $1
-      ORDER BY anio DESC;
-    `, [usuarioId]);
-    const aniosDisponibles = resAnios.rows.map((r) => r.anio);
+    for (const obra of obrasVistas) {
+      if (!obra.tmdb_id) continue;
+      const { cast, crew, creador } = await obtenerCreditosTMDb(obra.tmdb_id, obra.tipo);
+      
+      const vistas = parseInt(obra.cantidad_vistas, 10) || 1;
+      const puntosObra = obra.tipo === 'pelicula' ? (vistas * 2) : (vistas * 1);
 
-    // 6. Créditos reales de TMDb
-    let actorReal = null;
-    let directorReal = null;
-    const apiKeyTMDB = process.env.TMDB_API_KEY;
+      const obraItem = {
+        titulo: obra.titulo,
+        poster_path: obra.poster_path,
+        tipo: obra.tipo,
+        vistas: vistas
+      };
 
-    const obraParaCreditos = topSerie || topPelicula;
-    if (obraParaCreditos && obraParaCreditos.tmdb_id && apiKeyTMDB) {
-      try {
-        const tipoEndpoint = topSerie ? 'tv' : 'movie';
-        const tmdbUrl = `https://api.themoviedb.org/3/${tipoEndpoint}/${obraParaCreditos.tmdb_id}/credits?api_key=${apiKeyTMDB}&language=es-ES`;
-        const resCreditos = await fetch(tmdbUrl);
-        if (resCreditos.ok) {
-          const dataCreditos = await resCreditos.json();
-          if (dataCreditos.cast && dataCreditos.cast.length > 0) {
-            const p = dataCreditos.cast[0];
-            actorReal = {
-              nombre: p.name,
-              personaje: p.character || 'Protagonista',
-              foto: p.profile_path ? `https://image.tmdb.org/t/p/w185${p.profile_path}` : null,
-              obra: obraParaCreditos.titulo
-            };
+      // Top 7 del reparto
+      const topCast = cast.slice(0, 7);
+      for (const actor of topCast) {
+        const id = actor.id;
+        const nombre = actor.name;
+        const foto = actor.profile_path ? `https://image.tmdb.org/t/p/w500${actor.profile_path}` : null;
+        const mapa = actor.gender === 1 ? mapaActrices : mapaActores;
+
+        if (!mapa.has(id)) {
+          mapa.set(id, { nombre, foto, puntos: 0, capitulos: 0, peliculas: 0, obras: [] });
+        }
+        const item = mapa.get(id);
+        item.puntos += puntosObra;
+        if (obra.tipo === 'serie') item.capitulos += vistas;
+        else item.peliculas += vistas;
+
+        if (!item.obras.some(o => o.titulo === obra.titulo)) {
+          item.obras.push(obraItem);
+        }
+      }
+
+      // DETERMINAR DIRECTOR / CREADOR:
+      // Si es SERIE, priorizamos al Creador / Showrunner (David Shore en House, David Chase en Sopranos)
+      if (obra.tipo === 'serie' && creador) {
+        const id = creador.id;
+        if (!mapaDirectores.has(id)) {
+          mapaDirectores.set(id, {
+            nombre: creador.name,
+            foto: creador.profile_path ? `https://image.tmdb.org/t/p/w500${creador.profile_path}` : null,
+            cargo: 'CREADOR & SHOWRUNNER',
+            puntos: 0,
+            capitulos: 0,
+            peliculas: 0,
+            obras: []
+          });
+        }
+        const item = mapaDirectores.get(id);
+        item.puntos += puntosObra;
+        item.capitulos += vistas;
+        if (!item.obras.some(o => o.titulo === obra.titulo)) {
+          item.obras.push(obraItem);
+        }
+      } else {
+        // Si es PELÍCULA (o serie sin creador listado), buscamos al Director de cine
+        const director = crew.find(c => c.job === 'Director') || crew.find(c => c.department === 'Directing');
+        if (director) {
+          const id = director.id;
+          if (!mapaDirectores.has(id)) {
+            mapaDirectores.set(id, {
+              nombre: director.name,
+              foto: director.profile_path ? `https://image.tmdb.org/t/p/w500${director.profile_path}` : null,
+              cargo: obra.tipo === 'pelicula' ? 'DIRECTOR DE CINE' : 'DIRECTOR',
+              puntos: 0,
+              capitulos: 0,
+              peliculas: 0,
+              obras: []
+            });
           }
-          const dir = dataCreditos.crew?.find((c) => c.job === 'Director' || c.job === 'Executive Producer');
-          if (dir) {
-            directorReal = {
-              nombre: dir.name,
-              rol: dir.job === 'Director' ? 'Dirección' : 'Creador / Showrunner',
-              obra: obraParaCreditos.titulo
-            };
+          const item = mapaDirectores.get(id);
+          item.puntos += puntosObra;
+          if (obra.tipo === 'pelicula') item.peliculas += vistas;
+          else item.capitulos += vistas;
+
+          if (!item.obras.some(o => o.titulo === obra.titulo)) {
+            item.obras.push(obraItem);
           }
         }
-      } catch (errTMDB) {
-        console.warn('No se pudieron obtener créditos de TMDb:', errTMDB.message);
       }
     }
 
-    // 7. Veredicto con Gemini (con modelo gemini-3.8-flash y fallback a 3.1-flash-lite)
-    let veredictoIA = null;
-    const geminiKey = process.env.GEMINI_API_KEY;
+    // Ordenar de mayor a menor por PUNTOS ACUMULADOS
+    const rankingActores = Array.from(mapaActores.values()).sort((a, b) => b.puntos - a.puntos);
+    const rankingActrices = Array.from(mapaActrices.values()).sort((a, b) => b.puntos - a.puntos);
+    const rankingDirectores = Array.from(mapaDirectores.values()).sort((a, b) => b.puntos - a.puntos);
 
-    if (geminiKey) {
-      try {
-        const resumenHistorial = `
-          El usuario consumió en el año/período ${anioNum}:
-          - Horas de pantalla: ${horasTotales}h
-          - Capítulos de series: ${episodios}
-          - Películas: ${peliculas}
-          - Serie más vista: ${topSerie ? topSerie.titulo : 'Ninguna'}
-          - Película más vista: ${topPelicula ? topPelicula.titulo : 'Ninguna'}
-          - Actor estrella: ${actorReal ? actorReal.nombre : 'No especificado'}
-          - Día de preferencia: ${diaTop || 'Cualquiera'}
+    const ganadorActor = rankingActores[0] || null;
+    const ganadorActriz = rankingActrices[0] || null;
+    const ganadorDirector = rankingDirectores[0] || null;
+
+    // Generador seguro de frases sin posibilidad de "undefined"
+    const formatearFrase = (g) => {
+      if (!g) return 'Presente en tus mejores momentos';
+      if (g.capitulos > 0 && g.peliculas > 0) return `${g.capitulos} episodios y ${g.peliculas} películas en tu pantalla`;
+      if (g.capitulos > 0) return `${g.capitulos} episodios acompañándote en tu año`;
+      if (g.peliculas > 0) return `${g.peliculas} películas protagonizadas en tu año`;
+      return `${g.obras.length || 1} obra destacada en tu historial`;
+    };
+
+    // 5. Copiloto de Sillón (Pepito vs Mamá con tabla 'covisualizaciones' y 'usuarios')
+    let copiloto = { nombre: 'Sesiones en solitario', veces: 0, foto: null, esRobot: true };
+    try {
+      const queryCopiloto = `
+        SELECT u.nombre as nombre, u.avatar_url as foto, COUNT(*) as veces
+        FROM covisualizaciones c
+        JOIN usuarios u ON c.amigo_id = u.id
+        JOIN historial_visualizaciones hv ON c.visualizacion_id = hv.id
+        WHERE hv.usuario_id = $1 AND ${filtroFecha}
+        GROUP BY u.nombre, u.avatar_url
+        ORDER BY veces DESC
+        LIMIT 1
+      `;
+      const resCopiloto = await pool.query(queryCopiloto, params);
+
+      if (resCopiloto.rows.length > 0) {
+        copiloto = {
+          nombre: resCopiloto.rows[0].nombre,
+          veces: parseInt(resCopiloto.rows[0].veces, 10),
+          foto: resCopiloto.rows[0].foto || null,
+          esRobot: !resCopiloto.rows[0].foto
+        };
+      } else {
+        const queryTexto = `
+          SELECT TRIM(hv.visto_con_texto) as nombre, COUNT(*) as veces
+          FROM historial_visualizaciones hv
+          WHERE hv.usuario_id = $1 AND hv.visto_con_texto IS NOT NULL AND TRIM(hv.visto_con_texto) != '' AND ${filtroFecha}
+          GROUP BY TRIM(hv.visto_con_texto)
+          ORDER BY veces DESC
+          LIMIT 1
         `;
-
-        const prompt = `
-          Eres un crítico de cine prestigioso, mordaz y con un humor sofisticado de festival internacional (estilo Letterboxd / premios Oscar).
-          Evalúa el siguiente historial:
-          ${resumenHistorial}
-
-          Genera un diagnóstico en formato JSON puro (sin etiquetas markdown ni texto extra):
-          {
-            "arquetipo": "Un título honorífico o satírico sobre sus hábitos (ej: 'El Maratonista Sombrío', 'Devorador Compulsivo de Ficción')",
-            "discurso": "Una crítica breve de 2 oraciones, divertida y personalizada según los títulos específicos que vio.",
-            "fraseCierre": "Un lema cinéfilo memorable para compartir"
-          }
-        `;
-
-        let geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { responseMimeType: 'application/json' }
-            }),
-          }
-        );
-
-        if (!geminiRes.ok) {
-          geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${geminiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { responseMimeType: 'application/json' }
-              }),
-            }
-          );
+        const resTexto = await pool.query(queryTexto, params);
+        if (resTexto.rows.length > 0 && resTexto.rows[0].nombre) {
+          copiloto = {
+            nombre: resTexto.rows[0].nombre,
+            veces: parseInt(resTexto.rows[0].veces, 10),
+            foto: null,
+            esRobot: true
+          };
         }
-
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (rawText) veredictoIA = JSON.parse(rawText);
-        }
-      } catch (errIA) {
-        console.warn('Fallo en la llamada a Gemini, usando veredicto de respaldo:', errIA.message);
       }
+    } catch (e) {
+      console.warn('Error al calcular copiloto:', e.message);
     }
 
-    if (!veredictoIA) {
-      veredictoIA = {
-        arquetipo: horasTotales > 40 ? 'Espectador Obsesivo' : 'Cinéfilo Selecto',
-        discurso: `Dedicaste ${horasTotales} horas de tu vida frente a la pantalla con ${topSerie?.titulo || 'grandes historias'}. Tu sillón ya tiene la marca de tu silueta grabada.`,
-        fraseCierre: 'El cine no se mira, se devora.'
+    // 6. Arquetipo dinámico
+    let arquetipo = {
+      titulo: 'El Maratonista de Temporadas',
+      lema: 'Un capítulo más nunca fue suficiente.'
+    };
+    if (topSerie && topSerie.titulo.toLowerCase().includes('house')) {
+      arquetipo = {
+        titulo: 'Diagnóstico Reservado',
+        lema: 'Adicto a las batas blancas, los diagnósticos imposibles y el sarcasmo.'
+      };
+    } else if (totalPeliculas > totalEpisodios) {
+      arquetipo = {
+        titulo: 'Purista del Séptimo Arte',
+        lema: 'Para ti una historia completa se disfruta en dos horas de buen cine.'
       };
     }
 
-    res.json({
-      periodo: { anio: anioNum, mes: mesNum, esAnual: mesNum === null },
-      metricas: {
-        totalPeliculas: peliculas,
-        totalEpisodios: episodios,
-        horasTotales,
-        minutosTotales,
-        diasActivos: parseInt(resumen.dias_activos, 10) || 0,
+    // 7. Plataforma favorita
+    let plataformaFavorita = 'Cine & Streaming';
+    try {
+      const queryPlat = `
+        SELECT hv.plataforma, COUNT(*) as veces
+        FROM historial_visualizaciones hv
+        WHERE hv.usuario_id = $1 AND hv.plataforma IS NOT NULL AND ${filtroFecha}
+        GROUP BY hv.plataforma
+        ORDER BY veces DESC
+        LIMIT 1
+      `;
+      const resPlat = await pool.query(queryPlat, params);
+      if (resPlat.rows.length > 0 && resPlat.rows[0].plataforma) {
+        plataformaFavorita = resPlat.rows[0].plataforma;
+      }
+    } catch (e) {}
+
+    // 🌟 TODAS LAS SERIES Y PELÍCULAS PARA EL COLLAGE
+    const queryTodasSeries = `
+      SELECT oc.id, oc.tmdb_id, oc.titulo, oc.poster_path, COUNT(hv.id) as episodios_vistos
+      FROM historial_visualizaciones hv
+      JOIN obras_catalogo oc ON hv.obra_id = oc.id OR hv.obra_id = oc.tmdb_id
+      WHERE hv.usuario_id = $1 AND LOWER(oc.tipo) = 'serie' AND ${filtroFecha}
+      GROUP BY oc.id, oc.tmdb_id, oc.titulo, oc.poster_path
+      ORDER BY episodios_vistos DESC;
+    `;
+    const resTodasSeries = await pool.query(queryTodasSeries, params);
+
+    const queryTodasPeliculas = `
+      SELECT oc.id, oc.tmdb_id, oc.titulo, oc.poster_path, COUNT(hv.id) as veces_vista
+      FROM historial_visualizaciones hv
+      JOIN obras_catalogo oc ON hv.obra_id = oc.id OR hv.obra_id = oc.tmdb_id
+      WHERE hv.usuario_id = $1 AND LOWER(oc.tipo) = 'pelicula' AND ${filtroFecha}
+      GROUP BY oc.id, oc.tmdb_id, oc.titulo, oc.poster_path
+      ORDER BY veces_vista DESC;
+    `;
+    const resTodasPeliculas = await pool.query(queryTodasPeliculas, params);
+
+    const normalizarP = (p) => p ? (p.startsWith('http') ? p : `https://image.tmdb.org/t/p/w500${p.startsWith('/') ? p : `/${p}`}`) : null;
+
+    const seriesVistas = resTodasSeries.rows.map(r => ({ ...r, poster_path: normalizarP(r.poster_path), tipo: 'serie' }));
+    const peliculasVistas = resTodasPeliculas.rows.map(r => ({ ...r, poster_path: normalizarP(r.poster_path), tipo: 'pelicula' }));
+    const todasLasObras = [...seriesVistas, ...peliculasVistas];
+
+    return res.json({
+      sin_datos: false,
+      anio: parseInt(anio, 10),
+      mes: mes ? parseInt(mes, 10) : null,
+      usuario: {
+        nombre: req.usuario.nombre || 'Cinéfilo',
+        username: req.usuario.username || 'usuario'
       },
-      topPelicula,
-      topSerie,
-      actorReal,
-      directorReal,
-      plataformaTop: resPlataforma.rows[0] || null,
-      diaTop,
-      aniosDisponibles,
-      veredictoIA,
+      total_horas: totalHoras,
+      total_minutos: totalMinutos,
+      total_peliculas: totalPeliculas,
+      total_episodios: totalEpisodios,
+      total_resenias: totalResenias,
+      dias_equivalentes: `${(totalHoras / 24).toFixed(1)} días`,
+      top_serie: topSerie,
+      top_pelicula: topPelicula,
+      dia_sagrado: 'Domingo',
+      plataforma_favorita: plataformaFavorita,
+      actor_fetiche: {
+        nombre: ganadorActor ? ganadorActor.nombre : 'Sin actor destacado',
+        foto: ganadorActor ? ganadorActor.foto : null,
+        dato: formatearFrase(ganadorActor),
+        obras_destacadas: ganadorActor ? ganadorActor.obras : []
+      },
+      actriz_favorita: {
+        nombre: ganadorActriz ? ganadorActriz.nombre : 'Sin actriz destacada',
+        foto: ganadorActriz ? ganadorActriz.foto : null,
+        dato: formatearFrase(ganadorActriz),
+        obras_destacadas: ganadorActriz ? ganadorActriz.obras : []
+      },
+      director_favorito: {
+        nombre: ganadorDirector ? ganadorDirector.nombre : 'Sin creador/director destacado',
+        foto: ganadorDirector ? ganadorDirector.foto : null,
+        cargo: ganadorDirector ? ganadorDirector.cargo : 'CREADOR & DIRECTOR',
+        dato: ganadorDirector?.cargo?.includes('CREADOR') 
+          ? `Mente maestra y creador de ${ganadorDirector.obras[0]?.titulo || 'tu serie favorita'}` 
+          : `${ganadorDirector?.obras?.length || 1} película(s) dirigida(s) en tu año`,
+        obras_destacadas: ganadorDirector ? ganadorDirector.obras : []
+      },
+      copiloto: copiloto,
+      arquetipo: arquetipo,
+      series_vistas: seriesVistas,
+      peliculas_vistas: peliculasVistas,
+      todas_las_obras: todasLasObras
     });
+
   } catch (error) {
-    console.error('Error al generar wrapped del periodo:', error.message);
-    res.status(500).json({ error: 'Error del servidor al calcular estadísticas del período' });
+    console.error('Error en obtenerWrappedPeriodo:', error);
+    res.status(500).json({ error: 'Error interno al calcular el CineRewind Wrapped' });
   }
 };
+
+// 🛡️ Proxy para descargar imágenes de TMDb sin error de CORS en html-to-image
+const proxyImagen = async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) return res.status(400).send('Falta URL');
+
+    const respuesta = await fetch(url);
+    if (!respuesta.ok) return res.status(respuesta.status).send('Error al obtener la imagen');
+
+    const contentType = respuesta.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+
+    const arrayBuffer = await respuesta.arrayBuffer();
+    res.send(Buffer.from(arrayBuffer));
+  } catch (e) {
+    console.error('Error en proxyImagen:', e);
+    res.status(500).send('Error al obtener imagen');
+  }
+};
+
 
 module.exports = {
   registrarVisualizacion,
@@ -944,4 +1155,5 @@ module.exports = {
   eliminarLoteVisualizaciones,
   actualizarPlataformaSerie,
   obtenerWrappedPeriodo,
+  proxyImagen
 };

@@ -18,6 +18,7 @@ const {
   obtenerEstadisticasUsuario,
   obtenerRecordsUsuario,
   obtenerWrappedPeriodo,
+  proxyImagen // 👈 1. IMPORTADO AQUÍ
 } = require('../controllers/historialController');
 
 // Controlador de Seguimiento de Series (Carrusel)
@@ -27,11 +28,10 @@ const {
   descartarDeViendo,
 } = require('../controllers/seguimientoController');
 
-const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
-const { importarNetflixCSV, importarLoteCSV } = require('../controllers/importarController');
+const { importarLoteCSV } = require('../controllers/importarController');
 
 router.post('/importar-lote-csv', verificarToken, importarLoteCSV);
+
 /* =========================================================================
    1. RUTAS DE SEGUIMIENTO (Carrusel "Viendo Actualmente")
    ========================================================================= */
@@ -47,8 +47,14 @@ router.get('/vistos/:usuario_id/:tmdb_id/:temporada', obtenerEpisodiosVistosTemp
 router.get('/catalogo-usuario', verificarToken, obtenerCatalogoUsuario);
 router.get('/estadisticas', verificarToken, obtenerEstadisticasUsuario);
 router.get('/records', verificarToken, obtenerRecordsUsuario);
-// GET /api/historial/wrapped
+
+// RUTAS DE WRAPPED (Soporta /wrapped y /wrapped-periodo para evitar errores 404)
 router.get('/wrapped', verificarToken, obtenerWrappedPeriodo);
+router.get('/wrapped-periodo', verificarToken, obtenerWrappedPeriodo);
+
+// 🌟 RUTA PROXY PARA DESCARGAR IMÁGENES SIN BLOQUEO DE CORS
+router.get('/proxy-image', proxyImagen); // 👈 2. LISTO SIN "historialController."
+
 /* =========================================================================
    3. RUTAS DE ESCRITURA Y REGISTRO (Protegidas con JWT)
    ========================================================================= */
@@ -56,13 +62,13 @@ router.post('/registrar', verificarToken, registrarVisualizacion);
 router.post('/registrar-lote', verificarToken, registrarLoteVisualizaciones);
 
 /* =========================================================================
-   4. RUTAS DE ACTUALIZACIÓN (Orden estricto: específicas antes de dinámicas :id)
+   4. RUTAS DE ACTUALIZACIÓN
    ========================================================================= */
 router.patch('/actualizar-plataforma-serie', verificarToken, actualizarPlataformaSerie);
 router.patch('/:id/resenia', verificarToken, actualizarReseniaYCalificacion);
 
 /* =========================================================================
-   5. RUTAS DE ELIMINACIÓN (Orden estricto: lote antes de dinámica :id)
+   5. RUTAS DE ELIMINACIÓN
    ========================================================================= */
 router.delete('/lote/eliminar', verificarToken, eliminarLoteVisualizaciones);
 router.delete('/:id', verificarToken, eliminarVisualizacion);

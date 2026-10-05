@@ -1,343 +1,571 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import confetti from 'canvas-confetti';
+import { toPng } from 'html-to-image';
+import { X, Play, Pause, ChevronLeft, ChevronRight, Film } from 'lucide-react';
 
-const NOMBRES_MESES = [
-  '', 'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
-  'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
-];
+// Submódulos
+import LogoCineRewind from './wrapped/LogoCineRewind';
+import SlideClaqueta from './wrapped/SlideClaqueta';
+import SlideHoras from './wrapped/SlideHoras';
+import SlideTopSerie from './wrapped/SlideTopSerie';
+import SlideSobreHonor from './wrapped/SlideSobreHonor';
+import SlideSeriesCollage from './wrapped/SlideSeriesCollage';
+import SlidePeliculasCollage from './wrapped/SlidePeliculasCollage';
+import SlideMuralCompleto from './wrapped/SlideMuralCompleto';
+import SlideHabitos from './wrapped/SlideHabitos';
+import SlideArquetipo from './wrapped/SlideArquetipo';
+import SlideTarjetaVIP from './wrapped/SlideTarjetaVIP';
+
+const playSound = (tipo) => {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (tipo === 'clap') {
+      const bufferSize = ctx.sampleRate * 0.08;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+      noise.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start();
+    } else if (tipo === 'fanfare') {
+      [440, 554, 659, 880].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.1, ctx.currentTime + i * 0.09);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.09 + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.09);
+        osc.stop(ctx.currentTime + i * 0.09 + 0.35);
+      });
+    }
+  } catch (e) {}
+};
+
+const TOTAL_SLIDES = 13;
+const DURATION_MS = 8500;
 
 export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
-  const [indiceActual, setIndiceActual] = useState(0);
+  const [slideActual, setSlideActual] = useState(0);
   const [pausado, setPausado] = useState(false);
+  const [progreso, setProgreso] = useState(0);
+  const [claquetaGolpeada, setClaquetaGolpeada] = useState(false);
+  const [sobreAbierto, setSobreAbierto] = useState(false);
+  const [descargando, setDescargando] = useState(false);
+  const [copiado, setCopiado] = useState(false);
 
-  const historias = useMemo(() => {
-    if (!datosWrapped) return [];
-    const { metricas, topSerie, topPelicula, plataformaTop, diaTop, periodo, actorReal, directorReal, veredictoIA } = datosWrapped;
-    const lista = [];
+  // Candado para evitar que el timer o clics rápidos salten 2 diapositivas de golpe
+  const transitionLockRef = useRef(false);
 
-    // 1. STORY: TOTAL DE HORAS (Estilo Neón Grande)
-    lista.push({
-      id: 'horas',
-      bg: 'bg-[#d8ff00] text-black',
-      barraColor: 'bg-black',
-      render: () => (
-        <div className="flex flex-col justify-between h-full p-8 select-none animate-fadeIn">
-          <div>
-            <span className="text-[10px] font-black tracking-widest uppercase bg-black text-[#d8ff00] px-3 py-1 rounded-md">
-              CINEREWIND • {periodo.esAnual ? periodo.anio : NOMBRES_MESES[periodo.mes]}
-            </span>
-          </div>
+  // DATOS REALES DE TU BASE DE DATOS DEDUPLICADOS
+  const stats = useMemo(() => {
+    if (!datosWrapped || datosWrapped.sin_datos) return null;
 
-          <div className="my-auto leading-none tracking-tighter">
-            <p className="text-7xl sm:text-8xl font-black text-black">{metricas.horasTotales}</p>
-            <p className="text-3xl font-black text-black/80 mt-2">HORAS DE PANTALLA</p>
-            <div className="mt-8 space-y-2 text-sm font-black text-black/75">
-              <p>— {metricas.totalEpisodios} episodios maratoneados</p>
-              <p>— {metricas.totalPeliculas} largometrajes disfrutados</p>
-              <p>— {metricas.diasActivos} días con el reproductor encendido</p>
-            </div>
-          </div>
+    const totalHoras = Number(datosWrapped.total_horas || 0);
+    const totalMinutos = Number(datosWrapped.total_minutos || Math.round(totalHoras * 60));
+    const totalPeliculas = Number(datosWrapped.total_peliculas || 0);
+    const totalEpisodios = Number(datosWrapped.total_episodios || 0);
+    const totalResenias = Number(datosWrapped.total_resenias || 0);
 
-          <p className="text-xs font-black uppercase tracking-wider text-black/60">
-            Tu viaje cinematográfico resumido.
-          </p>
-        </div>
-      ),
-    });
+    // 🌟 DEDUPLICACIÓN: Evita que si viste 8 capítulos de Stranger Things se repita 8 veces
+    const seriesRaw = datosWrapped.series_vistas || datosWrapped.series || [];
+    const seriesUnicas = [];
+    const seriesVistasSet = new Set();
 
-    // 2. STORY: SERIE REINA (EMMY)
-    if (topSerie) {
-      lista.push({
-        id: 'serie',
-        bg: 'bg-[#5117d9] text-white',
-        barraColor: 'bg-[#d8ff00]',
-        render: () => (
-          <div className="flex flex-col justify-between h-full p-8 select-none text-center animate-fadeIn">
-            <div>
-              <span className="text-xs font-black tracking-widest uppercase text-[#d8ff00]">
-                PREMIO EMMY DE LA AUDIENCIA
-              </span>
-              <h2 className="text-2xl font-black uppercase mt-1">Serie del Año</h2>
-            </div>
-
-            <div className="relative mx-auto my-auto w-56 aspect-[2/3] flex items-center justify-center">
-              <div className="absolute -inset-3 bg-gradient-to-tr from-amber-400 via-rose-500 to-[#d8ff00] rounded-3xl blur-xs animate-pulse opacity-80" />
-              <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-white/80 shadow-2xl">
-                <img src={topSerie.poster_path} alt={topSerie.titulo} className="w-full h-full object-cover" />
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-3xl font-black tracking-tight leading-tight uppercase">
-                {topSerie.titulo}
-              </h3>
-              <p className="text-sm font-bold text-[#d8ff00] mt-1">
-                {topSerie.episodios_vistos} capítulos devorados
-              </p>
-            </div>
-          </div>
-        ),
-      });
+    for (const s of seriesRaw) {
+      if (!s || !s.poster_path || typeof s.poster_path !== 'string') continue;
+      const cleanPath = s.poster_path.trim();
+      if (cleanPath === '' || cleanPath.includes('null') || cleanPath.includes('undefined')) continue;
+      
+      const clave = String(s.id || s.serie_id || s.titulo || '').toLowerCase().trim();
+      if (clave && !seriesVistasSet.has(clave)) {
+        seriesVistasSet.add(clave);
+        seriesUnicas.push(s);
+      }
     }
 
-    // 3. STORY: ACTOR PRINCIPAL REAL (De TMDb con foto real de perfil)
-    if (actorReal) {
-      lista.push({
-        id: 'actor',
-        bg: 'bg-[#ff1744] text-white',
-        barraColor: 'bg-white',
-        render: () => (
-          <div className="flex flex-col justify-between h-full p-8 select-none text-center animate-fadeIn">
-            <div>
-              <span className="text-xs font-black tracking-widest uppercase text-amber-200">
-                MEJOR INTERPRETACIÓN PROTAGÓNICA
-              </span>
-              <h2 className="text-2xl font-black uppercase mt-1">Tu Actor Fetiche</h2>
-            </div>
+    const peliculasRaw = datosWrapped.peliculas_vistas || datosWrapped.peliculas || [];
+    const peliculasUnicas = [];
+    const peliculasVistasSet = new Set();
 
-            <div className="my-auto space-y-5">
-              {actorReal.foto ? (
-                <div className="w-40 h-40 mx-auto rounded-full overflow-hidden border-4 border-white shadow-2xl">
-                  <img src={actorReal.foto} alt={actorReal.nombre} className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div className="w-32 h-32 mx-auto rounded-full bg-white/20 border-2 border-white flex items-center justify-center text-4xl font-mono font-black">
-                  CR
-                </div>
-              )}
+    for (const p of peliculasRaw) {
+      if (!p || !p.poster_path || typeof p.poster_path !== 'string') continue;
+      const cleanPath = p.poster_path.trim();
+      if (cleanPath === '' || cleanPath.includes('null') || cleanPath.includes('undefined')) continue;
 
-              <div>
-                <h3 className="text-3xl font-black uppercase tracking-tight text-white">
-                  {actorReal.nombre}
-                </h3>
-                <p className="text-base font-bold text-amber-200 mt-1">
-                  En el papel de "{actorReal.personaje}"
-                </p>
-                <p className="text-xs font-medium text-white/80 mt-1 uppercase tracking-wider">
-                  Por su papel en {actorReal.obra}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-[10px] font-black uppercase tracking-widest text-white/70">
-              Datos oficiales de elenco vía TMDb
-            </p>
-          </div>
-        ),
-      });
+      const clave = String(p.id || p.pelicula_id || p.titulo || '').toLowerCase().trim();
+      if (clave && !peliculasVistasSet.has(clave)) {
+        peliculasVistasSet.add(clave);
+        peliculasUnicas.push(p);
+      }
     }
 
-    // 4. STORY: MEJOR PELÍCULA (Solo si vio películas)
-    if (topPelicula && metricas.totalPeliculas > 0) {
-      lista.push({
-        id: 'peli',
-        bg: 'bg-[#ff8f00] text-black',
-        barraColor: 'bg-black',
-        render: () => (
-          <div className="flex flex-col justify-between h-full p-8 select-none text-center animate-fadeIn">
-            <div>
-              <span className="text-xs font-black tracking-widest uppercase text-black/70">
-                PREMIO OSCAR DE TU CARTELERA
-              </span>
-              <h2 className="text-2xl font-black uppercase mt-1 text-black">Película del Año</h2>
-            </div>
+    const todasLasObras = [...seriesUnicas, ...peliculasUnicas];
 
-            <div className="relative mx-auto my-auto w-56 aspect-[2/3] flex items-center justify-center">
-              <div className="absolute -inset-3 bg-black/20 rounded-3xl blur-xs" />
-              <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-black/80 shadow-2xl">
-                <img src={topPelicula.poster_path} alt={topPelicula.titulo} className="w-full h-full object-cover" />
-              </div>
-            </div>
+    return {
+      anio: datosWrapped.anio || new Date().getFullYear(),
+      usuario: datosWrapped.usuario || { nombre: 'Tu Perfil', username: 'usuario' },
+      totalHoras,
+      totalMinutos,
+      totalPeliculas,
+      totalEpisodios,
+      totalResenias,
+      totalObras: totalPeliculas + totalEpisodios,
+      diasEquivalentes: datosWrapped.dias_equivalentes || `${(totalHoras / 24).toFixed(1)} días`,
+      topSerie: datosWrapped.top_serie || null,
+      topPelicula: datosWrapped.top_pelicula || null,
+      diaSagrado: datosWrapped.dia_sagrado || 'Domingo',
+      plataforma: datosWrapped.plataforma_favorita || 'Cine & Streaming',
+      seriesVistas: seriesUnicas,
+      peliculasVistas: peliculasUnicas,
+      todasLasObras,
+      sobres: [
+        {
+          id: 'actor',
+          titulo: 'SOBRE DE HONOR · ACTOR DEL AÑO',
+          subtitulo: 'Intérprete más presente en tus títulos',
+          ganador: datosWrapped.actor_fetiche?.nombre || 'Sin actor destacado',
+          foto: datosWrapped.actor_fetiche?.foto || null,
+          frase: datosWrapped.actor_fetiche?.dato || 'Presente en tus mejores noches',
+          titulos_destacados: (datosWrapped.actor_fetiche?.obras_destacadas || []).filter((o) => o && (typeof o === 'string' || o.titulo)),
+          dato: 'Actor Top',
+          tipo: 'actor',
+          bordeColor: '#fbbf24',
+          bgGradient: 'from-amber-600 via-amber-800 to-zinc-950'
+        },
+        {
+          id: 'actriz',
+          titulo: 'SOBRE DE HONOR · ACTRIZ DEL AÑO',
+          subtitulo: 'Presencia protagónica destacada',
+          ganador: datosWrapped.actriz_favorita?.nombre || 'Sin actriz destacada',
+          foto: datosWrapped.actriz_favorita?.foto || null,
+          frase: datosWrapped.actriz_favorita?.dato || 'Calificaciones sobresalientes en tu historial',
+          titulos_destacados: (datosWrapped.actriz_favorita?.obras_destacadas || []).filter((o) => o && (typeof o === 'string' || o.titulo)),
+          dato: 'Actriz Top',
+          tipo: 'actriz',
+          bordeColor: '#f472b6',
+          bgGradient: 'from-pink-600 via-rose-800 to-zinc-950'
+        },
+        {
+          id: 'director',
+          titulo: 'SOBRE DE HONOR · DIRECTOR / CREADOR',
+          subtitulo: 'La visión cinematográfica de tu año',
+          ganador: datosWrapped.director_favorito?.nombre || 'Director Destacado',
+          foto: datosWrapped.director_favorito?.foto || null,
+          cargo: datosWrapped.director_favorito?.cargo || 'Creador / Director',
+          frase: datosWrapped.director_favorito?.dato || 'La batuta que guio tus sesiones',
+          titulos_destacados: (datosWrapped.director_favorito?.obras_destacadas || []).filter((o) => o && (typeof o === 'string' || o.titulo)),
+          dato: datosWrapped.director_favorito?.cargo || 'Director / Creador Top',
+          tipo: 'director',
+          bordeColor: '#34d399',
+          bgGradient: 'from-emerald-600 via-teal-850 to-zinc-950'
+        },
+        {
+          id: 'copiloto',
+          titulo: 'SOBRE DE HONOR · COPILOTO DE SILLÓN',
+          subtitulo: 'Acompañante de visualizaciones',
+          ganador: datosWrapped.copiloto?.nombre || 'Sesiones en solitario',
+          foto: datosWrapped.copiloto?.foto || null,
+          esRobot: !datosWrapped.copiloto?.foto,
+          frase: datosWrapped.copiloto?.veces ? `${datosWrapped.copiloto.veces} obras compartidas` : 'Tus horas de cine personal',
+          titulos_destacados: [],
+          dato: 'Copiloto',
+          tipo: 'copiloto',
+          bordeColor: '#22d3ee',
+          bgGradient: 'from-cyan-600 via-blue-850 to-zinc-950'
+        }
+      ],
+      arquetipo: datosWrapped.arquetipo || {
+        titulo: 'El Jurado de Cannes',
+        lema: 'Analizas cada plano con pasión y devoras temporadas con criterio de festival.'
+      }
+    };
+  }, [datosWrapped]);
 
-            <div>
-              <h3 className="text-3xl font-black tracking-tight leading-tight uppercase text-black">
-                {topPelicula.titulo}
-              </h3>
-              <p className="text-sm font-bold text-black/80 mt-1">
-                La gran protagonista de tus noches de cine
-              </p>
-            </div>
-          </div>
-        ),
-      });
-    }
+  // NAVEGACIÓN PRECISA: avanza estrictamente 1 slide con candado antirrebote
+  const avanzarUnSlide = useCallback(() => {
+    if (transitionLockRef.current) return;
+    transitionLockRef.current = true;
+    setSlideActual((prev) => (prev < TOTAL_SLIDES - 1 ? prev + 1 : prev));
+    setProgreso(0);
+    setTimeout(() => {
+      transitionLockRef.current = false;
+    }, 350);
+  }, []);
 
-    // 5. STORY: HÁBITOS DE REPRODUCCIÓN (Letterboxd)
-    lista.push({
-      id: 'habitos',
-      bg: 'bg-[#003820] text-white',
-      barraColor: 'bg-[#00e676]',
-      render: () => (
-        <div className="flex flex-col justify-between h-full p-8 select-none text-left animate-fadeIn">
-          <div>
-            <span className="text-[10px] font-black tracking-widest uppercase bg-[#00e676] text-[#003820] px-3 py-1 rounded-md">
-              HÁBITOS DE ESPECTADOR
-            </span>
-            <h2 className="text-3xl font-black uppercase mt-3">Tu Ritual</h2>
-          </div>
+  const retrocederUnSlide = useCallback(() => {
+    if (transitionLockRef.current) return;
+    transitionLockRef.current = true;
+    setSlideActual((prev) => (prev > 0 ? prev - 1 : 0));
+    setProgreso(0);
+    setTimeout(() => {
+      transitionLockRef.current = false;
+    }, 350);
+  }, []);
 
-          <div className="space-y-6 my-auto">
-            {plataformaTop && (
-              <div className="border-b border-white/20 pb-4">
-                <p className="text-xs uppercase font-bold text-[#00e676]">Plataforma Fetiche</p>
-                <p className="text-4xl font-black tracking-tight">{plataformaTop.plataforma}</p>
-                <p className="text-xs text-white/70 mt-1">{plataformaTop.cantidad} reproducciones registradas</p>
-              </div>
-            )}
-
-            {diaTop && (
-              <div className="border-b border-white/20 pb-4">
-                <p className="text-xs uppercase font-bold text-[#00e676]">Día Sagrado</p>
-                <p className="text-4xl font-black tracking-tight">Los {diaTop}</p>
-                <p className="text-xs text-white/70 mt-1">El día que más disfrutaste tus historias</p>
-              </div>
-            )}
-
-            {directorReal && (
-              <div>
-                <p className="text-xs uppercase font-bold text-[#00e676]">{directorReal.rol} Destacado</p>
-                <p className="text-2xl font-black tracking-tight">{directorReal.nombre}</p>
-                <p className="text-xs text-white/70 mt-1">Por {directorReal.obra}</p>
-              </div>
-            )}
-          </div>
-
-          <p className="text-xs text-white/50 uppercase font-black tracking-wider">
-            Siguiente: El Veredicto Final →
-          </p>
-        </div>
-      ),
-    });
-
-    // 6. STORY: EL VEREDICTO DE LA INTELIGENCIA ARTIFICIAL
-    if (veredictoIA) {
-      lista.push({
-        id: 'veredicto',
-        bg: 'bg-[#121217] text-white border-4 border-amber-400',
-        barraColor: 'bg-amber-400',
-        render: () => (
-          <div className="flex flex-col justify-between h-full p-8 select-none text-left animate-fadeIn">
-            <div>
-              <span className="text-[10px] font-black tracking-widest uppercase bg-amber-400 text-black px-3 py-1 rounded-md">
-                DIAGNÓSTICO OFICIAL CINEREWIND
-              </span>
-              <p className="text-xs font-bold text-neutral-400 mt-2 uppercase tracking-wider">
-                Veredicto del Jurado
-              </p>
-            </div>
-
-            <div className="my-auto space-y-6">
-              <div>
-                <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-widest block mb-1">
-                  ARQUETIPO CINÉFILO
-                </span>
-                <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white leading-tight">
-                  {veredictoIA.arquetipo}
-                </h2>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-white/5 border border-white/10">
-                <p className="text-sm font-medium text-neutral-200 leading-relaxed italic">
-                  "{veredictoIA.discurso}"
-                </p>
-              </div>
-
-              <p className="text-xs font-mono text-amber-300 font-bold uppercase tracking-wider">
-                — {veredictoIA.fraseCierre}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={alCerrar}
-              className="w-full py-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-black font-black text-xs uppercase tracking-wider shadow-xl transition cursor-pointer active:scale-95 text-center"
-            >
-              Cerrar CineRewind
-            </button>
-          </div>
-        ),
-      });
-    }
-
-    return lista;
-  }, [datosWrapped, alCerrar]);
-
-  const totalHistorias = historias.length;
+  const irASlide = useCallback((indice) => {
+    if (transitionLockRef.current) return;
+    setProgreso(0);
+    setSlideActual(indice);
+  }, []);
 
   useEffect(() => {
-    if (!abierto) {
-      setIndiceActual(0);
-      return;
-    }
-    if (pausado || totalHistorias === 0) return;
+    if (!abierto) return;
+    setSlideActual(0);
+    setProgreso(0);
+    setPausado(false);
+  }, [abierto]);
 
-    const timer = setTimeout(() => {
-      if (indiceActual < totalHistorias - 1) {
-        setIndiceActual((prev) => prev + 1);
-      } else {
-        alCerrar();
+  // 🌟 FIX DEL TIMER: Avanza exactamente 1 diapositiva y pausa si abres un sobre
+  useEffect(() => {
+    if (!abierto || pausado || !stats) return;
+    if (sobreAbierto) return;
+
+    setProgreso(0);
+    const start = Date.now();
+    const duracion = DURATION_MS;
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const pct = Math.min(100, (elapsed / duracion) * 100);
+      setProgreso(pct);
+
+      if (elapsed >= duracion) {
+        clearInterval(interval);
+        avanzarUnSlide();
       }
-    }, 6500);
+    }, 40);
 
-    return () => clearTimeout(timer);
-  }, [abierto, indiceActual, pausado, totalHistorias, alCerrar]);
+    return () => clearInterval(interval);
+  }, [abierto, slideActual, pausado, sobreAbierto, stats, avanzarUnSlide]);
 
-  if (!abierto || !datosWrapped || totalHistorias === 0) return null;
+  useEffect(() => {
+    if (slideActual === 0) setClaquetaGolpeada(false);
+    if (slideActual >= 3 && slideActual <= 6) setSobreAbierto(false);
+  }, [slideActual]);
 
-  const historiaActiva = historias[indiceActual];
-
-  const avanzar = () => {
-    if (indiceActual < totalHistorias - 1) setIndiceActual((prev) => prev + 1);
-    else alCerrar();
+  const handleGolpearClaqueta = () => {
+    playSound('clap');
+    setClaquetaGolpeada(!claquetaGolpeada);
   };
 
-  const retroceder = () => {
-    if (indiceActual > 0) setIndiceActual((prev) => prev - 1);
+  const handleIniciar = () => {
+    playSound('clap');
+    setClaquetaGolpeada(true);
+    setTimeout(() => {
+      avanzarUnSlide();
+    }, 450);
   };
+
+  const abrirSobre = () => {
+    setSobreAbierto(true);
+    playSound('fanfare');
+    lanzarConfetti();
+  };
+
+  const lanzarConfetti = () => {
+    confetti({
+      particleCount: 85,
+      spread: 90,
+      origin: { y: 0.6 },
+      colors: ['#facc15', '#ec4899', '#38bdf8', '#a3e635', '#ffffff', '#f97316']
+    });
+  };
+
+  const obtenerUrlImagenSegura = useCallback((url) => {
+    if (!url) return '';
+    if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+    let tmdbUrl = url;
+    if (url.startsWith('/')) {
+      tmdbUrl = `https://image.tmdb.org/t/p/w500${url}`;
+    }
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      return `http://localhost:5000/api/historial/proxy-image?url=${encodeURIComponent(tmdbUrl)}`;
+    }
+    return tmdbUrl;
+  }, []);
+
+  const descargarElemento = async (ref, nombreArchivo) => {
+    if (!ref.current) return;
+    setDescargando(true);
+    try {
+      const dataUrl = await toPng(ref.current, { 
+        quality: 0.98, 
+        pixelRatio: 2, 
+        skipFonts: true, 
+        cacheBust: true,
+        backgroundColor: '#0a0a0f',
+        style: {
+          margin: '0',
+          transform: 'none'
+        }
+      });
+      const a = document.createElement('a');
+      a.download = `${nombreArchivo}.png`;
+      a.href = dataUrl;
+      a.click();
+      playSound('fanfare');
+    } catch (err) {
+      console.error('Error al generar imagen:', err);
+    } finally {
+      setDescargando(false);
+    }
+  };
+
+  const compartirEnRedes = async (ref, titulo) => {
+    if (!ref.current) return;
+    setDescargando(true);
+    try {
+      const dataUrl = await toPng(ref.current, { 
+        quality: 0.98, 
+        pixelRatio: 2, 
+        skipFonts: true, 
+        cacheBust: true,
+        backgroundColor: '#0a0a0f',
+        style: {
+          margin: '0',
+          transform: 'none'
+        }
+      });
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `${titulo}.png`, { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Mi CineRewind ${stats?.anio}`,
+          text: `¡Mira mi CineRewind ${stats?.anio}! 🍿✨`
+        });
+      } else {
+        const a = document.createElement('a');
+        a.download = `${titulo}.png`;
+        a.href = dataUrl;
+        a.click();
+      }
+    } catch (e) {
+      console.warn('Error al compartir:', e);
+    } finally {
+      setDescargando(false);
+    }
+  };
+
+  const copiarResumen = () => {
+    if (!stats) return;
+    const texto = `🍿 ¡Mi CineRewind Gala Pop ${stats.anio}! 🍿\n` +
+      `⏱️ ${stats.totalHoras} horas en pantalla (${stats.totalMinutos.toLocaleString()} minutos)\n` +
+      `📺 ${stats.totalEpisodios} capítulos de serie | 🎬 ${stats.totalPeliculas} películas\n` +
+      `🏆 Top Serie: ${stats.topSerie?.titulo || 'Viendo'}\n` +
+      `🍿 Top Película: ${stats.topPelicula?.titulo || 'Favorita'}\n` +
+      `🎖️ Arquetipo: "${stats.arquetipo.titulo}"\n` +
+      `Descubre tu año en CineRewind ✨`;
+    navigator.clipboard.writeText(texto);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  };
+
+  if (!abierto) return null;
+
+  if (!stats || datosWrapped?.sin_datos) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+        <div className="bg-zinc-900 border border-zinc-700 p-6 rounded-3xl max-w-sm text-center text-white shadow-2xl">
+          <Film className="w-12 h-12 text-yellow-400 mx-auto mb-3" />
+          <h3 className="text-xl font-black mb-1">Sin registros en este año</h3>
+          <p className="text-xs text-zinc-400 mb-5">
+            No tienes películas o capítulos registrados en tu historial de visualizaciones durante este período.
+          </p>
+          <button 
+            onClick={alCerrar}
+            className="w-full py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-black rounded-xl text-xs cursor-pointer shadow-lg"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const coloresSlide = [
+    '#facc15', '#bef264', '#10b981', '#f59e0b', '#ec4899', '#10b981', 
+    '#06b6d4', '#6366f1', '#f43f5e', '#facc15', '#fde047', '#a855f7', '#facc15'
+  ];
+  const colorActivo = coloresSlide[slideActual] || '#facc15';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fadeIn select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/95 backdrop-blur-xl select-none">
       <div 
-        className={`relative w-full max-w-sm h-[680px] rounded-[36px] overflow-hidden shadow-2xl flex flex-col justify-between transition-colors duration-500 ${historiaActiva.bg}`}
-        onMouseDown={() => setPausado(true)}
-        onMouseUp={() => setPausado(false)}
-        onTouchStart={() => setPausado(true)}
-        onTouchEnd={() => setPausado(false)}
+        className="relative w-full max-w-md sm:max-3xl lg:max-w-4xl h-[94vh] max-h-[860px] rounded-3xl overflow-hidden shadow-2xl border-3 flex flex-col justify-between transition-all duration-300 bg-black"
+        style={{ 
+          borderColor: colorActivo,
+          boxShadow: `0 0 50px ${colorActivo}40`
+        }}
       >
-        <div className="absolute top-4 left-4 right-4 z-30 flex gap-1.5">
-          {historias.map((h, idx) => (
-            <div key={idx} className="h-1 flex-1 bg-black/30 rounded-full overflow-hidden">
-              <div
-                className={`h-full ${h.barraColor || 'bg-white'} rounded-full transition-all ${
-                  idx < indiceActual 
-                    ? 'w-full' 
-                    : idx === indiceActual 
-                      ? 'w-full duration-[6500ms] ease-linear' 
-                      : 'w-0'
-                }`}
-              />
+        {/* Barra superior de progreso */}
+        <div className="relative z-30 pt-3 px-4 sm:px-6 bg-gradient-to-b from-black/90 to-transparent pb-2">
+          <div className="flex items-center gap-1.5 w-full">
+            {Array.from({ length: TOTAL_SLIDES }).map((_, i) => (
+              <div 
+                key={i} 
+                className="flex-1 h-1.5 rounded-full bg-white/20 overflow-hidden cursor-pointer"
+                onClick={() => irASlide(i)}
+              >
+                <div 
+                  className="h-full transition-all duration-75"
+                  style={{
+                    width: i < slideActual ? '100%' : i === slideActual ? `${progreso}%` : '0%',
+                    backgroundColor: i === slideActual ? colorActivo : '#ffffff'
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between mt-2.5 text-xs text-white">
+            <div className="flex items-center gap-2">
+              <LogoCineRewind tamano="sm" conTexto={false} />
+              <span className="font-black font-mono uppercase tracking-wider flex items-center gap-1.5" style={{ color: colorActivo }}>
+                <span>CineRewind Gala · {stats.anio}</span>
+                <span className="text-[10px] text-zinc-400">({slideActual + 1}/{TOTAL_SLIDES})</span>
+              </span>
             </div>
-          ))}
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setPausado(!pausado)} 
+                className="p-1 rounded-lg bg-black/50 hover:bg-black text-white cursor-pointer border border-white/10"
+              >
+                {pausado ? <Play className="w-3.5 h-3.5 fill-white" /> : <Pause className="w-3.5 h-3.5 fill-white" />}
+              </button>
+              <button 
+                onClick={alCerrar} 
+                className="p-1 rounded-lg bg-black/50 hover:bg-black text-white cursor-pointer border border-white/10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
 
-        <button
-          onClick={alCerrar}
-          className="absolute top-7 right-4 z-30 w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center text-xs transition cursor-pointer"
+        {/* DIAPOSITIVA ACTIVA */}
+        <div className="relative z-10 flex-1 flex items-center justify-center p-2 sm:p-5 overflow-hidden">
+          {slideActual === 0 && (
+            <SlideClaqueta
+              stats={stats}
+              claquetaGolpeada={claquetaGolpeada}
+              onGolpearClaqueta={handleGolpearClaqueta}
+              onIniciar={handleIniciar}
+            />
+          )}
+
+          {slideActual === 1 && (
+            <SlideHoras
+              stats={stats}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {slideActual === 2 && (
+            <SlideTopSerie
+              stats={stats}
+              obtenerUrlImagenSegura={obtenerUrlImagenSegura}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {slideActual >= 3 && slideActual <= 6 && (
+            <SlideSobreHonor
+              sobre={stats.sobres[slideActual - 3]}
+              sobreAbierto={sobreAbierto}
+              onAbrirSobre={abrirSobre}
+              onCerrarSobre={() => setSobreAbierto(false)}
+              onConfetti={lanzarConfetti}
+              onSiguiente={avanzarUnSlide}
+              obtenerUrlImagenSegura={obtenerUrlImagenSegura}
+            />
+          )}
+
+          {slideActual === 7 && (
+            <SlideSeriesCollage
+              stats={stats}
+              obtenerUrlImagenSegura={obtenerUrlImagenSegura}
+              descargarElemento={descargarElemento}
+              compartirEnRedes={compartirEnRedes}
+              descargando={descargando}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {slideActual === 8 && (
+            <SlidePeliculasCollage
+              stats={stats}
+              obtenerUrlImagenSegura={obtenerUrlImagenSegura}
+              descargarElemento={descargarElemento}
+              compartirEnRedes={compartirEnRedes}
+              descargando={descargando}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {slideActual === 9 && (
+            <SlideMuralCompleto
+              stats={stats}
+              obtenerUrlImagenSegura={obtenerUrlImagenSegura}
+              descargarElemento={descargarElemento}
+              compartirEnRedes={compartirEnRedes}
+              descargando={descargando}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {slideActual === 10 && (
+            <SlideHabitos
+              stats={stats}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {slideActual === 11 && (
+            <SlideArquetipo
+              stats={stats}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {slideActual === 12 && (
+            <SlideTarjetaVIP
+              stats={stats}
+              obtenerUrlImagenSegura={obtenerUrlImagenSegura}
+              descargarElemento={descargarElemento}
+              compartirEnRedes={compartirEnRedes}
+              copiarResumen={copiarResumen}
+              copiado={copiado}
+              descargando={descargando}
+            />
+          )}
+        </div>
+
+        {/* Flechas de navegación */}
+        <button 
+          onClick={retrocederUnSlide} 
+          disabled={slideActual === 0} 
+          className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/90 text-white disabled:opacity-0 cursor-pointer border border-white/20 z-40 transition-all"
         >
-          ✕
+          <ChevronLeft className="w-5 h-5" />
         </button>
-
-        <div className="absolute inset-y-14 left-0 w-1/3 z-20 cursor-pointer" onClick={retroceder} />
-        <div className="absolute inset-y-14 right-0 w-2/3 z-20 cursor-pointer" onClick={avanzar} />
-
-        <div className="relative z-10 flex-1 pt-8 pb-4">
-          {historiaActiva.render()}
-        </div>
-
-        <div className="pb-3 text-center z-10 opacity-50">
-          <p className="text-[10px] uppercase font-bold tracking-widest">
-            Toca a los lados para saltar • Mantén para pausar
-          </p>
-        </div>
+        <button 
+          onClick={avanzarUnSlide} 
+          disabled={slideActual === TOTAL_SLIDES - 1} 
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/90 text-white disabled:opacity-0 cursor-pointer border border-white/20 z-40 transition-all"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
       </div>
     </div>
   );

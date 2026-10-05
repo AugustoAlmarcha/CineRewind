@@ -117,8 +117,8 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         actores: data.actores || []
       });
     } catch (err) {
-      console.error('Error cargando actores del episodio:', err);
-      alert('No se pudo cargar el reparto de este capítulo.');
+      console.warn('No se pudo cargar el reparto de este capítulo:', err);
+      setErrorRegistro('No se pudo cargar el reparto de este capítulo.');
     }
   };
 
@@ -376,7 +376,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           </div>
         </div>
 
-        {/* Alerta de error */}
+        {/* Alerta de error estilizada en la interfaz (0 alerts de windows) */}
         {errorRegistro && (
           <div className="mx-4 mt-3 p-3 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold rounded-2xl flex items-center justify-between gap-3 animate-fadeIn flex-shrink-0">
             <div className="flex items-center gap-2">
@@ -393,10 +393,8 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           </div>
         )}
 
-        {/* Contenedor desplazable con los chips horizontales */}
+        {/* Contenedor con los chips */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-          
-          {/* Barra compacta de micro-chips */}
           <BarraConfiguracionRegistro
             plataforma={plataforma}
             setPlataforma={setPlataforma}
@@ -412,7 +410,6 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
             onSeleccionarActor={(actor) => setActorParaFilmografia(actor)}
           />
 
-          {/* Temporadas y episodios o vista de película */}
           {!esSerie ? (
             <div className="pt-2">
               <VistaRegistroPelicula 
@@ -448,7 +445,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           )}
         </div>
 
-        {/* Barra inferior fija para guardar */}
+        {/* Barra inferior para guardar */}
         {esSerie && episodiosSeleccionados.length > 0 && (
           <div className="p-3.5 sm:p-4 bg-[#fcfaf7] dark:bg-[#18181e] border-t border-neutral-300/80 dark:border-white/10 flex items-center justify-between gap-3 px-4 sm:px-6 flex-shrink-0 z-20">
             <span className="text-xs sm:text-sm font-bold text-neutral-700 dark:text-neutral-200">

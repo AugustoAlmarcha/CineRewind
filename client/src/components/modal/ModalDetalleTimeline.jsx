@@ -27,15 +27,12 @@ export default function ModalDetalleTimeline({
   const visualizacionId = item.visualizacion_id || item.id;
   const esSerie = item.tipo?.toLowerCase() === 'serie';
   const obraIdReal = item.obra_id;
-  
-  // Detección robusta del ID de TMDb
-  const tmdbId = item.tmdb_id || item.obra_tmdb_id || (item.tipo?.toLowerCase() === 'pelicula' ? item.id : null);
 
   const [calificacion, setCalificacion] = useState(item.calificacion ? Number(item.calificacion) : 0);
   const [resenia, setResenia] = useState(item.resenia || '');
   const [plataforma, setPlataforma] = useState(item.plataforma || '');
   const [alcancePlataforma, setAlcancePlataforma] = useState('solo_este');
-const [amigosSeleccionados, setAmigosSeleccionados] = useState(
+  const [amigosSeleccionados, setAmigosSeleccionados] = useState(
     item.amigos_covision ? item.amigos_covision.map((a) => a.amigo_id) : []
   );
   const [vistoConTexto, setVistoConTexto] = useState(item.visto_con_texto || '');
@@ -57,18 +54,13 @@ const [amigosSeleccionados, setAmigosSeleccionados] = useState(
       return fechaStr;
     }
   };
-  
 
-  // FILTRO INTELIGENTE DE FECHAS:
-  // - En Series: Solo fechas en que viste ESTE capítulo exacto (temporada + episodio)
-  // - En Películas: Todas las veces que viste esta película (rewatchs)
   const fechasVistas = useMemo(() => {
     if (!Array.isArray(todasLasVisualizaciones) || todasLasVisualizaciones.length === 0 || !obraIdReal) {
       return [{ fecha_visto: item.fecha_visto, plataforma: item.plataforma }];
     }
 
     if (esSerie) {
-      // Filtrar únicamente el mismo capítulo
       const mismoCapitulo = todasLasVisualizaciones.filter((v) => 
         Number(v.obra_id) === Number(obraIdReal) &&
         Number(v.temporada) === Number(item.temporada) &&
@@ -76,7 +68,6 @@ const [amigosSeleccionados, setAmigosSeleccionados] = useState(
       );
       return mismoCapitulo.length > 0 ? mismoCapitulo : [{ fecha_visto: item.fecha_visto, plataforma: item.plataforma }];
     } else {
-      // Es Película: todas las veces que se vio esa película
       const vecesVista = todasLasVisualizaciones
         .filter((v) => Number(v.obra_id) === Number(obraIdReal))
         .sort((a, b) => new Date(b.fecha_visto) - new Date(a.fecha_visto));
@@ -84,11 +75,8 @@ const [amigosSeleccionados, setAmigosSeleccionados] = useState(
     }
   }, [todasLasVisualizaciones, obraIdReal, esSerie, item]);
 
-// 2. CARGAR DETALLE Y ACTORES (TMDb)
-useEffect(() => {
+  useEffect(() => {
     let cancelado = false;
-
-    // Resetear estados al cambiar de obra
     setDetalle(null);
     setActores([]);
     setSinopsisTexto(obraActual.sinopsis || '');
@@ -163,13 +151,13 @@ useEffect(() => {
     if (!visualizacionId) return;
     setGuardando(true);
     try {
-await guardarReseniaAPI(visualizacionId, {
-      calificacion: calificacion > 0 ? Number(calificacion) : null,
-      resenia: resenia.trim() || null,
-      plataforma: plataforma || null,
-      amigos_etiquetados: amigosSeleccionados, // <--- ÚNICO CAMBIO AQUÍ
-      visto_con_texto: vistoConTexto.trim() || null,
-    });
+      await guardarReseniaAPI(visualizacionId, {
+        calificacion: calificacion > 0 ? Number(calificacion) : null,
+        resenia: resenia.trim() || null,
+        plataforma: plataforma || null,
+        amigos_etiquetados: amigosSeleccionados,
+        visto_con_texto: vistoConTexto.trim() || null,
+      });
 
       if (esSerie && obraIdReal && plataforma && plataforma !== 'Sin plataforma' && alcancePlataforma !== 'solo_este') {
         try {
@@ -186,7 +174,7 @@ await guardarReseniaAPI(visualizacionId, {
       if (onActualizado) onActualizado();
       onClose();
     } catch (err) {
-      alert('Error al guardar los cambios: ' + err.message);
+      console.error('Error al guardar los cambios:', err.message);
     } finally {
       setGuardando(false);
     }
@@ -198,7 +186,6 @@ await guardarReseniaAPI(visualizacionId, {
     ? `https://image.tmdb.org/t/p/w780${detalle.backdrop_path}`
     : (item.foto_episodio || item.poster_path);
 
-  // La fecha más reciente
   const ultimaFecha = fechasVistas[0] || { fecha_visto: item.fecha_visto, plataforma: item.plataforma };
   const tieneRewatch = !esSerie && fechasVistas.length > 1;
 
@@ -237,7 +224,7 @@ await guardarReseniaAPI(visualizacionId, {
           {/* Cuerpo */}
           <div className="p-6 overflow-y-auto space-y-6 flex-1 scrollbar-thin">
             
-            {/* SECCIÓN DE FECHAS (COMPACTA Y DESPLEGABLE) */}
+            {/* SECCIÓN DE FECHAS */}
             <div className="p-3.5 rounded-2xl bg-neutral-100/80 dark:bg-white/5 border border-neutral-200 dark:border-white/10 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -258,7 +245,6 @@ await guardarReseniaAPI(visualizacionId, {
                       {ultimaFecha.plataforma}
                     </span>
                   )}
-                  {/* Botón desplegable si la película se vio más de 1 vez */}
                   {tieneRewatch && (
                     <button
                       type="button"
@@ -271,7 +257,6 @@ await guardarReseniaAPI(visualizacionId, {
                 </div>
               </div>
 
-              {/* Lista desplegable de rewatchs en películas */}
               {tieneRewatch && mostrarHistorialCompleto && (
                 <div className="pt-2 border-t border-neutral-200/60 dark:divide-white/5 divide-y divide-neutral-200/40 dark:divide-white/5">
                   {fechasVistas.map((v, i) => (
@@ -357,7 +342,7 @@ await guardarReseniaAPI(visualizacionId, {
               </p>
             </div>
 
-            {/* REPARTO DE ACTORES (BOTÓN SIEMPRE DISPONIBLE) */}
+            {/* REPARTO */}
             <div className="border border-neutral-300 dark:border-white/10 rounded-2xl p-4 bg-neutral-100/60 dark:bg-white/5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold flex items-center gap-2">
@@ -411,15 +396,16 @@ await guardarReseniaAPI(visualizacionId, {
                 </div>
               )}
             </div>
-            {/* Selector de Co-visualización ("Visto con...") */}
-<div className="rounded-2xl overflow-hidden border border-neutral-300 dark:border-white/10">
-          <SelectorAmigosEtiquetar
-            amigosSeleccionados={amigosSeleccionados}
-            setAmigosSeleccionados={setAmigosSeleccionados}
-            vistoConTexto={vistoConTexto}
-            setVistoConTexto={setVistoConTexto}
-          />
-        </div>
+
+            {/* Selector de Co-visualización */}
+            <div className="rounded-2xl overflow-hidden border border-neutral-300 dark:border-white/10">
+              <SelectorAmigosEtiquetar
+                amigosSeleccionados={amigosSeleccionados}
+                setAmigosSeleccionados={setAmigosSeleccionados}
+                vistoConTexto={vistoConTexto}
+                setVistoConTexto={setVistoConTexto}
+              />
+            </div>
 
             {/* Calificación */}
             <CalificadorEstrellas 
@@ -462,20 +448,20 @@ await guardarReseniaAPI(visualizacionId, {
         </div>
       </div>
 
-{actorSeleccionado && (
-  <ModalFilmografiaActor 
-    actor={actorSeleccionado}
-    onClose={() => setActorSeleccionado(null)}
-    onSeleccionarObra={(obra) => {
-      setActorSeleccionado(null);
-      if (onSeleccionarObra) {
-        onSeleccionarObra(obra);
-      } else {
-        onClose();
-      }
-    }}
-  />
-)}
+      {actorSeleccionado && (
+        <ModalFilmografiaActor 
+          actor={actorSeleccionado}
+          onClose={() => setActorSeleccionado(null)}
+          onSeleccionarObra={(obra) => {
+            setActorSeleccionado(null);
+            if (onSeleccionarObra) {
+              onSeleccionarObra(obra);
+            } else {
+              onClose();
+            }
+          }}
+        />
+      )}
     </>
   );
 }
