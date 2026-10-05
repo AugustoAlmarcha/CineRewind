@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { BookOpen, Tv, Bookmark, Users, FileSpreadsheet } from 'lucide-react';
 
@@ -30,11 +31,28 @@ import {
   obtenerTimelineAPI,
   obtenerViendoActualmenteAPI,
   avanzarCapituloAPI,
-  obtenerWrappedPeriodoAPI
+  obtenerWrappedPeriodoAPI,
+  obtenerPerfilPublicoAPI,
+  enviarSolicitudAmistadAPI,
+  responderSolicitudAmistadAPI
 } from '../api';
 
 export default function Perfil() {
   const { usuario, cargandoAuth, actualizarUsuario, iniciarSesion } = useAuth();
+  const { username: paramUsername } = useParams();
+  const navigate = useNavigate();
+
+  // Determinamos si estamos viendo nuestro propio perfil o el de un amigo
+  const esMiPerfil = useMemo(() => {
+    if (!paramUsername) return true;
+    if (!usuario?.username) return false;
+    return usuario.username.toLowerCase() === paramUsername.toLowerCase();
+  }, [paramUsername, usuario?.username]);
+
+  // Estado del perfil visitado si no es el propio
+  const [perfilVisitado, setPerfilVisitado] = useState(null);
+  const [cargandoPerfil, setCargandoPerfil] = useState(false);
+  const [usuarioNoEncontrado, setUsuarioNoEncontrado] = useState(false);
 
   // Estados de navegación
   const [activeTab, setActiveTab] = useState('resenias');
@@ -65,46 +83,104 @@ export default function Perfil() {
   const [selectorWrappedAbierto, setSelectorWrappedAbierto] = useState(false);
   const [datosWrapped, setDatosWrapped] = useState(null);
   const [cargandoWrapped, setCargandoWrapped] = useState(false);
-  const [errorToast, setErrorToast] = useState(null);
+  const [toastNotificacion, setToastNotificacion] = useState(null);
 
-  const dispararErrorToast = (mensaje) => {
-    setErrorToast(mensaje);
-    setTimeout(() => setErrorToast(null), 4000);
+  const dispararToast = (mensaje, tipo = 'error') => {
+    setToastNotificacion({ mensaje, tipo });
+    setTimeout(() => setToastNotificacion(null), 4000);
   };
 
-  // Carga de datos
+  // Carga de datos tanto para el usuario activo como para un perfil amigo visitado
   const cargarDatosPerfil = useCallback(async () => {
-    if (!usuario?.id || !usuario?.username) return;
+    setUsuarioNoEncontrado(false);
 
-    try {
-      const s = await obtenerEstadisticasAPI();
-      setStats(s || { total_series: 0, total_episodios: 0, total_peliculas: 0, horas_totales: 0 });
+    // 1. Caso: Mi Propio Perfil
+    if (esMiPerfil) {
+      if (!usuario?.id || !usuario?.username) return;
+      setCargandoPerfil(false);
+      try {
+        const [s, f, v, t, p] = await Promise.all([
+          obtenerEstadisticasAPI(usuario.id),
+          obtenerFavoritosAPI(usuario.username),
+          obtenerViendoActualmenteAPI(usuario.id),
+          obtenerTimelineAPI(usuario.id),
+          obtenerPendientesAPI(usuario.id)
+        ]);
 
-      const f = await obtenerFavoritosAPI(usuario.username);
-      setFavoritos(Array.isArray(f) ? f : []);
-
-      const v = await obtenerViendoActualmenteAPI(usuario.id);
-      setObrasViendo(Array.isArray(v) ? v : []);
-
-      const t = await obtenerTimelineAPI(usuario.id);
-      setTimeline(Array.isArray(t) ? t : []);
-
-      setCargandoPendientes(true);
-      const p = await obtenerPendientesAPI();
-      setPendientes(Array.isArray(p) ? p : []);
-      setCargandoPendientes(false);
-    } catch (err) {
-      console.error('Error al cargar datos del perfil:', err);
-      setCargandoPendientes(false);
+        setStats(s || { total_series: 0, total_episodios: 0, total_peliculas: 0, horas_totales: 0 });
+        setFavoritos(Array.isArray(f) ? f : []);
+        setObrasViendo(Array.isArray(v) ? v : []);
+        setTimeline(Array.isArray(t) ? t : []);
+        setPendientes(Array.isArray(p) ? p : []);
+      } catch (err) {
+        console.error('Error al cargar datos del perfil propio:', err);
+      }
+      return;
     }
-  }, [usuario?.id, usuario?.username]);
+
+    // 2. Caso: Perfil de Amigo o Usuario de la Red
+    if (paramUsername) {
+      setCargandoPerfil(true);
+      try {
+        const usuarioExterno = await obtenerPerfilPublicoAPI(paramUsername);
+        setPerfilVisitado(usuarioExterno);
+
+        const [s, f, v, t, p] = await Promise.all([
+          obtenerEstadisticasAPI(usuarioExterno.id),
+          obtenerFavoritosAPI(usuarioExterno.username),
+          obtenerViendoActualmenteAPI(usuarioExterno.id),
+          obtenerTimelineAPI(usuarioExterno.id),
+          obtenerPendientesAPI(usuarioExterno.id)
+        ]);
+
+        setStats(s || { total_series: 0, total_episodios: 0, total_peliculas: 0, horas_totales: 0 });
+        setFavoritos(Array.isArray(f) ? f : []);
+        setObrasViendo(Array.isArray(v) ? v : []);
+        setTimeline(Array.isArray(t) ? t : []);
+        setPendientes(Array.isArray(p) ? p : []);
+      } catch (err) {
+        console.error('Error al cargar datos del perfil visitado:', err);
+        setUsuarioNoEncontrado(true);
+      } finally {
+        setCargandoPerfil(false);
+      }
+    }
+  }, [esMiPerfil, usuario?.id, usuario?.username, paramUsername]);
 
   useEffect(() => {
     cargarDatosPerfil();
   }, [cargarDatosPerfil]);
 
-  // Manejador para avanzar capítulo
+  // Acciones sociales en perfil de amigo
+  const handleEnviarSolicitudAmigo = async () => {
+    if (!usuario) {
+      dispararToast('Debes iniciar sesión para conectar con amigos', 'error');
+      return;
+    }
+    if (!perfilVisitado?.id) return;
+    try {
+      await enviarSolicitudAmistadAPI(perfilVisitado.id);
+      setPerfilVisitado((prev) => ({ ...prev, estado_relacion: 'solicitud_enviada' }));
+      dispararToast('¡Solicitud de amistad enviada con éxito!', 'exito');
+    } catch (err) {
+      dispararToast(err.message || 'No se pudo enviar la solicitud', 'error');
+    }
+  };
+
+  const handleAceptarSolicitudAmigo = async () => {
+    if (!perfilVisitado?.amistad_id) return;
+    try {
+      await responderSolicitudAmistadAPI(perfilVisitado.amistad_id, 'aceptar');
+      setPerfilVisitado((prev) => ({ ...prev, estado_relacion: 'amigos' }));
+      dispararToast('¡Solicitud aceptada! Ahora son amigos.', 'exito');
+    } catch (err) {
+      dispararToast(err.message || 'Error al aceptar la solicitud', 'error');
+    }
+  };
+
+  // Manejador para avanzar capítulo (solo en perfil propio)
   const handleAvanzarCapitulo = async (obraId, temporada, ultimoEp) => {
+    if (!esMiPerfil) return;
     try {
       await avanzarCapituloAPI({
         obra_id: obraId,
@@ -118,8 +194,9 @@ export default function Perfil() {
     }
   };
 
-  // Favoritos
+  // Favoritos (solo en perfil propio)
   const handleDropIntercambio = async (posicionDestino, tipo) => {
+    if (!esMiPerfil) return;
     if (!arrastrandoSlot || arrastrandoSlot === posicionDestino) {
       setArrastrandoSlot(null);
       return;
@@ -146,6 +223,7 @@ export default function Perfil() {
 
   const handleEliminarFavorito = async (e, posicion, tipo) => {
     e.stopPropagation();
+    if (!esMiPerfil) return;
     try {
       await eliminarFavoritoAPI(posicion, tipo);
       const f = await obtenerFavoritosAPI(usuario.username);
@@ -157,6 +235,7 @@ export default function Perfil() {
 
   const handleQuitarPendiente = async (e, tmdb_id) => {
     e.stopPropagation();
+    if (!esMiPerfil) return;
     try {
       await eliminarPendienteAPI(tmdb_id);
       setPendientes((prev) => prev.filter((p) => Number(p.tmdb_id) !== Number(tmdb_id)));
@@ -174,7 +253,7 @@ export default function Perfil() {
       setModalWrappedAbierto(true);
     } catch (err) {
       console.error('Error Wrapped:', err);
-      dispararErrorToast(err.message || 'No se pudo cargar el festival CineRewind Wrapped');
+      dispararToast(err.message || 'No se pudo cargar el festival CineRewind Wrapped', 'error');
     } finally {
       setCargandoWrapped(false);
     }
@@ -225,15 +304,49 @@ export default function Perfil() {
     return Object.values(covisiones).sort((a, b) => b.totalObras - a.totalObras);
   }, [timeline]);
 
-  if (cargandoAuth) {
+  // Pantallas de estado
+  if (cargandoAuth || cargandoPerfil) {
     return (
       <main className="max-w-4xl mx-auto px-6 py-24 text-center">
-        <p className="text-xs font-bold text-zinc-500 animate-pulse font-mono">Sincronizando perfil cinéfilo...</p>
+        <p className="text-xs font-bold text-zinc-500 animate-pulse font-mono">
+          {paramUsername ? `Cargando perfil de @${paramUsername}...` : 'Sincronizando perfil cinéfilo...'}
+        </p>
       </main>
     );
   }
 
-  if (!usuario) {
+  if (usuarioNoEncontrado) {
+    return (
+      <main className="max-w-4xl mx-auto px-6 py-24 text-center space-y-4 animate-fadeIn">
+        <div className="w-16 h-16 mx-auto rounded-3xl bg-rose-600/10 border border-rose-500/20 flex items-center justify-center text-2xl">
+          🔍
+        </div>
+        <h2 className="text-2xl font-black text-white">Cinéfilo no encontrado</h2>
+        <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+          No existe ningún usuario registrado con el alias <strong className="text-rose-400 font-mono">@{paramUsername}</strong>.
+        </p>
+        <div className="pt-2 flex items-center justify-center gap-3">
+          {usuario && (
+            <button
+              onClick={() => navigate(`/perfil/${usuario.username}`)}
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition cursor-pointer"
+            >
+              Ir a Mi Perfil
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition border border-zinc-700 cursor-pointer"
+          >
+            Volver al Inicio
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  // Si intentó entrar a "mi perfil" sin estar logueado
+  if (esMiPerfil && !usuario) {
     return (
       <main className="max-w-4xl mx-auto px-6 py-24 text-center space-y-4">
         <h2 className="text-2xl font-black text-white">Sesión no iniciada</h2>
@@ -242,34 +355,46 @@ export default function Perfil() {
     );
   }
 
-  const avatarVisual = usuario.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${usuario.username}&backgroundColor=ff5722,ff7043`;
-  const bannerVisual = usuario.banner_url || localStorage.getItem('cinerewind_banner') || 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1600&q=80';
-  const fechaAlta = usuario.creado_en ? new Date(usuario.creado_en).toLocaleDateString('es-ES', { year: 'numeric' }) : '2024';
+  const perfilMostrado = esMiPerfil ? usuario : perfilVisitado;
+  if (!perfilMostrado) return null;
+
+  const avatarVisual = perfilMostrado.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${perfilMostrado.username}&backgroundColor=ff5722,ff7043`;
+  const bannerVisual = perfilMostrado.banner_url || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1600&q=80';
+  const fechaAlta = perfilMostrado.creado_en ? new Date(perfilMostrado.creado_en).toLocaleDateString('es-ES', { year: 'numeric' }) : '2024';
 
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-8 animate-fadeIn text-neutral-200 relative">
       
-      {/* Toast Notificación Cinemática (CERO alerts de Windows) */}
-      {errorToast && (
+      {/* Toast Notificación Cinemática */}
+      {toastNotificacion && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-bounce pointer-events-none">
-          <div className="px-5 py-3 rounded-2xl bg-zinc-950/95 border border-rose-500/50 text-white text-xs font-bold shadow-2xl flex items-center gap-3 backdrop-blur-xl">
-            <span className="w-5 h-5 rounded-full bg-rose-600/30 text-rose-400 flex items-center justify-center font-black">
-              ✕
+          <div className={`px-5 py-3 rounded-2xl bg-zinc-950/95 border ${
+            toastNotificacion.tipo === 'exito' ? 'border-emerald-500/50' : 'border-rose-500/50'
+          } text-white text-xs font-bold shadow-2xl flex items-center gap-3 backdrop-blur-xl`}>
+            <span className={`w-5 h-5 rounded-full ${
+              toastNotificacion.tipo === 'exito' ? 'bg-emerald-600/30 text-emerald-400' : 'bg-rose-600/30 text-rose-400'
+            } flex items-center justify-center font-black`}>
+              {toastNotificacion.tipo === 'exito' ? '✓' : '✕'}
             </span>
-            <span>{errorToast}</span>
+            <span>{toastNotificacion.mensaje}</span>
           </div>
         </div>
       )}
 
-      {/* 1. HERO PERFIL */}
+      {/* 1. HERO PERFIL (Adaptable para Mi Perfil o Perfil de Amigo) */}
       <HeroPerfil
-        usuario={usuario}
+        usuario={perfilMostrado}
         stats={stats}
         totalResenias={listaSoloResenias.length}
         bannerVisual={bannerVisual}
         avatarVisual={avatarVisual}
         fechaAlta={fechaAlta}
         cargandoWrapped={cargandoWrapped}
+        esMiPerfil={esMiPerfil}
+        estadoRelacion={perfilMostrado.estado_relacion || 'ninguno'}
+        onEnviarSolicitud={handleEnviarSolicitudAmigo}
+        onAceptarSolicitud={handleAceptarSolicitudAmigo}
+        onVolverMiPerfil={usuario ? () => navigate(`/perfil/${usuario.username}`) : null}
         onAbrirEditar={(sub) => { setSubpestanaEditar(sub); setModalEditarAbierto(true); }}
         onAbrirAmigos={() => setModalAmigosAbierto(true)}
         onAbrirWrapped={() => setSelectorWrappedAbierto(true)}
@@ -289,6 +414,7 @@ export default function Perfil() {
           setTipoFavorito(tipo);
           setModalFavoritoAbierto(true);
         }}
+        esMiPerfil={esMiPerfil}
       />
 
       {/* 3. PESTAÑAS DE CONTENIDO */}
@@ -325,7 +451,7 @@ export default function Perfil() {
               }`}
             >
               <Bookmark className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Watchlist Pendientes ({pendientes.length})</span>
+              <span>{esMiPerfil ? 'Watchlist Pendientes' : 'Lista Pendientes'} ({pendientes.length})</span>
             </button>
 
             <button
@@ -336,45 +462,48 @@ export default function Perfil() {
               }`}
             >
               <Users className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Red & Co-visiones ({listaCovisionesCombinadas.length})</span>
+              <span>{esMiPerfil ? 'Red & Co-visiones' : 'Co-visiones'} ({listaCovisionesCombinadas.length})</span>
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setModalNetflixAbierto(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition cursor-pointer"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-rose-500" />
-            <span>Importar Netflix</span>
-          </button>
+          {esMiPerfil && (
+            <button
+              type="button"
+              onClick={() => setModalNetflixAbierto(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition cursor-pointer"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-rose-500" />
+              <span>Importar Netflix</span>
+            </button>
+          )}
         </div>
 
         {activeTab === 'resenias' && <PestanaResenias resenias={listaSoloResenias} />}
-        {activeTab === 'viendo' && <PestanaViendo obrasViendo={obrasViendo} onAvanzarCapitulo={handleAvanzarCapitulo} />}
+        {activeTab === 'viendo' && <PestanaViendo obrasViendo={obrasViendo} onAvanzarCapitulo={handleAvanzarCapitulo} esMiPerfil={esMiPerfil} />}
         {activeTab === 'pendientes' && (
           <PestanaPendientes
             pendientes={pendientes}
             cargandoPendientes={cargandoPendientes}
             onQuitarPendiente={handleQuitarPendiente}
             onRegistrarObra={setObraParaRegistrar}
+            esMiPerfil={esMiPerfil}
           />
         )}
         {activeTab === 'amigos' && (
-          <PestanaCovisiones covisiones={listaCovisionesCombinadas} onAbrirModalAmigos={() => setModalAmigosAbierto(true)} />
+          <PestanaCovisiones 
+            covisiones={listaCovisionesCombinadas} 
+            onAbrirModalAmigos={() => setModalAmigosAbierto(true)} 
+          />
         )}
       </section>
 
-      {/* 4. MODALES */}
-      {modalEditarAbierto && (
+      {/* 4. MODALES (Solo disponibles cuando estás en tu perfil propio) */}
+      {esMiPerfil && modalEditarAbierto && (
         <ModalEditarPerfil
           usuario={usuario}
           subpestanaInicial={subpestanaEditar}
           onClose={() => setModalEditarAbierto(false)}
           onGuardar={async (nuevosDatos) => {
-            if (nuevosDatos?.banner_url) {
-              localStorage.setItem('cinerewind_banner', nuevosDatos.banner_url);
-            }
             const data = await actualizarPerfilAPI(nuevosDatos);
             if (data?.token && iniciarSesion) {
               iniciarSesion(data.token, data.usuario);
@@ -387,7 +516,7 @@ export default function Perfil() {
         />
       )}
 
-      {modalFavoritoAbierto && (
+      {esMiPerfil && modalFavoritoAbierto && (
         <ModalElegirFavorito
           posicion={ranuraSeleccionada}
           tipoEsperado={tipoFavorito}
@@ -412,7 +541,7 @@ export default function Perfil() {
         />
       )}
 
-      {selectorWrappedAbierto && (
+      {esMiPerfil && selectorWrappedAbierto && (
         <ModalSelectorPeriodoWrapped
           aniosDisponibles={Array.from(new Set(timeline.map(t => t.fecha_visto ? new Date(t.fecha_visto).getFullYear() : null).filter(Boolean))).sort((a,b) => b - a)}
           onClose={() => setSelectorWrappedAbierto(false)}
@@ -420,13 +549,17 @@ export default function Perfil() {
         />
       )}
 
-      <ModalWrapped abierto={modalWrappedAbierto} alCerrar={() => setModalWrappedAbierto(false)} datosWrapped={datosWrapped} />
+      {esMiPerfil && (
+        <ModalWrapped abierto={modalWrappedAbierto} alCerrar={() => setModalWrappedAbierto(false)} datosWrapped={datosWrapped} />
+      )}
 
-      <ModalImportarNetflix
-        abierto={modalNetflixAbierto}
-        alCerrar={() => setModalNetflixAbierto(false)}
-        alCompletar={cargarDatosPerfil}
-      />
+      {esMiPerfil && (
+        <ModalImportarNetflix
+          abierto={modalNetflixAbierto}
+          alCerrar={() => setModalNetflixAbierto(false)}
+          alCompletar={cargarDatosPerfil}
+        />
+      )}
     </main>
   );
 }

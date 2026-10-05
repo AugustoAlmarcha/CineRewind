@@ -1,8 +1,8 @@
 const pool = require('../config/db');
 
-// GET: /api/pendientes (Obtener todas las pendientes del usuario logueado)
+// GET: /api/pendientes (Obtener todas las pendientes del usuario logueado o visitado)
 const obtenerPendientes = async (req, res) => {
-  const usuarioId = req.usuario?.id;
+  const usuarioId = req.query.usuario_id || req.usuario?.id;
   if (!usuarioId) {
     return res.status(401).json({ error: 'No autorizado' });
   }

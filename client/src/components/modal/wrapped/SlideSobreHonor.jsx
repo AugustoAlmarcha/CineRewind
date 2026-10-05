@@ -65,20 +65,25 @@ export default function SlideSobreHonor({
                   <img 
                     src={obtenerUrlImagenSegura(sobre.foto)} 
                     alt={sobre.ganador} 
+                    crossOrigin="anonymous"
                     className="w-full h-full object-cover" 
                     onError={(e) => { e.target.style.display = 'none'; }}
                   />
                 </div>
-              ) : sobre.esRobot ? (
-                <div className="w-22 h-26 sm:w-30 sm:h-34 rounded-2xl bg-gradient-to-br from-pink-500 via-rose-500 to-cyan-500 border-2 border-white flex flex-col items-center justify-center shrink-0 shadow-xl relative overflow-hidden">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-cyan-950 border-2 border-cyan-300 flex flex-col items-center justify-center p-2 shadow-inner">
-                    <div className="flex gap-2 mb-1">
-                      <div className="w-2.5 h-2.5 rounded-full bg-cyan-300 animate-pulse" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-cyan-300 animate-pulse" />
-                    </div>
-                    <div className="w-6 h-1 rounded-full bg-pink-400" />
+              ) : sobre.esSolitario ? (
+                <div className="w-22 h-26 sm:w-30 sm:h-34 rounded-2xl bg-gradient-to-b from-[#1e1b4b] via-[#311042] to-[#0f172a] border-2 border-cyan-400 flex flex-col items-center justify-center shrink-0 shadow-xl relative overflow-hidden p-2 text-center">
+                  <div className="absolute inset-0 bg-[radial-gradient(#38bdf8_1.2px,transparent_1.2px)] [background-size:8px_8px] opacity-25" />
+                  <span className="text-3xl sm:text-4xl mb-1 filter drop-shadow relative z-10">🛋️</span>
+                  <span className="text-[8px] sm:text-[9.5px] font-mono text-cyan-300 font-black uppercase tracking-tight relative z-10">CINE ÍNTIMO</span>
+                  <span className="text-[6.5px] sm:text-[7.5px] text-zinc-300 font-mono relative z-10">100% PERSONAL</span>
+                </div>
+              ) : sobre.esAmigoTexto ? (
+                <div className="w-22 h-26 sm:w-30 sm:h-34 rounded-2xl bg-gradient-to-br from-pink-600 via-rose-700 to-amber-600 border-2 border-pink-300 flex flex-col items-center justify-center shrink-0 shadow-xl relative overflow-hidden p-2 text-center">
+                  <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-black/40 border-2 border-pink-300 flex items-center justify-center mb-1 text-2xl shadow">
+                    🍿
                   </div>
-                  <span className="text-[9px] font-mono text-white font-black mt-1 uppercase">🤖 BOT COPILOTO</span>
+                  <span className="text-[8.5px] sm:text-[9.5px] font-mono text-pink-200 font-black uppercase tracking-tight">EN FAMILIA</span>
+                  <span className="text-[7px] text-white/90 font-mono">EN EL SOFÁ</span>
                 </div>
               ) : (
                 <div 
@@ -109,6 +114,7 @@ export default function SlideSobreHonor({
                           <img 
                             src={obtenerUrlImagenSegura(poster)} 
                             alt="" 
+                            crossOrigin="anonymous"
                             className="w-5 h-7 rounded object-cover" 
                             onError={(e) => { e.target.style.display = 'none'; }}
                           />

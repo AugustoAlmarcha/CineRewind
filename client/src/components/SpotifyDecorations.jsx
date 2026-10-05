@@ -63,9 +63,14 @@ export const SpotifyStarburst = ({
   bgFill = '#f97316',
   textColor = '#ffffff',
   className = '',
+  tamano = 'lg',
 }) => {
+  const svgClass = tamano === 'xl' 
+    ? 'w-56 h-56 sm:w-72 sm:h-72 md:w-80 md:h-80' 
+    : 'w-52 h-52 sm:w-64 sm:h-64';
+
   return (
-    <div className={`relative flex items-center justify-center p-6 ${className}`}>
+    <div className={`relative flex items-center justify-center p-2 sm:p-4 ${className}`}>
       <style>{`
         @keyframes spinVerySlow {
           from { transform: rotate(0deg); }
@@ -74,7 +79,7 @@ export const SpotifyStarburst = ({
       `}</style>
       <svg
         viewBox="0 0 200 200"
-        className="w-48 h-48 sm:w-56 sm:h-56 filter drop-shadow-xl pointer-events-none"
+        className={`${svgClass} filter drop-shadow-2xl pointer-events-none transition-all`}
         style={{ animation: 'spinVerySlow 45s linear infinite' }}
       >
         <polygon
@@ -88,13 +93,13 @@ export const SpotifyStarburst = ({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
         <span
-          className="font-black text-sm sm:text-base uppercase tracking-tight leading-tight max-w-[140px] drop-shadow-md"
+          className="font-black text-base sm:text-xl md:text-2xl uppercase tracking-tight leading-snug max-w-[200px] sm:max-w-[240px] drop-shadow-lg"
           style={{ color: textColor }}
         >
           {text}
         </span>
         {subtext && (
-          <span className="text-[10px] sm:text-xs font-semibold mt-1 opacity-90 text-white max-w-[150px]">
+          <span className="text-xs sm:text-sm md:text-base font-extrabold mt-1 text-white max-w-[220px] sm:max-w-[260px] drop-shadow">
             {subtext}
           </span>
         )}

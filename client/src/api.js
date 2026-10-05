@@ -257,20 +257,42 @@ export const eliminarFavoritoAPI = async (posicion, tipo) => {
   return await res.json();
 };
 
-// Obtener las estadísticas acumuladas del usuario
-export const obtenerEstadisticasAPI = async () => {
+// Obtener perfil público de cualquier usuario (con estado de amistad)
+export const obtenerPerfilPublicoAPI = async (username) => {
   const token = localStorage.getItem('cinerewind_token');
-  const res = await fetch('/api/historial/estadisticas', {
+  const res = await fetch(`/api/auth/usuario/${encodeURIComponent(username)}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Usuario no encontrado');
+  }
+  return res.json();
+};
+
+// Obtener las estadísticas acumuladas del usuario (o de un perfil visitado)
+export const obtenerEstadisticasAPI = async (usuarioId = null) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const url = usuarioId 
+    ? `/api/historial/estadisticas?usuario_id=${usuarioId}`
+    : '/api/historial/estadisticas';
+  const res = await fetch(url, {
     headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
   if (!res.ok) return { total_series: 0, total_episodios: 0, total_peliculas: 0, horas_totales: 0 };
   return res.json();
 };
 
-// Obtener lista de pendientes
-export const obtenerPendientesAPI = async () => {
+// Obtener lista de pendientes (propia o de un perfil visitado)
+export const obtenerPendientesAPI = async (usuarioId = null) => {
   const token = localStorage.getItem('cinerewind_token');
-  const res = await fetch('/api/pendientes', {
+  const url = usuarioId 
+    ? `/api/pendientes?usuario_id=${usuarioId}`
+    : '/api/pendientes';
+  const res = await fetch(url, {
     headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
   if (!res.ok) return [];

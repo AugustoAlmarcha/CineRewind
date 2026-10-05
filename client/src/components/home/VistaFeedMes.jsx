@@ -1,6 +1,11 @@
 import React from 'react';
 import TimelineScrubber from './TimelineScrubber';
 
+const MESES_NOMBRES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+];
+
 export default function VistaFeedMes({
   gruposPorDia,
   resolverImagen,
@@ -9,7 +14,7 @@ export default function VistaFeedMes({
   onToggleItem,
   onAbrirDetalleTimeline,
   busquedaHistorial,
-  nombresMeses
+  nombresMeses = MESES_NOMBRES
 }) {
   if (gruposPorDia.length === 0) {
     return (
@@ -27,9 +32,11 @@ export default function VistaFeedMes({
     const diaSemana = !isNaN(fechaObj.getTime())
       ? fechaObj.toLocaleDateString('es-ES', { weekday: 'short' })
       : '';
+    const mesIdx = Math.max(0, Math.min(11, (Number(m) || 1) - 1));
+    const nombreMes = (nombresMeses && nombresMeses[mesIdx]) || MESES_NOMBRES[mesIdx] || '';
     return {
       id: `dia-seccion-${fecha}`,
-      etiqueta: `${d} de ${nombresMeses[Number(m) - 1]}`,
+      etiqueta: `${d} de ${nombreMes}`,
       subtexto: `${diaSemana}, ${obras.length} obras`,
       icono: '📌',
     };
@@ -158,11 +165,11 @@ export default function VistaFeedMes({
                         </div>
 
                         {/* COMPAÑÍA: Amigos con cuenta y/o personas sin cuenta ("Mamá", etc.) */}
-                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                          {/* 1. Avatares circulares de amigos de la plataforma */}
-                          {Array.isArray(item.amigos_covision) && item.amigos_covision.length > 0 && (
+                        {((Array.isArray(item.amigos_covision) && item.amigos_covision.length > 0) || item.visto_con_texto) && (
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
                             <div className="flex -space-x-1.5 overflow-hidden flex-shrink-0">
-                              {item.amigos_covision.map((amigo) => (
+                              {/* 1. Avatares circulares de amigos de la plataforma */}
+                              {Array.isArray(item.amigos_covision) && item.amigos_covision.map((amigo) => (
                                 <div
                                   key={amigo.amigo_id || amigo.covisualizacion_id}
                                   title={`Visto con @${amigo.username || amigo.nombre}`}
@@ -181,19 +188,34 @@ export default function VistaFeedMes({
                                   )}
                                 </div>
                               ))}
-                            </div>
-                          )}
 
-                          {/* 2. Etiqueta para acompañante manual libre */}
-                          {item.visto_con_texto && (
-                            <span
-                              title={`Visto con ${item.visto_con_texto}`}
-                              className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-black/75 text-rose-300 border border-white/10 backdrop-blur-xs truncate max-w-[90px] shadow-sm"
-                            >
-                              👥 {item.visto_con_texto}
-                            </span>
-                          )}
-                        </div>
+                              {/* 2. Caritas para acompañantes sin cuenta ("Mamá", "Papá", etc.) */}
+                              {item.visto_con_texto && item.visto_con_texto.split(',').map((s) => s.trim()).filter(Boolean).map((nombre, idx) => (
+                                <div
+                                  key={`manual-${idx}-${nombre}`}
+                                  title={`Visto con ${nombre}`}
+                                  className="w-6 h-6 rounded-full ring-2 ring-black/80 bg-gradient-to-tr from-purple-600 via-rose-500 to-amber-400 overflow-hidden flex items-center justify-center shadow-md flex-shrink-0"
+                                >
+                                  <img
+                                    src={`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(nombre)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`}
+                                    alt={nombre}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Etiqueta con el nombre del acompañante */}
+                            {item.visto_con_texto && (
+                              <span
+                                title={`Visto con ${item.visto_con_texto}`}
+                                className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-black/85 text-rose-300 border border-white/10 backdrop-blur-xs truncate max-w-[85px] shadow-sm"
+                              >
+                                {item.visto_con_texto}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 

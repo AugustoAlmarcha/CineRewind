@@ -85,7 +85,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
       const cleanPath = s.poster_path.trim();
       if (cleanPath === '' || cleanPath.includes('null') || cleanPath.includes('undefined')) continue;
       
-      const clave = String(s.id || s.serie_id || s.titulo || '').toLowerCase().trim();
+      const clave = String(s.tmdb_id || s.id || s.serie_id || s.titulo || '').toLowerCase().trim();
       if (clave && !seriesVistasSet.has(clave)) {
         seriesVistasSet.add(clave);
         seriesUnicas.push(s);
@@ -101,7 +101,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
       const cleanPath = p.poster_path.trim();
       if (cleanPath === '' || cleanPath.includes('null') || cleanPath.includes('undefined')) continue;
 
-      const clave = String(p.id || p.pelicula_id || p.titulo || '').toLowerCase().trim();
+      const clave = String(p.tmdb_id || p.id || p.pelicula_id || p.titulo || '').toLowerCase().trim();
       if (clave && !peliculasVistasSet.has(clave)) {
         peliculasVistasSet.add(clave);
         peliculasUnicas.push(p);
@@ -118,6 +118,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
       totalPeliculas,
       totalEpisodios,
       totalResenias,
+      totalSeries: seriesUnicas.length,
       totalObras: totalPeliculas + totalEpisodios,
       diasEquivalentes: datosWrapped.dias_equivalentes || `${(totalHoras / 24).toFixed(1)} días`,
       topSerie: datosWrapped.top_serie || null,
@@ -170,17 +171,30 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
         },
         {
           id: 'copiloto',
-          titulo: 'SOBRE DE HONOR · COPILOTO DE SILLÓN',
-          subtitulo: 'Acompañante de visualizaciones',
-          ganador: datosWrapped.copiloto?.nombre || 'Sesiones en solitario',
+          titulo: datosWrapped.copiloto?.esSolitario 
+            ? 'SOBRE DE HONOR · MODO CINE ÍNTIMO' 
+            : datosWrapped.copiloto?.esAmigoTexto 
+              ? 'SOBRE DE HONOR · COMPAÑERO DE SOFÁ' 
+              : 'SOBRE DE HONOR · COPILOTO DE SILLÓN',
+          subtitulo: datosWrapped.copiloto?.esSolitario 
+            ? 'Tu ritual personal de visualización' 
+            : 'Tu cómplice en cada maratón de series y pelis',
+          ganador: datosWrapped.copiloto?.esSolitario 
+            ? 'Sesiones en Solitario' 
+            : (datosWrapped.copiloto?.nombre || 'Sesiones en Solitario'),
           foto: datosWrapped.copiloto?.foto || null,
-          esRobot: !datosWrapped.copiloto?.foto,
-          frase: datosWrapped.copiloto?.veces ? `${datosWrapped.copiloto.veces} obras compartidas` : 'Tus horas de cine personal',
+          esSolitario: datosWrapped.copiloto?.esSolitario ?? (!datosWrapped.copiloto?.veces || datosWrapped.copiloto?.veces === 0),
+          esAmigoTexto: Boolean(datosWrapped.copiloto?.esAmigoTexto),
+          frase: datosWrapped.copiloto?.frase || (datosWrapped.copiloto?.veces ? `${datosWrapped.copiloto.veces} obras compartidas` : 'Nadie te habla en el clímax, nadie te pide pausa. Puro cine a tu gusto.'),
           titulos_destacados: [],
-          dato: 'Copiloto',
+          dato: datosWrapped.copiloto?.esSolitario ? 'Modo Solo' : (datosWrapped.copiloto?.esAmigoTexto ? 'En Compañía' : 'Copiloto'),
           tipo: 'copiloto',
-          bordeColor: '#22d3ee',
-          bgGradient: 'from-cyan-600 via-blue-850 to-zinc-950'
+          bordeColor: datosWrapped.copiloto?.esSolitario ? '#38bdf8' : (datosWrapped.copiloto?.esAmigoTexto ? '#f472b6' : '#22d3ee'),
+          bgGradient: datosWrapped.copiloto?.esSolitario 
+            ? 'from-blue-700 via-indigo-900 to-zinc-950' 
+            : (datosWrapped.copiloto?.esAmigoTexto 
+              ? 'from-pink-700 via-rose-900 to-zinc-950' 
+              : 'from-cyan-600 via-blue-850 to-zinc-950')
         }
       ],
       arquetipo: datosWrapped.arquetipo || {
@@ -283,25 +297,30 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
   const obtenerUrlImagenSegura = useCallback((url) => {
     if (!url) return '';
     if (url.startsWith('data:') || url.startsWith('blob:')) return url;
-    let tmdbUrl = url;
-    if (url.startsWith('/')) {
-      tmdbUrl = `https://image.tmdb.org/t/p/w500${url}`;
+    let tmdbPath = url;
+    if (url.startsWith('https://image.tmdb.org/t/p/')) {
+      tmdbPath = url.replace('https://image.tmdb.org/t/p/', '');
+    } else if (url.startsWith('/')) {
+      tmdbPath = `w500${url}`;
     }
-    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-      return `http://localhost:5000/api/historial/proxy-image?url=${encodeURIComponent(tmdbUrl)}`;
+    // Incluye el nombre y tamaño del archivo en la ruta misma para que html-to-image jamás colisione cachés
+    if (!tmdbPath.startsWith('http')) {
+      return `/api/historial/proxy-image/${tmdbPath.replace(/^\/+/, '')}`;
     }
-    return tmdbUrl;
+    return `/api/historial/proxy-image?url=${encodeURIComponent(url)}`;
   }, []);
 
   const descargarElemento = async (ref, nombreArchivo) => {
     if (!ref.current) return;
     setDescargando(true);
     try {
+      // cacheBust: false e includeQueryParams: true aseguran claves de caché únicas y evitan duplicación de imágenes
       const dataUrl = await toPng(ref.current, { 
         quality: 0.98, 
         pixelRatio: 2, 
         skipFonts: true, 
-        cacheBust: true,
+        cacheBust: false,
+        includeQueryParams: true,
         backgroundColor: '#0a0a0f',
         style: {
           margin: '0',
@@ -311,7 +330,9 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
       const a = document.createElement('a');
       a.download = `${nombreArchivo}.png`;
       a.href = dataUrl;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       playSound('fanfare');
     } catch (err) {
       console.error('Error al generar imagen:', err);
@@ -328,7 +349,8 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
         quality: 0.98, 
         pixelRatio: 2, 
         skipFonts: true, 
-        cacheBust: true,
+        cacheBust: false,
+        includeQueryParams: true,
         backgroundColor: '#0a0a0f',
         style: {
           margin: '0',
@@ -348,7 +370,9 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
         const a = document.createElement('a');
         a.download = `${titulo}.png`;
         a.href = dataUrl;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
       }
     } catch (e) {
       console.warn('Error al compartir:', e);
@@ -402,7 +426,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/95 backdrop-blur-xl select-none">
       <div 
-        className="relative w-full max-w-md sm:max-3xl lg:max-w-4xl h-[94vh] max-h-[860px] rounded-3xl overflow-hidden shadow-2xl border-3 flex flex-col justify-between transition-all duration-300 bg-black"
+        className="relative w-full max-w-md sm:max-w-3xl lg:max-w-4xl h-[94vh] max-h-[820px] rounded-3xl overflow-hidden shadow-2xl border-3 flex flex-col justify-between transition-all duration-300 bg-black"
         style={{ 
           borderColor: colorActivo,
           boxShadow: `0 0 50px ${colorActivo}40`
@@ -428,24 +452,30 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
             ))}
           </div>
 
-          <div className="flex items-center justify-between mt-2.5 text-xs text-white">
-            <div className="flex items-center gap-2">
-              <LogoCineRewind tamano="sm" conTexto={false} />
-              <span className="font-black font-mono uppercase tracking-wider flex items-center gap-1.5" style={{ color: colorActivo }}>
-                <span>CineRewind Gala · {stats.anio}</span>
-                <span className="text-[10px] text-zinc-400">({slideActual + 1}/{TOTAL_SLIDES})</span>
-              </span>
+          <div className="flex items-center justify-between mt-3 text-white">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <LogoCineRewind tamano="md" conTexto={true} />
+              <div className="hidden xs:flex items-center gap-2">
+                <span className="text-xs sm:text-sm md:text-base font-black font-mono uppercase tracking-wider" style={{ color: colorActivo }}>
+                  Gala · {stats.anio}
+                </span>
+                <span className="text-[10px] sm:text-xs font-mono font-black px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/10">
+                  {slideActual + 1}/{TOTAL_SLIDES}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button 
                 onClick={() => setPausado(!pausado)} 
-                className="p-1 rounded-lg bg-black/50 hover:bg-black text-white cursor-pointer border border-white/10"
+                className="p-1.5 sm:p-2 rounded-xl bg-black/60 hover:bg-black text-white cursor-pointer border border-white/15 transition-transform hover:scale-105"
+                title={pausado ? "Reanudar" : "Pausar"}
               >
-                {pausado ? <Play className="w-3.5 h-3.5 fill-white" /> : <Pause className="w-3.5 h-3.5 fill-white" />}
+                {pausado ? <Play className="w-4 h-4 fill-white" /> : <Pause className="w-4 h-4 fill-white" />}
               </button>
               <button 
                 onClick={alCerrar} 
-                className="p-1 rounded-lg bg-black/50 hover:bg-black text-white cursor-pointer border border-white/10"
+                className="p-1.5 sm:p-2 rounded-xl bg-black/60 hover:bg-black text-white cursor-pointer border border-white/15 transition-transform hover:scale-105"
+                title="Cerrar Wrapped"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -454,7 +484,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
         </div>
 
         {/* DIAPOSITIVA ACTIVA */}
-        <div className="relative z-10 flex-1 flex items-center justify-center p-2 sm:p-5 overflow-hidden">
+        <div className="relative z-10 flex-1 flex items-center justify-center p-1 sm:p-2.5 overflow-hidden min-h-0">
           {slideActual === 0 && (
             <SlideClaqueta
               stats={stats}

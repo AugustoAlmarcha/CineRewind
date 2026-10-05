@@ -9,11 +9,13 @@ export const AuthProvider = ({ children }) => {
 
   const cerrarSesion = useCallback(() => {
     localStorage.removeItem('cinerewind_token');
+    localStorage.removeItem('cinerewind_banner');
     setToken(null);
     setUsuario(null);
   }, []);
 
   const iniciarSesion = useCallback((tokenRecibido, usuarioRecibido) => {
+    localStorage.removeItem('cinerewind_banner');
     localStorage.setItem('cinerewind_token', tokenRecibido);
     setToken(tokenRecibido);
     setUsuario(usuarioRecibido);

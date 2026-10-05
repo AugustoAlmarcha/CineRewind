@@ -4,11 +4,68 @@ import VistaCatalogoTotal from './VistaCatalogoTotal';
 import VistaSelectorCarpetas from './VistaSelectorCarpetas';
 import VistaFeedMes from './VistaFeedMes';
 
+// Helper para detectar y agrupar sagas y franquicias de películas
+const obtenerInfoSaga = (titulo) => {
+  if (!titulo) return null;
+  const t = titulo.trim();
 
-const NOMBRES_MESES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-];
+  // 1. Patrones reconocidos comunes (español e inglés)
+  const patrones = [
+    { regex: /^shrek(\s+.*)?$/i, saga: 'Shrek', nombre: 'Saga Shrek' },
+    { regex: /^(los\s+)?juegos\s+del\s+hambre.*$/i, saga: 'Los Juegos del Hambre', nombre: 'Saga Los Juegos del Hambre' },
+    { regex: /^harry\s+potter.*$/i, saga: 'Harry Potter', nombre: 'Saga Harry Potter' },
+    { regex: /^el\s+se[ñn]or\s+de\s+los\s+anillos.*$/i, saga: 'El Señor de los Anillos', nombre: 'Saga El Señor de los Anillos' },
+    { regex: /^the\s+lord\s+of\s+the\s+rings.*$/i, saga: 'The Lord of the Rings', nombre: 'Saga The Lord of the Rings' },
+    { regex: /^star\s+wars.*$/i, saga: 'Star Wars', nombre: 'Saga Star Wars' },
+    { regex: /^toy\s+story.*$/i, saga: 'Toy Story', nombre: 'Saga Toy Story' },
+    { regex: /^spider-?man.*$/i, saga: 'Spider-Man', nombre: 'Saga Spider-Man' },
+    { regex: /^(el\s+)?padrino.*$/i, saga: 'El Padrino', nombre: 'Saga El Padrino' },
+    { regex: /^john\s+wick.*$/i, saga: 'John Wick', nombre: 'Saga John Wick' },
+    { regex: /^misi[oó]n\s+imposible.*$/i, saga: 'Misión Imposible', nombre: 'Saga Misión Imposible' },
+    { regex: /^(r[aá]pidos\s+y\s+furiosos|fast\s+&?\s+furious).*$/i, saga: 'Rápidos y Furiosos', nombre: 'Saga Rápidos y Furiosos' },
+    { regex: /^piratas\s+del\s+caribe.*$/i, saga: 'Piratas del Caribe', nombre: 'Saga Piratas del Caribe' },
+    { regex: /^madagascar.*$/i, saga: 'Madagascar', nombre: 'Saga Madagascar' },
+    { regex: /^kung\s+fu\s+panda.*$/i, saga: 'Kung Fu Panda', nombre: 'Saga Kung Fu Panda' },
+    { regex: /^mi\s+villano\s+favorito.*$/i, saga: 'Mi Villano Favorito', nombre: 'Saga Mi Villano Favorito' },
+    { regex: /^(la\s+saga\s+)?crep[uú]sculo.*$/i, saga: 'Crepúsculo', nombre: 'Saga Crepúsculo' },
+    { regex: /^matrix.*$/i, saga: 'Matrix', nombre: 'Saga Matrix' },
+    { regex: /^terminator.*$/i, saga: 'Terminator', nombre: 'Saga Terminator' },
+    { regex: /^alien.*$/i, saga: 'Alien', nombre: 'Saga Alien' },
+    { regex: /^avatar(\s*:\s*.*)?$/i, saga: 'Avatar', nombre: 'Saga Avatar' },
+    { regex: /^dun[ea].*$/i, saga: 'Dune', nombre: 'Saga Dune' },
+    { regex: /^deadpool.*$/i, saga: 'Deadpool', nombre: 'Saga Deadpool' },
+    { regex: /^gladiad?or.*$/i, saga: 'Gladiador', nombre: 'Saga Gladiador' },
+    { regex: /^joker.*$/i, saga: 'Joker', nombre: 'Saga Joker' },
+    { regex: /^guardianes\s+de\s+la\s+galaxia.*$/i, saga: 'Guardianes de la Galaxia', nombre: 'Saga Guardianes de la Galaxia' },
+    { regex: /^(los\s+)?(avengers|vengadores).*$/i, saga: 'Avengers', nombre: 'Saga Avengers' },
+    { regex: /^(five\s+nights\s+at\s+freddy|cinco\s+noches).*$/i, saga: 'Five Nights at Freddy\'s', nombre: 'Saga Five Nights at Freddy\'s' },
+  ];
+
+  for (const p of patrones) {
+    if (p.regex.test(t)) {
+      return { clave: p.saga.toLowerCase(), nombre: p.nombre };
+    }
+  }
+
+  // 2. Patrón de separadores como ":", "-", "–" o número (ej: "Cars 2" -> "Saga Cars")
+  const matchSep = t.match(/^([^:\-–—·]+)[\s*:\-–—·]\s*(.+)$/);
+  if (matchSep) {
+    const prefijo = matchSep[1].trim();
+    if (prefijo.length >= 3 && !/^(el|la|los|las|un|una|the|a|an)$/i.test(prefijo)) {
+      return { clave: prefijo.toLowerCase(), nombre: `Saga ${prefijo}` };
+    }
+  }
+
+  const matchNum = t.match(/^(.+?)\s+(\d+|[IVXLCDM]+)$/i);
+  if (matchNum) {
+    const prefijo = matchNum[1].trim();
+    if (prefijo.length >= 3 && !/^(el|la|los|las|un|una|the|a|an)$/i.test(prefijo)) {
+      return { clave: prefijo.toLowerCase(), nombre: `Saga ${prefijo}` };
+    }
+  }
+
+  return null;
+};
 
 export default function GrillaHistorial({
   vistaTotal = false,
@@ -26,13 +83,14 @@ export default function GrillaHistorial({
   onToggleItem,
   onAbrirDetalleTimeline,
   busquedaHistorial = '',
+  filtroTipo = '',
   // Props del filtro social
   soloConAmigos = false,
   amigosFiltro = [],
 }) {
 
   // Helper para verificar si un registro cumple con el filtro de amigos
-const pasaFiltroAmigos = (item) => {
+  const pasaFiltroAmigos = (item) => {
     if (!soloConAmigos) return true;
 
     const amigos = Array.isArray(item.amigos_covision) ? item.amigos_covision : [];
@@ -51,7 +109,7 @@ const pasaFiltroAmigos = (item) => {
     return true;
   };
 
-  // 1. Catálogo unificado Total Histórico (con filtro de búsqueda y amigos)
+  // 1. Catálogo unificado Total Histórico (con soporte para Series, Sagas y Películas)
   const obrasTotalesUnificadas = useMemo(() => {
     if (!vistaTotal) return [];
     const mapaObras = {};
@@ -60,33 +118,64 @@ const pasaFiltroAmigos = (item) => {
       if (busquedaHistorial && !item.titulo?.toLowerCase().includes(busquedaHistorial.toLowerCase())) {
         return;
       }
-      // Filtro social: descarta si no cumple con la co-visualización
+      // Filtro social
       if (!pasaFiltroAmigos(item)) {
         return;
       }
 
-      const clave = item.obra_id || item.tmdb_id || item.titulo;
-      if (!mapaObras[clave]) {
-        mapaObras[clave] = {
-          obra_id: item.obra_id,
-          titulo: item.titulo,
-          tipo: item.tipo,
-          poster_path: item.poster_serie || item.obra_poster || item.poster_path,
-          plataforma: item.plataforma,
-          registros: [],
-        };
+      const esSerieItem = item.tipo?.toLowerCase() === 'serie';
+      if (filtroTipo === 'serie' && !esSerieItem) return;
+      if (filtroTipo === 'pelicula' && esSerieItem) return;
+
+      if (esSerieItem) {
+        const clave = `serie_${item.obra_id || item.tmdb_id || item.titulo}`;
+        if (!mapaObras[clave]) {
+          mapaObras[clave] = {
+            id_agrupador: clave,
+            obra_id: item.obra_id,
+            titulo: item.titulo,
+            tipo: 'serie',
+            esSaga: false,
+            poster_path: item.poster_serie || item.obra_poster || item.poster_path,
+            plataforma: item.plataforma,
+            registros: [],
+          };
+        }
+        mapaObras[clave].registros.push(item);
+      } else {
+        // Película individual o Saga
+        const infoSaga = obtenerInfoSaga(item.titulo);
+        const clave = infoSaga 
+          ? `saga_${infoSaga.clave}`
+          : `peli_${item.obra_id || item.tmdb_id || item.titulo}`;
+
+        if (!mapaObras[clave]) {
+          mapaObras[clave] = {
+            id_agrupador: clave,
+            obra_id: item.obra_id,
+            titulo: infoSaga ? infoSaga.nombre : item.titulo,
+            tipo: 'pelicula',
+            esSaga: Boolean(infoSaga),
+            poster_path: item.obra_poster || item.poster_path,
+            plataforma: item.plataforma,
+            registros: [],
+          };
+        }
+        mapaObras[clave].registros.push(item);
       }
-      mapaObras[clave].registros.push(item);
     });
 
     Object.values(mapaObras).forEach((obra) => {
       obra.registros.sort((a, b) => new Date(b.fecha_visto) - new Date(a.fecha_visto));
+      if (obra.esSaga) {
+        obra.peliculasDistintas = Array.from(new Set(obra.registros.map((r) => r.titulo)));
+      }
     });
 
     return Object.values(mapaObras).sort((a, b) => b.registros.length - a.registros.length);
-  }, [vistaTotal, timelineCompleto, busquedaHistorial, soloConAmigos, amigosFiltro]);
+  }, [vistaTotal, timelineCompleto, busquedaHistorial, filtroTipo, soloConAmigos, amigosFiltro]);
 
-  // 2. Agrupación por días de una serie en Total Histórico
+  // 2. Agrupación por días de una obra (serie, saga o película) en Total Histórico
   const gruposSerieTotalPorDia = useMemo(() => {
     if (!serieSeleccionadaTotal) return [];
     const mapa = {};
@@ -128,7 +217,7 @@ const pasaFiltroAmigos = (item) => {
     return `https://image.tmdb.org/t/p/w500${ruta.startsWith('/') ? ruta : `/${ruta}`}`;
   };
 
-  // CASO 1: Serie abierta en Total Histórico
+  // CASO 1: Obra (Serie, Saga o Película) abierta en Total Histórico
   if (vistaTotal && serieSeleccionadaTotal) {
     return (
       <VistaSerieTotal
@@ -180,39 +269,48 @@ const pasaFiltroAmigos = (item) => {
 
   // CASO 4: Selector de Meses
   if (mesSeleccionado === null) {
-    const mesesDelAnio = arbolHistorial[anioSeleccionado] || {};
-    const mesesIndices = Object.keys(mesesDelAnio).sort((a, b) => b - a);
-    const carpetasMeses = mesesIndices.map((mesIdx) => {
-      const items = (mesesDelAnio[mesIdx] || []).filter(pasaFiltroAmigos);
+    const mesesObj = arbolHistorial[anioSeleccionado] || {};
+    const carpetasMeses = Array.from({ length: 12 }, (_, index) => {
+      const items = (mesesObj[index] || []).filter(pasaFiltroAmigos);
+      const nombreMes = new Date(2024, index, 1).toLocaleDateString('es-ES', { month: 'long' });
       return {
-        id: mesIdx,
-        valor: Number(mesIdx),
-        etiqueta: NOMBRES_MESES[mesIdx],
-        subtexto: `${items.length} ${items.length === 1 ? 'registro' : 'registros'}`,
-        items
+        id: index,
+        valor: index,
+        etiqueta: nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1),
+        subtexto: `${items.length} ${items.length === 1 ? 'obra' : 'obras'}`,
+        items,
+        vacio: items.length === 0
       };
-    }).filter((c) => c.items.length > 0 || !soloConAmigos);
+    })
+      .filter((c) => c.items.length > 0)
+      .sort((a, b) => b.valor - a.valor);
 
     return (
       <VistaSelectorCarpetas 
         carpetas={carpetasMeses}
-        tituloVacio={soloConAmigos ? "No hay registros con amigos en este año." : "No hay meses disponibles."}
+        tituloVacio={soloConAmigos ? `Sin registros compartidos con esos amigos en ${anioSeleccionado}.` : `No hay registros en ${anioSeleccionado}.`}
         onSeleccionar={onSeleccionarMes}
       />
     );
   }
 
-  // CASO 5: Feed diario del mes
+  // CASO 5: Feed del Mes (Diario por Fechas)
+  const nombresMesesLista = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+  ];
+
   return (
     <VistaFeedMes 
       gruposPorDia={gruposPorDia}
+      itemsDelMes={itemsDelMes}
       resolverImagen={resolverImagen}
+      onAbrirDetalleTimeline={onAbrirDetalleTimeline}
       modoSeleccion={modoSeleccion}
       seleccionadosParaBorrar={seleccionadosParaBorrar}
       onToggleItem={onToggleItem}
-      onAbrirDetalleTimeline={onAbrirDetalleTimeline}
       busquedaHistorial={busquedaHistorial}
-      nombresMeses={NOMBRES_MESES}
+      nombresMeses={nombresMesesLista}
     />
   );
 }

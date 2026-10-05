@@ -9,6 +9,11 @@ export default function HeroPerfil({
   avatarVisual,
   fechaAlta,
   cargandoWrapped,
+  esMiPerfil = true,
+  estadoRelacion = 'ninguno',
+  onEnviarSolicitud,
+  onAceptarSolicitud,
+  onVolverMiPerfil,
   onAbrirEditar,
   onAbrirAmigos,
   onAbrirWrapped
@@ -28,14 +33,16 @@ export default function HeroPerfil({
         <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d12] via-[#0d0d12]/50 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#0d0d12]/80 via-transparent to-[#0d0d12]/80" />
 
-        <button
-          type="button"
-          onClick={() => onAbrirEditar('portada')}
-          className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/15 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-lg hover:scale-105 cursor-pointer"
-        >
-          <Camera className="w-3.5 h-3.5 text-amber-400" />
-          <span>Cambiar Portada</span>
-        </button>
+        {esMiPerfil && (
+          <button
+            type="button"
+            onClick={() => onAbrirEditar('portada')}
+            className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/15 text-xs font-semibold text-white flex items-center gap-1.5 transition-all shadow-lg hover:scale-105 cursor-pointer"
+          >
+            <Camera className="w-3.5 h-3.5 text-amber-400" />
+            <span>Cambiar Portada</span>
+          </button>
+        )}
       </div>
 
       {/* Identidad de Usuario */}
@@ -72,31 +79,80 @@ export default function HeroPerfil({
 
         {/* Botones de Acción */}
         <div className="flex flex-wrap items-center justify-center md:justify-end gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={onAbrirAmigos}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 transition-colors border border-zinc-700 cursor-pointer"
-          >
-            <Users className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Amigos</span>
-          </button>
+          {esMiPerfil ? (
+            <>
+              <button
+                type="button"
+                onClick={onAbrirAmigos}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 transition-colors border border-zinc-700 cursor-pointer"
+              >
+                <Users className="w-3.5 h-3.5 text-zinc-400" />
+                <span>Amigos</span>
+              </button>
 
-          <button
-            type="button"
-            onClick={() => onAbrirEditar('info')}
-            className="px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-zinc-800 hover:bg-zinc-700 transition-colors border border-zinc-700 cursor-pointer"
-          >
-            Editar Perfil
-          </button>
+              <button
+                type="button"
+                onClick={() => onAbrirEditar('info')}
+                className="px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-zinc-800 hover:bg-zinc-700 transition-colors border border-zinc-700 cursor-pointer"
+              >
+                Editar Perfil
+              </button>
 
-          <button
-            type="button"
-            onClick={onAbrirWrapped}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs text-black bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-amber-200 transition-all shadow-lg hover:scale-105 active:scale-95 cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5 fill-black" />
-            <span>{cargandoWrapped ? 'Cargando...' : 'CineRewind Wrapped'}</span>
-          </button>
+              <button
+                type="button"
+                onClick={onAbrirWrapped}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs text-black bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-amber-200 transition-all shadow-lg hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 fill-black" />
+                <span>{cargandoWrapped ? 'Cargando...' : 'CineRewind Wrapped'}</span>
+              </button>
+            </>
+          ) : (
+            <>
+              {estadoRelacion === 'amigos' && (
+                <span className="px-4 py-2.5 rounded-xl font-bold text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-2">
+                  <span>✓</span> Amigos
+                </span>
+              )}
+
+              {estadoRelacion === 'solicitud_enviada' && (
+                <span className="px-4 py-2.5 rounded-xl font-bold text-xs bg-zinc-800 text-zinc-400 border border-zinc-700 flex items-center gap-2">
+                  <span>⏳</span> Solicitud enviada
+                </span>
+              )}
+
+              {estadoRelacion === 'solicitud_recibida' && (
+                <button
+                  type="button"
+                  onClick={onAceptarSolicitud}
+                  className="px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-rose-600 hover:bg-rose-500 transition-colors shadow-lg active:scale-95 cursor-pointer"
+                >
+                  Aceptar Solicitud
+                </button>
+              )}
+
+              {estadoRelacion === 'ninguno' && (
+                <button
+                  type="button"
+                  onClick={onEnviarSolicitud}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-rose-600 hover:bg-rose-500 transition-colors shadow-lg active:scale-95 cursor-pointer"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>+ Conectar como Amigos</span>
+                </button>
+              )}
+
+              {onVolverMiPerfil && (
+                <button
+                  type="button"
+                  onClick={onVolverMiPerfil}
+                  className="px-3.5 py-2.5 rounded-xl font-semibold text-xs text-zinc-300 hover:text-white bg-zinc-800/80 hover:bg-zinc-700 transition border border-zinc-700 cursor-pointer"
+                >
+                  ← Mi Perfil
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
 

@@ -98,7 +98,7 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
   );
 
   const [bannerSeleccionado, setBannerSeleccionado] = useState(
-    usuario?.banner_url || localStorage.getItem('cinerewind_banner') || PORTADAS_PREDETERMINADAS[0].url
+    usuario?.banner_url || PORTADAS_PREDETERMINADAS[0].url
   );
 
   const [error, setError] = useState(null);
@@ -188,8 +188,6 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
     setGuardando(true);
 
     try {
-      localStorage.setItem('cinerewind_banner', bannerSeleccionado);
-
       await onGuardar({
         nombre: nombre.trim(),
         username: username.toLowerCase().trim().replace(/[^a-z0-9_.-]/g, ''),

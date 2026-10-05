@@ -8,6 +8,7 @@ import {
 import CalificadorEstrellas from '../common/CalificadorEstrellas';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
 import SelectorAmigosEtiquetar from './SelectorAmigosEtiquetar';
+import { Tv, Users, Clapperboard, BookOpen, ChevronDown } from 'lucide-react';
 
 const PLATAFORMAS_DISPONIBLES = [
   'Netflix', 'Max', 'Disney+', 'Prime Video', 'Apple TV+', 'Cine', 'Paramount+', 'Mubi', 'Crunchyroll'
@@ -24,6 +25,7 @@ export default function ModalDetalleTimeline({
   useEffect(() => {
     setObraActual(item);
   }, [item]);
+
   const visualizacionId = item.visualizacion_id || item.id;
   const esSerie = item.tipo?.toLowerCase() === 'serie';
   const obraIdReal = item.obra_id;
@@ -41,9 +43,10 @@ export default function ModalDetalleTimeline({
   const [actores, setActores] = useState([]);
   const [sinopsisTexto, setSinopsisTexto] = useState(item.sinopsis || '');
   const [cargandoActores, setCargandoActores] = useState(false);
-  const [mostrarActores, setMostrarActores] = useState(false);
-  const [mostrarHistorialCompleto, setMostrarHistorialCompleto] = useState(false);
   const [actorSeleccionado, setActorSeleccionado] = useState(null);
+
+  // Sección desplegable activa (estilo pills compactos como ModalRegistrar)
+  const [seccionExpandida, setSeccionExpandida] = useState(null);
 
   const formatearFecha = (fechaStr) => {
     if (!fechaStr) return '';
@@ -54,26 +57,6 @@ export default function ModalDetalleTimeline({
       return fechaStr;
     }
   };
-
-  const fechasVistas = useMemo(() => {
-    if (!Array.isArray(todasLasVisualizaciones) || todasLasVisualizaciones.length === 0 || !obraIdReal) {
-      return [{ fecha_visto: item.fecha_visto, plataforma: item.plataforma }];
-    }
-
-    if (esSerie) {
-      const mismoCapitulo = todasLasVisualizaciones.filter((v) => 
-        Number(v.obra_id) === Number(obraIdReal) &&
-        Number(v.temporada) === Number(item.temporada) &&
-        Number(v.episodio) === Number(item.episodio)
-      );
-      return mismoCapitulo.length > 0 ? mismoCapitulo : [{ fecha_visto: item.fecha_visto, plataforma: item.plataforma }];
-    } else {
-      const vecesVista = todasLasVisualizaciones
-        .filter((v) => Number(v.obra_id) === Number(obraIdReal))
-        .sort((a, b) => new Date(b.fecha_visto) - new Date(a.fecha_visto));
-      return vecesVista.length > 0 ? vecesVista : [{ fecha_visto: item.fecha_visto, plataforma: item.plataforma }];
-    }
-  }, [todasLasVisualizaciones, obraIdReal, esSerie, item]);
 
   useEffect(() => {
     let cancelado = false;
@@ -184,190 +167,274 @@ export default function ModalDetalleTimeline({
     ? `https://image.tmdb.org/t/p/w780${detalle.still_path}`
     : detalle?.backdrop_path 
     ? `https://image.tmdb.org/t/p/w780${detalle.backdrop_path}`
-    : (item.foto_episodio || item.poster_path);
+    : (item.foto_episodio || item.obra_poster || item.poster_path);
 
-  const ultimaFecha = fechasVistas[0] || { fecha_visto: item.fecha_visto, plataforma: item.plataforma };
-  const tieneRewatch = !esSerie && fechasVistas.length > 1;
+  const totalAcompanantes = amigosSeleccionados.length + (vistoConTexto?.trim() ? 1 : 0);
 
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
         <div className="bg-[#fcfaf7] dark:bg-[#141418] border border-neutral-300 dark:border-white/10 rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white my-auto animate-fadeIn">
           
-          {/* Cabecera / Banner */}
-          <div className="relative w-full h-52 bg-neutral-900 flex-shrink-0">
+          {/* Cabecera / Banner Cinemático */}
+          <div className="relative w-full h-44 sm:h-52 bg-neutral-900 flex-shrink-0">
             {bannerImg ? (
               <img src={bannerImg} alt={item.titulo} className="w-full h-full object-cover opacity-85" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-neutral-500">Sin foto</div>
+              <div className="w-full h-full flex items-center justify-center text-neutral-500 font-bold">
+                {item.titulo}
+              </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#fcfaf7] dark:from-[#141418] via-black/30 to-transparent flex justify-between items-start p-5">
-              <span className="bg-rose-600 text-white font-black text-xs px-2.5 py-1 rounded-lg uppercase tracking-wider shadow">
+            <div className="absolute inset-0 bg-gradient-to-t from-[#fcfaf7] dark:from-[#141418] via-black/40 to-black/25 flex justify-between items-start p-4 sm:p-5">
+              <span className="bg-rose-600 text-white font-black text-[11px] px-2.5 py-1 rounded-lg uppercase tracking-wider shadow">
                 {item.tipo} {item.temporada ? `· T${item.temporada} E${item.episodio}` : ''}
               </span>
               <button 
                 type="button" 
                 onClick={onClose} 
                 className="w-8 h-8 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition cursor-pointer"
+                title="Cerrar"
               >
                 ✕
               </button>
             </div>
-            <div className="absolute bottom-3 left-6 right-6">
-              <h2 className="text-2xl font-black text-neutral-900 dark:text-white drop-shadow-md truncate">{item.titulo}</h2>
-              {detalle?.nombre && (
-                <p className="text-sm font-bold text-rose-600 dark:text-rose-400 truncate">Capítulo {item.episodio}: {detalle.nombre}</p>
-              )}
+            <div className="absolute bottom-3 left-4 right-4 sm:left-6 sm:right-6">
+              <h2 className="text-xl sm:text-2xl font-black text-neutral-900 dark:text-white drop-shadow-md truncate">
+                {item.titulo}
+              </h2>
+              <div className="flex items-center gap-2 text-xs font-bold text-neutral-700 dark:text-neutral-300 mt-0.5 truncate">
+                {detalle?.nombre && (
+                  <>
+                    <span className="text-rose-600 dark:text-rose-400 truncate">Cap. {item.episodio}: {detalle.nombre}</span>
+                    <span>·</span>
+                  </>
+                )}
+                {item.fecha_visto && (
+                  <span className="text-[11px] text-neutral-600 dark:text-neutral-400 font-medium">
+                    📅 {formatearFecha(item.fecha_visto)}
+                  </span>
+                )}
+                {item.plataforma && (
+                  <span className="px-1.5 py-0.5 rounded bg-neutral-200/90 dark:bg-white/10 text-[10px] font-mono font-bold text-neutral-700 dark:text-neutral-300">
+                    {item.plataforma}
+                  </span>
+                )}
+                {vistoConTexto?.trim() && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-[10px] font-black text-purple-600 dark:text-purple-300">
+                    <span className="w-3.5 h-3.5 rounded-full overflow-hidden ring-1 ring-purple-400/40 inline-flex items-center justify-center">
+                      <img
+                        src={`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(vistoConTexto.split(',')[0].trim())}&backgroundColor=b6e3f4`}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    </span>
+                    <span>Visto con {vistoConTexto}</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Cuerpo */}
-          <div className="p-6 overflow-y-auto space-y-6 flex-1 scrollbar-thin">
+          {/* Cuerpo Principal del Modal */}
+          <div className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1 scrollbar-thin">
             
-            {/* SECCIÓN DE FECHAS */}
-            <div className="p-3.5 rounded-2xl bg-neutral-100/80 dark:bg-white/5 border border-neutral-200 dark:border-white/10 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">📅</span>
-                  <div>
-                    <span className="block text-[10px] font-black uppercase tracking-wider text-neutral-400">
-                      {esSerie ? 'Visto en tu Timeline' : (tieneRewatch ? `Visto ${fechasVistas.length} veces (Rewatch)` : 'Visto en tu Timeline')}
-                    </span>
-                    <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
-                      {formatearFecha(ultimaFecha.fecha_visto)}
-                    </span>
-                  </div>
-                </div>
+            {/* 1. SECCIÓN PRINCIPAL: PUNTUACIÓN Y RESEÑA (ACCESO DIRECTO SIN SCROLL) */}
+            <div className="space-y-4">
+              <CalificadorEstrellas 
+                valor={calificacion} 
+                onChange={setCalificacion} 
+              />
 
-                <div className="flex items-center gap-2">
-                  {ultimaFecha.plataforma && (
-                    <span className="px-2 py-0.5 rounded-md bg-neutral-200 dark:bg-white/10 text-[10px] font-mono font-bold text-neutral-600 dark:text-neutral-300">
-                      {ultimaFecha.plataforma}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                    Tu opinión o reseña
+                  </label>
+                  {calificacion > 0 && (
+                    <span className="text-xs font-black text-amber-500">
+                      ★ {Number(calificacion).toFixed(1)} / 5.0
                     </span>
                   )}
-                  {tieneRewatch && (
-                    <button
-                      type="button"
-                      onClick={() => setMostrarHistorialCompleto(!mostrarHistorialCompleto)}
-                      className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer ml-1"
-                    >
-                      {mostrarHistorialCompleto ? 'Ocultar fechas' : 'Ver todas'}
-                    </button>
-                  )}
                 </div>
+                <textarea
+                  rows="3"
+                  value={resenia}
+                  onChange={(e) => setResenia(e.target.value)}
+                  placeholder={esSerie ? "¿Qué te pareció este capítulo? Escribe tus notas..." : "¿Qué te pareció la película? Escribe tus notas..."}
+                  className="w-full bg-white dark:bg-[#181820] border border-neutral-300 dark:border-white/10 rounded-2xl p-3.5 text-xs text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-rose-500 resize-none transition shadow-sm"
+                />
               </div>
-
-              {tieneRewatch && mostrarHistorialCompleto && (
-                <div className="pt-2 border-t border-neutral-200/60 dark:divide-white/5 divide-y divide-neutral-200/40 dark:divide-white/5">
-                  {fechasVistas.map((v, i) => (
-                    <div key={i} className="flex items-center justify-between py-1.5 text-xs text-neutral-700 dark:text-neutral-300">
-                      <span>• {formatearFecha(v.fecha_visto)}</span>
-                      {v.plataforma && (
-                        <span className="text-[10px] font-mono text-neutral-400">{v.plataforma}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
-            {/* Selector de Plataforma */}
-            <div className="space-y-3 border border-neutral-300 dark:border-white/10 rounded-2xl p-4 bg-neutral-100/60 dark:bg-white/5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                  Plataforma de visualización
-                </label>
-                {plataforma && (
+            {/* 2. BARRA DE OPCIONES COMPACTAS (Estilo ModalRegistrar: Plataforma, Acompañantes, Reparto, Sinopsis) */}
+            <div className="pt-2 border-t border-neutral-200 dark:border-white/10 space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Plataforma */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionExpandida(seccionExpandida === 'plataforma' ? null : 'plataforma')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                    seccionExpandida === 'plataforma'
+                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                      : plataforma
+                      ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-300 dark:border-rose-500/30 text-rose-600 dark:text-rose-400'
+                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Tv className="w-3.5 h-3.5" />
+                  <span>{plataforma ? `📺 ${plataforma}` : 'Plataforma'}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'plataforma' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Botón Acompañantes */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionExpandida(seccionExpandida === 'amigos' ? null : 'amigos')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                    seccionExpandida === 'amigos'
+                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                      : totalAcompanantes > 0
+                      ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-300 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400'
+                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>
+                    {totalAcompanantes > 0 
+                      ? `Acompañantes (${totalAcompanantes})` 
+                      : 'Acompañantes'}
+                  </span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'amigos' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Botón Reparto */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionExpandida(seccionExpandida === 'reparto' ? null : 'reparto')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                    seccionExpandida === 'reparto'
+                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Clapperboard className="w-3.5 h-3.5" />
+                  <span>Reparto {actores.length > 0 ? `(${actores.length})` : ''}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'reparto' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Botón Sinopsis */}
+                {sinopsisTexto && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setPlataforma('');
-                      setAlcancePlataforma('solo_este');
-                    }}
-                    className="text-[11px] font-bold text-neutral-500 hover:text-rose-500 cursor-pointer"
+                    onClick={() => setSeccionExpandida(seccionExpandida === 'sinopsis' ? null : 'sinopsis')}
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                      seccionExpandida === 'sinopsis'
+                        ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                        : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                    }`}
                   >
-                    Quitar plataforma
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Sinopsis</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'sinopsis' ? 'rotate-180' : ''}`} />
                   </button>
                 )}
               </div>
 
-              <div className="flex flex-wrap gap-2 pt-1">
-                {PLATAFORMAS_DISPONIBLES.map((plat) => {
-                  const seleccionada = plataforma === plat;
-                  return (
-                    <button
-                      key={plat}
-                      type="button"
-                      onClick={() => setPlataforma(plat)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${
-                        seleccionada
-                          ? 'bg-rose-600 border-rose-600 text-white shadow-md scale-105'
-                          : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:border-rose-500/50'
-                      }`}
-                    >
-                      {plat}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {esSerie && plataforma && plataforma !== 'Sin plataforma' && (
-                <div className="pt-3 border-t border-neutral-200 dark:border-white/10 space-y-2">
-                  <p className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                    ¿A qué episodios aplicar "{plataforma}"?
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <label onClick={() => setAlcancePlataforma('solo_este')} className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs cursor-pointer ${alcancePlataforma === 'solo_este' ? 'bg-rose-500/10 border-rose-500 text-rose-500 font-black' : 'border-neutral-300 dark:border-white/10'}`}>
-                      <input type="radio" checked={alcancePlataforma === 'solo_este'} onChange={() => {}} className="accent-rose-600" />
-                      <span>Solo este capítulo</span>
+              {/* PANEL DESPLEGABLE: PLATAFORMA */}
+              {seccionExpandida === 'plataforma' && (
+                <div className="space-y-3 p-4 rounded-2xl bg-neutral-100/70 dark:bg-white/5 border border-neutral-200 dark:border-white/10 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                      Selecciona la plataforma
                     </label>
-                    <label onClick={() => setAlcancePlataforma('solo_sin_plataforma')} className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs cursor-pointer ${alcancePlataforma === 'solo_sin_plataforma' ? 'bg-rose-500/10 border-rose-500 text-rose-500 font-black' : 'border-neutral-300 dark:border-white/10'}`}>
-                      <input type="radio" checked={alcancePlataforma === 'solo_sin_plataforma'} onChange={() => {}} className="accent-rose-600" />
-                      <span>Solo sin plataforma</span>
-                    </label>
-                    <label onClick={() => setAlcancePlataforma('toda_la_serie')} className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs cursor-pointer ${alcancePlataforma === 'toda_la_serie' ? 'bg-amber-500/10 border-amber-500 text-amber-500 font-black' : 'border-neutral-300 dark:border-white/10'}`}>
-                      <input type="radio" checked={alcancePlataforma === 'toda_la_serie'} onChange={() => {}} className="accent-amber-600" />
-                      <span>Toda la serie</span>
-                    </label>
+                    {plataforma && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPlataforma('');
+                          setAlcancePlataforma('solo_este');
+                        }}
+                        className="text-[11px] font-bold text-neutral-500 hover:text-rose-500 cursor-pointer"
+                      >
+                        Quitar plataforma
+                      </button>
+                    )}
                   </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {PLATAFORMAS_DISPONIBLES.map((plat) => {
+                      const seleccionada = plataforma === plat;
+                      return (
+                        <button
+                          key={plat}
+                          type="button"
+                          onClick={() => setPlataforma(plat)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                            seleccionada
+                              ? 'bg-rose-600 border-rose-600 text-white shadow-md scale-105'
+                              : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:border-rose-500/50'
+                          }`}
+                        >
+                          {plat}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {esSerie && plataforma && plataforma !== 'Sin plataforma' && (
+                    <div className="pt-3 border-t border-neutral-200 dark:border-white/10 space-y-2">
+                      <p className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                        ¿A qué episodios aplicar "{plataforma}"?
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <label onClick={() => setAlcancePlataforma('solo_este')} className={`flex items-center gap-2 p-2 rounded-xl border text-xs cursor-pointer ${alcancePlataforma === 'solo_este' ? 'bg-rose-500/10 border-rose-500 text-rose-500 font-black' : 'border-neutral-300 dark:border-white/10'}`}>
+                          <input type="radio" checked={alcancePlataforma === 'solo_este'} onChange={() => {}} className="accent-rose-600" />
+                          <span>Solo este capítulo</span>
+                        </label>
+                        <label onClick={() => setAlcancePlataforma('solo_sin_plataforma')} className={`flex items-center gap-2 p-2 rounded-xl border text-xs cursor-pointer ${alcancePlataforma === 'solo_sin_plataforma' ? 'bg-rose-500/10 border-rose-500 text-rose-500 font-black' : 'border-neutral-300 dark:border-white/10'}`}>
+                          <input type="radio" checked={alcancePlataforma === 'solo_sin_plataforma'} onChange={() => {}} className="accent-rose-600" />
+                          <span>Solo sin plataforma</span>
+                        </label>
+                        <label onClick={() => setAlcancePlataforma('toda_la_serie')} className={`flex items-center gap-2 p-2 rounded-xl border text-xs cursor-pointer ${alcancePlataforma === 'toda_la_serie' ? 'bg-amber-500/10 border-amber-500 text-amber-500 font-black' : 'border-neutral-300 dark:border-white/10'}`}>
+                          <input type="radio" checked={alcancePlataforma === 'toda_la_serie'} onChange={() => {}} className="accent-amber-600" />
+                          <span>Toda la serie</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
 
-            {/* Sinopsis */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Sinopsis</label>
-              <p className="text-xs leading-relaxed text-neutral-700 dark:text-neutral-300">
-                {sinopsisTexto || 'Sin descripción disponible.'}
-              </p>
-            </div>
+              {/* PANEL DESPLEGABLE: ACOMPAÑANTES */}
+              {seccionExpandida === 'amigos' && (
+                <div className="p-3.5 rounded-2xl bg-neutral-100/70 dark:bg-white/5 border border-neutral-200 dark:border-white/10 animate-fadeIn">
+                  <SelectorAmigosEtiquetar
+                    amigosSeleccionados={amigosSeleccionados}
+                    setAmigosSeleccionados={setAmigosSeleccionados}
+                    vistoConTexto={vistoConTexto}
+                    setVistoConTexto={setVistoConTexto}
+                  />
+                </div>
+              )}
 
-            {/* REPARTO */}
-            <div className="border border-neutral-300 dark:border-white/10 rounded-2xl p-4 bg-neutral-100/60 dark:bg-white/5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold flex items-center gap-2">
-                  <span>🎭</span> {esSerie ? 'Elenco del capítulo' : 'Elenco Principal'} {actores.length > 0 ? `(${actores.length})` : ''}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setMostrarActores(!mostrarActores)}
-                  className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
-                >
-                  {mostrarActores ? 'Ocultar' : 'Ver actores'}
-                </button>
-              </div>
+              {/* PANEL DESPLEGABLE: REPARTO */}
+              {seccionExpandida === 'reparto' && (
+                <div className="p-4 rounded-2xl bg-neutral-100/70 dark:bg-white/5 border border-neutral-200 dark:border-white/10 space-y-3 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-neutral-500 dark:text-neutral-400">
+                      🎭 {esSerie ? 'Elenco del capítulo' : 'Elenco Principal'} {actores.length > 0 ? `(${actores.length})` : ''}
+                    </span>
+                  </div>
 
-              {mostrarActores && (
-                <div>
                   {cargandoActores ? (
-                    <p className="text-xs text-neutral-400 italic py-3 text-center">Buscando actores en TMDb...</p>
+                    <p className="text-xs text-neutral-400 italic py-3 text-center">Buscando reparto en TMDb...</p>
                   ) : actores.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5 pt-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
                       {actores.map((actor, idx) => (
                         <div 
                           key={`${actor.id}-${idx}`}
                           onClick={() => setActorSeleccionado(actor)}
-                          className="bg-white dark:bg-neutral-900 rounded-xl overflow-hidden border border-neutral-200 dark:border-white/10 shadow-sm flex flex-col cursor-pointer hover:scale-105 hover:border-rose-500 transition duration-200"
+                          className="bg-white dark:bg-neutral-900 rounded-xl overflow-hidden border border-neutral-200 dark:border-white/10 shadow-sm flex flex-col cursor-pointer hover:scale-102 hover:border-rose-500 transition duration-200"
                         >
                           <div className="w-full aspect-[2/3] bg-neutral-800 overflow-hidden relative">
                             {actor.foto ? (
@@ -379,7 +446,7 @@ export default function ModalDetalleTimeline({
                               </div>
                             )}
                           </div>
-                          <div className="p-2.5 flex flex-col justify-between flex-1">
+                          <div className="p-2 flex flex-col justify-between flex-1">
                             <p className="text-xs font-black truncate text-neutral-900 dark:text-white" title={actor.nombre}>
                               {actor.nombre}
                             </p>
@@ -395,39 +462,23 @@ export default function ModalDetalleTimeline({
                   )}
                 </div>
               )}
-            </div>
 
-            {/* Selector de Co-visualización */}
-            <div className="rounded-2xl overflow-hidden border border-neutral-300 dark:border-white/10">
-              <SelectorAmigosEtiquetar
-                amigosSeleccionados={amigosSeleccionados}
-                setAmigosSeleccionados={setAmigosSeleccionados}
-                vistoConTexto={vistoConTexto}
-                setVistoConTexto={setVistoConTexto}
-              />
-            </div>
-
-            {/* Calificación */}
-            <CalificadorEstrellas 
-              valor={calificacion} 
-              onChange={setCalificacion} 
-            />
-
-            {/* Reseña */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Reseña o Diario Personal</label>
-              <textarea
-                rows="3"
-                value={resenia}
-                onChange={(e) => setResenia(e.target.value)}
-                placeholder={esSerie ? "¿Qué te pareció este capítulo? Escribe tus notas..." : "¿Qué te pareció la película? Escribe tus notas..."}
-                className="w-full bg-white dark:bg-[#1c1c22] border border-neutral-300 dark:border-white/10 rounded-2xl p-3 text-xs focus:outline-none focus:border-rose-500 resize-none"
-              />
+              {/* PANEL DESPLEGABLE: SINOPSIS */}
+              {seccionExpandida === 'sinopsis' && sinopsisTexto && (
+                <div className="p-4 rounded-2xl bg-neutral-100/70 dark:bg-white/5 border border-neutral-200 dark:border-white/10 space-y-1.5 animate-fadeIn">
+                  <label className="text-xs font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                    Sinopsis oficial
+                  </label>
+                  <p className="text-xs leading-relaxed text-neutral-700 dark:text-neutral-300">
+                    {sinopsisTexto}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-neutral-200 dark:border-white/10 flex justify-end gap-3 bg-neutral-50 dark:bg-[#101014]">
+          {/* Footer del Modal */}
+          <div className="p-4 border-t border-neutral-200 dark:border-white/10 flex justify-end gap-3 bg-neutral-50 dark:bg-[#101014] flex-shrink-0">
             <button 
               type="button" 
               onClick={onClose} 
@@ -449,15 +500,13 @@ export default function ModalDetalleTimeline({
       </div>
 
       {actorSeleccionado && (
-        <ModalFilmografiaActor 
+        <ModalFilmografiaActor
           actor={actorSeleccionado}
           onClose={() => setActorSeleccionado(null)}
-          onSeleccionarObra={(obra) => {
+          onSeleccionarObra={(obraDelActor) => {
             setActorSeleccionado(null);
             if (onSeleccionarObra) {
-              onSeleccionarObra(obra);
-            } else {
-              onClose();
+              onSeleccionarObra(obraDelActor);
             }
           }}
         />

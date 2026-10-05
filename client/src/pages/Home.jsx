@@ -516,6 +516,7 @@ export default function Home({ actualizarTrigger }) {
           onToggleItem={toggleSeleccionItem}
           onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
           busquedaHistorial={busquedaHistorial}
+          filtroTipo={filtroTipo}
           soloConAmigos={soloConAmigos}
           amigosFiltro={amigosFiltro}
         />

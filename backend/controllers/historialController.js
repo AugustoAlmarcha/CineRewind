@@ -436,25 +436,43 @@ const actualizarReseniaYCalificacion = async (req, res) => {
   }
 
   try {
-    const query = `
-      UPDATE historial_visualizaciones
-      SET 
-        calificacion = COALESCE($1, calificacion),
-        resenia = COALESCE($2, resenia),
-        plataforma = COALESCE($3, plataforma),
-        visto_con_texto = $4
-      WHERE id = $5 AND usuario_id = $6
-      RETURNING *;
-    `;
+    const campos = [];
+    const valores = [];
+    let idx = 1;
 
-    const resultado = await pool.query(query, [
-      calificacion !== undefined && calificacion !== null && calificacion > 0 ? Number(calificacion) : null,
-      resenia !== undefined && resenia !== null && resenia.trim() !== '' ? resenia.trim() : null,
-      plataforma !== undefined && plataforma !== null && plataforma.trim() !== '' ? plataforma.trim() : null,
-      visto_con_texto !== undefined ? (visto_con_texto ? String(visto_con_texto).trim() : null) : null,
-      visualizacionIdNum,
-      usuario_id
-    ]);
+    if (calificacion !== undefined) {
+      campos.push(`calificacion = $${idx++}`);
+      valores.push(calificacion !== null && Number(calificacion) > 0 ? Number(calificacion) : null);
+    }
+    if (resenia !== undefined) {
+      campos.push(`resenia = $${idx++}`);
+      valores.push(resenia !== null && typeof resenia === 'string' && resenia.trim() !== '' ? resenia.trim() : null);
+    }
+    if (plataforma !== undefined) {
+      campos.push(`plataforma = $${idx++}`);
+      valores.push(plataforma !== null && typeof plataforma === 'string' && plataforma.trim() !== '' ? plataforma.trim() : null);
+    }
+    if (visto_con_texto !== undefined) {
+      campos.push(`visto_con_texto = $${idx++}`);
+      valores.push(visto_con_texto ? String(visto_con_texto).trim() : null);
+    }
+
+    let resultado;
+    if (campos.length > 0) {
+      valores.push(visualizacionIdNum, usuario_id);
+      const query = `
+        UPDATE historial_visualizaciones
+        SET ${campos.join(', ')}
+        WHERE id = $${idx++} AND usuario_id = $${idx++}
+        RETURNING *;
+      `;
+      resultado = await pool.query(query, valores);
+    } else {
+      resultado = await pool.query(
+        'SELECT * FROM historial_visualizaciones WHERE id = $1 AND usuario_id = $2',
+        [visualizacionIdNum, usuario_id]
+      );
+    }
 
     if (resultado.rowCount === 0) {
       return res.status(404).json({ error: 'Registro no encontrado o no pertenece a tu cuenta' });
@@ -601,7 +619,7 @@ const obtenerCatalogoUsuario = async (req, res) => {
 // 10. ESTADÍSTICAS DEL USUARIO
 // ========================================================
 const obtenerEstadisticasUsuario = async (req, res) => {
-  const usuarioId = req.usuario?.id;
+  const usuarioId = req.query.usuario_id || req.usuario?.id;
   if (!usuarioId) {
     return res.status(401).json({ error: 'No autorizado' });
   }
@@ -652,7 +670,7 @@ const obtenerEstadisticasUsuario = async (req, res) => {
 // 11. RÉCORDS DEL USUARIO
 // ========================================================
 const obtenerRecordsUsuario = async (req, res) => {
-  const usuarioId = req.usuario?.id;
+  const usuarioId = req.query.usuario_id || req.usuario?.id;
   if (!usuarioId) {
     return res.status(401).json({ error: 'No autorizado' });
   }
@@ -962,7 +980,14 @@ const obtenerWrappedPeriodo = async (req, res) => {
     };
 
     // 5. Copiloto de Sillón (Pepito vs Mamá con tabla 'covisualizaciones' y 'usuarios')
-    let copiloto = { nombre: 'Sesiones en solitario', veces: 0, foto: null, esRobot: true };
+    let copiloto = { 
+      nombre: 'Lobo Solitario del Cine', 
+      veces: 0, 
+      foto: null, 
+      esSolitario: true, 
+      esAmigoTexto: false,
+      frase: 'Tus sesiones privadas donde cada plano y cada palomita son 100% para ti.' 
+    };
     try {
       const queryCopiloto = `
         SELECT u.nombre as nombre, u.avatar_url as foto, COUNT(*) as veces
@@ -981,7 +1006,9 @@ const obtenerWrappedPeriodo = async (req, res) => {
           nombre: resCopiloto.rows[0].nombre,
           veces: parseInt(resCopiloto.rows[0].veces, 10),
           foto: resCopiloto.rows[0].foto || null,
-          esRobot: !resCopiloto.rows[0].foto
+          esSolitario: false,
+          esAmigoTexto: false,
+          frase: `${resCopiloto.rows[0].veces} sesiones de sofá compartidas con risas y debates.`
         };
       } else {
         const queryTexto = `
@@ -998,29 +1025,23 @@ const obtenerWrappedPeriodo = async (req, res) => {
             nombre: resTexto.rows[0].nombre,
             veces: parseInt(resTexto.rows[0].veces, 10),
             foto: null,
-            esRobot: true
+            esSolitario: false,
+            esAmigoTexto: true,
+            frase: `${resTexto.rows[0].veces} obras disfrutadas en familia o con amigos en casa.`
+          };
+        } else {
+          copiloto = {
+            nombre: 'Lobo Solitario del Cine',
+            veces: 0,
+            foto: null,
+            esSolitario: true,
+            esAmigoTexto: false,
+            frase: 'Tus sesiones privadas donde cada plano y cada palomita son 100% para ti.'
           };
         }
       }
     } catch (e) {
       console.warn('Error al calcular copiloto:', e.message);
-    }
-
-    // 6. Arquetipo dinámico
-    let arquetipo = {
-      titulo: 'El Maratonista de Temporadas',
-      lema: 'Un capítulo más nunca fue suficiente.'
-    };
-    if (topSerie && topSerie.titulo.toLowerCase().includes('house')) {
-      arquetipo = {
-        titulo: 'Diagnóstico Reservado',
-        lema: 'Adicto a las batas blancas, los diagnósticos imposibles y el sarcasmo.'
-      };
-    } else if (totalPeliculas > totalEpisodios) {
-      arquetipo = {
-        titulo: 'Purista del Séptimo Arte',
-        lema: 'Para ti una historia completa se disfruta en dos horas de buen cine.'
-      };
     }
 
     // 7. Plataforma favorita
@@ -1040,23 +1061,58 @@ const obtenerWrappedPeriodo = async (req, res) => {
       }
     } catch (e) {}
 
-    // 🌟 TODAS LAS SERIES Y PELÍCULAS PARA EL COLLAGE
+    // 8. 🌟 CÁLCULO REAL DEL DÍA CON MÁS REPRODUCCIONES (DÍA SAGRADO)
+    let diaSagrado = 'Domingo';
+    try {
+      const queryDia = `
+        SELECT 
+          EXTRACT(DOW FROM hv.fecha_visto) as dia_num,
+          COUNT(*) as total_vistos
+        FROM historial_visualizaciones hv
+        WHERE hv.usuario_id = $1 AND ${filtroFecha}
+        GROUP BY dia_num
+        ORDER BY total_vistos DESC, dia_num ASC
+        LIMIT 1;
+      `;
+      const resDia = await pool.query(queryDia, params);
+      if (resDia.rows.length > 0 && resDia.rows[0].dia_num !== null) {
+        const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const diaIndex = parseInt(resDia.rows[0].dia_num, 10);
+        if (diasSemana[diaIndex]) {
+          diaSagrado = diasSemana[diaIndex];
+        }
+      }
+    } catch (e) {
+      console.warn('Error al calcular día sagrado:', e.message);
+    }
+
+    // 🌟 TODAS LAS SERIES Y PELÍCULAS PARA EL COLLAGE (Deduplicadas estrictamente)
     const queryTodasSeries = `
-      SELECT oc.id, oc.tmdb_id, oc.titulo, oc.poster_path, COUNT(hv.id) as episodios_vistos
+      SELECT 
+        COALESCE(oc.tmdb_id, oc.id) as id,
+        oc.tmdb_id, 
+        oc.titulo, 
+        oc.poster_path, 
+        COUNT(DISTINCT hv.id) as episodios_vistos
       FROM historial_visualizaciones hv
       JOIN obras_catalogo oc ON hv.obra_id = oc.id OR hv.obra_id = oc.tmdb_id
       WHERE hv.usuario_id = $1 AND LOWER(oc.tipo) = 'serie' AND ${filtroFecha}
-      GROUP BY oc.id, oc.tmdb_id, oc.titulo, oc.poster_path
+      GROUP BY COALESCE(oc.tmdb_id, oc.id), oc.tmdb_id, oc.titulo, oc.poster_path
       ORDER BY episodios_vistos DESC;
     `;
     const resTodasSeries = await pool.query(queryTodasSeries, params);
 
     const queryTodasPeliculas = `
-      SELECT oc.id, oc.tmdb_id, oc.titulo, oc.poster_path, COUNT(hv.id) as veces_vista
+      SELECT 
+        COALESCE(oc.tmdb_id, oc.id) as id,
+        oc.tmdb_id, 
+        oc.titulo, 
+        oc.poster_path, 
+        COUNT(DISTINCT hv.id) as veces_vista
       FROM historial_visualizaciones hv
       JOIN obras_catalogo oc ON hv.obra_id = oc.id OR hv.obra_id = oc.tmdb_id
       WHERE hv.usuario_id = $1 AND LOWER(oc.tipo) = 'pelicula' AND ${filtroFecha}
-      GROUP BY oc.id, oc.tmdb_id, oc.titulo, oc.poster_path
+      GROUP BY COALESCE(oc.tmdb_id, oc.id), oc.tmdb_id, oc.titulo, oc.poster_path
       ORDER BY veces_vista DESC;
     `;
     const resTodasPeliculas = await pool.query(queryTodasPeliculas, params);
@@ -1066,6 +1122,101 @@ const obtenerWrappedPeriodo = async (req, res) => {
     const seriesVistas = resTodasSeries.rows.map(r => ({ ...r, poster_path: normalizarP(r.poster_path), tipo: 'serie' }));
     const peliculasVistas = resTodasPeliculas.rows.map(r => ({ ...r, poster_path: normalizarP(r.poster_path), tipo: 'pelicula' }));
     const todasLasObras = [...seriesVistas, ...peliculasVistas];
+
+    // 🌟 6. SISTEMA RICO DE ARQUETIPOS CINEMATOGRÁFICOS BASADO EN GÉNEROS Y TÍTULOS
+    const titulosTexto = todasLasObras.map(o => (o.titulo || '').toLowerCase()).join(' ');
+
+    let arquetipo = {
+      titulo: 'El Jurado de Cannes',
+      lema: 'Analizas cada plano con pasión y devoras historias con auténtico criterio de festival.'
+    };
+
+    if (/spider|avenger|batman|superman|marvel|dc|comic|iron man|thor|hulk|guardians|vengadores|deadpool|x-men|wolverine|multiverse|doom|aquaman|flash/.test(titulosTexto)) {
+      arquetipo = {
+        titulo: 'El Guardián del Multiverso',
+        lema: 'Tu año estuvo repleto de capas, superpoderes y batallas épicas por salvar el universo.'
+      };
+    } else if (/demon|terror|evil|conjuring|saw|miedo|scream|halloween|resident|silent hill|pesadilla|fantasma|witch|sinister|exorcist|creepy|hereditary|nosferatu/.test(titulosTexto)) {
+      arquetipo = {
+        titulo: 'El Amante de las Pesadillas',
+        lema: 'Miras cine de terror a oscuras con luces apagadas y ni pestañeas ante el monstruo.'
+      };
+    } else if (/dune|star wars|interstellar|alien|matrix|blade runner|avatar|galaxy|space|cosmos|sci-fi|terminator|cyberpunk/.test(titulosTexto)) {
+      arquetipo = {
+        titulo: 'El Viajero Intergaláctico',
+        lema: 'La Tierra te queda chica; tu hábitat natural son las naves cósmicas y los futuros distópicos.'
+      };
+    } else if (/love|amor|romance|kiss|heart|coraz|boda|wedding|pareja|enamorad|notebook|lalaland|bridgerton|orgullo/.test(titulosTexto)) {
+      arquetipo = {
+        titulo: 'El Romántico Incorregible',
+        lema: 'Lloras con los finales felices, con los desamores y con cualquier historia que te robe el corazón.'
+      };
+    } else if (/fast|furios|rápido|misi[oó]n|mission|wick|die hard|mad max|bullet|gun|furia|escape|rescate|al límite|gladiator|top gun/.test(titulosTexto)) {
+      arquetipo = {
+        titulo: 'Adicto a la Adrenalina',
+        lema: 'Si no hay explosiones, persecuciones a toda velocidad y tiros, para ti no es cine de verdad.'
+      };
+    } else if (/sherlock|detective|crime|crimen|asesino|murder|mystery|misterio|knives out|mindhunter|fargo|true detective|thriller|se7en|zodiac/.test(titulosTexto)) {
+      arquetipo = {
+        titulo: 'Cazador de Misterios & Giros',
+        lema: 'Sospechas de todos desde el minuto uno y descifras el culpable antes del clímax final.'
+      };
+    } else if (/potter|rings|westeros|thrones|drag[oó]n|witcher|narnia|percy|magic|fantas[ií]a|lord of/.test(titulosTexto)) {
+      arquetipo = {
+        titulo: 'Señor de Reinos Fantásticos',
+        lema: 'Espadas ancestrales, hechizos y criaturas legendarias: tu mente vive en otras eras mágicas.'
+      };
+    } else if (/comedy|comedia|laugh|ted|friends|office|b99|brooklyn|hangover|scary movie|superbad|mario|barbie/.test(titulosTexto)) {
+      arquetipo = {
+        titulo: 'El Rey de la Risa',
+        lema: 'El cine es tu terapia de felicidad: cada maratón debe tener humor, risas y carcajadas garantizadas.'
+      };
+    } else if (/oppenheimer|napoleon|historia|history|war|guerra|churchill|crown|biopic|drama|padrino|godfather/.test(titulosTexto)) {
+      arquetipo = {
+        titulo: 'El Historiador Cinéfilo',
+        lema: 'Fascinado por los hechos reales, los dramas de época y las obras que marcaron la historia humana.'
+      };
+    } else if (/shrek|toy story|pixar|disney|monsters|nemo|dragon|mario|spider-verse|minion|anime|ghibli|encanto|coco|ghibli|naruto|one piece/.test(titulosTexto)) {
+      arquetipo = {
+        titulo: 'El Niño Eterno',
+        lema: 'Entiendes que la animación es verdadero arte cinematográfico que emociona a cualquier edad.'
+      };
+    } else if (totalResenias >= 3) {
+      arquetipo = {
+        titulo: 'El Crítico de Sillón',
+        lema: 'No solo disfrutas cada obra; juzgas cada plano con precisión quirúrgica, estrellas y buen gusto.'
+      };
+    } else if (totalHoras >= 30) {
+      arquetipo = {
+        titulo: 'El Maratonista Legendario',
+        lema: 'Capaz de devorar trilogías enteras y temporadas completas en un solo fin de semana.'
+      };
+    } else if (totalPeliculas > 0 && totalPeliculas >= totalEpisodios * 1.3) {
+      arquetipo = {
+        titulo: 'El Purista del Séptimo Arte',
+        lema: 'Para ti la verdadera magia se concentra en dos horas perfectas de pantalla grande y palomitas.'
+      };
+    } else if (totalEpisodios >= 15) {
+      arquetipo = {
+        titulo: 'El Devorador de Temporadas',
+        lema: 'Para ti un capítulo más nunca fue suficiente; el botón de siguiente episodio es tu mejor amigo.'
+      };
+    } else if (topSerie && (topSerie.titulo.toLowerCase().includes('house') || topSerie.titulo.toLowerCase().includes('grey'))) {
+      arquetipo = {
+        titulo: 'Diagnóstico Reservado',
+        lema: 'Adicto a las batas blancas, los diagnósticos imposibles y el drama hospitalario.'
+      };
+    } else if (copiloto && copiloto.veces >= 3) {
+      arquetipo = {
+        titulo: 'El Anfitrión del Cineclub',
+        lema: 'El buen cine se multiplica cuando se comparten palomitas, debates y sillón en compañía.'
+      };
+    } else if (copiloto && copiloto.esSolitario) {
+      arquetipo = {
+        titulo: 'El Espectador Supremo',
+        lema: 'Disfrutas del cine en su estado más puro: tú, la pantalla y tus obras favoritas sin interrupciones.'
+      };
+    }
 
     return res.json({
       sin_datos: false,
@@ -1083,7 +1234,7 @@ const obtenerWrappedPeriodo = async (req, res) => {
       dias_equivalentes: `${(totalHoras / 24).toFixed(1)} días`,
       top_serie: topSerie,
       top_pelicula: topPelicula,
-      dia_sagrado: 'Domingo',
+      dia_sagrado: diaSagrado,
       plataforma_favorita: plataformaFavorita,
       actor_fetiche: {
         nombre: ganadorActor ? ganadorActor.nombre : 'Sin actor destacado',
@@ -1121,23 +1272,47 @@ const obtenerWrappedPeriodo = async (req, res) => {
 
 // 🛡️ Proxy para descargar imágenes de TMDb sin error de CORS en html-to-image
 const proxyImagen = async (req, res) => {
+  let targetUrl = '';
   try {
-    const { url } = req.query;
+    let { url } = req.query;
+    // Soporte para parámetros en la ruta /api/historial/proxy-image/{*path}
+    if (!url && req.params && (req.params.path || req.params[0])) {
+      const paramVal = req.params.path || req.params[0];
+      const ruta = Array.isArray(paramVal) ? paramVal.join('/') : String(paramVal || '');
+      if (ruta.startsWith('http')) {
+        url = ruta;
+      } else if (ruta.startsWith('t/p/')) {
+        url = `https://image.tmdb.org/${ruta}`;
+      } else if (ruta.startsWith('/')) {
+        url = `https://image.tmdb.org/t/p/w500${ruta}`;
+      } else {
+        url = `https://image.tmdb.org/t/p/${ruta}`;
+      }
+    }
     if (!url) return res.status(400).send('Falta URL');
 
-    const respuesta = await fetch(url);
-    if (!respuesta.ok) return res.status(respuesta.status).send('Error al obtener la imagen');
+    // Limpia cualquier parámetro residual de cache bust inyectado por librerías (ej: ?_=123 o &_123)
+    targetUrl = String(url).trim().replace(/([?&])_=\d+/, '');
 
-    const contentType = respuesta.headers.get('content-type') || 'image/jpeg';
+    const respuesta = await axios.get(targetUrl, {
+      responseType: 'arraybuffer',
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+      }
+    });
+
+    const contentType = respuesta.headers['content-type'] || 'image/jpeg';
     res.setHeader('Content-Type', contentType);
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
 
-    const arrayBuffer = await respuesta.arrayBuffer();
-    res.send(Buffer.from(arrayBuffer));
+    res.send(Buffer.from(respuesta.data));
   } catch (e) {
-    console.error('Error en proxyImagen:', e);
-    res.status(500).send('Error al obtener imagen');
+    console.error('[proxyImagen Error]:', e.message, 'targetUrl:', targetUrl);
+    res.status(500).send(`Error al obtener imagen: ${e.message}`);
   }
 };
 

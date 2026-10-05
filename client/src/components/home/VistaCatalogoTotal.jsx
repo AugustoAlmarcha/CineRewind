@@ -19,16 +19,15 @@ export default function VistaCatalogoTotal({
       {obras.map((obra) => {
         const urlPoster = resolverImagen(obra.poster_path);
         const esSerie = obra.tipo?.toLowerCase() === 'serie';
+        const esSaga = Boolean(obra.esSaga);
+        const cantPeliculasDistintas = obra.peliculasDistintas?.length || 1;
 
         return (
           <div
-            key={obra.obra_id || obra.titulo}
+            key={obra.obra_id || obra.id_agrupador || obra.titulo}
             onClick={() => {
-              if (esSerie) {
-                onSeleccionarSerie(obra);
-              } else {
-                onAbrirDetalleTimeline(obra.registros[0]);
-              }
+              // Tanto series como películas y sagas se abren en la vista cronológica con fechas y carátulas
+              onSeleccionarSerie(obra);
             }}
             className="aspect-[2/3] relative rounded-3xl overflow-hidden cursor-pointer border border-neutral-300/80 dark:border-white/10 bg-neutral-900 shadow-md hover:scale-[1.02] hover:border-rose-500 transition-all duration-300 group select-none"
           >
@@ -46,9 +45,15 @@ export default function VistaCatalogoTotal({
             )}
 
             <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-4 pointer-events-none">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg bg-black/70 text-white border border-white/10">
-                  {esSerie ? 'Serie' : 'Película'}
+              <div className="flex justify-between items-center gap-1">
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border ${
+                  esSaga 
+                    ? 'bg-amber-500 text-neutral-950 font-black border-amber-300 shadow'
+                    : 'bg-black/70 text-white border-white/10'
+                }`}>
+                  {esSerie 
+                    ? 'Serie' 
+                    : (esSaga ? `Saga · ${cantPeliculasDistintas} pelis` : 'Película')}
                 </span>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-rose-600 text-white shadow">
                   {obra.registros.length} {obra.registros.length === 1 ? 'visto' : 'vistos'}
@@ -56,9 +61,17 @@ export default function VistaCatalogoTotal({
               </div>
 
               <div>
-                <h3 className="text-base font-black text-white truncate drop-shadow">{obra.titulo}</h3>
+                <h3 className="text-base font-black text-white truncate drop-shadow" title={obra.titulo}>
+                  {obra.titulo}
+                </h3>
                 <p className="text-[11px] text-neutral-300 mt-0.5 font-bold">
-                  {esSerie ? 'Toca para abrir capítulos' : 'Toca para ver ficha'}
+                  {esSerie 
+                    ? 'Toca para abrir capítulos' 
+                    : esSaga 
+                    ? `Toca para abrir saga (${cantPeliculasDistintas} películas)`
+                    : (obra.registros.length > 1 
+                        ? `Toca para ver fechas (${obra.registros.length} vistos)` 
+                        : 'Toca para abrir fecha')}
                 </p>
               </div>
             </div>

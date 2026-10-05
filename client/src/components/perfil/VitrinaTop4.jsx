@@ -9,7 +9,8 @@ export default function VitrinaTop4({
   setArrastrandoSlot,
   handleDropIntercambio,
   handleEliminarFavorito,
-  onSeleccionarSlot
+  onSeleccionarSlot,
+  esMiPerfil = true
 }) {
   return (
     <section className="w-full bg-[#12121a]/95 border border-zinc-800/90 rounded-3xl p-6 sm:p-7 shadow-xl space-y-5">
@@ -22,7 +23,7 @@ export default function VitrinaTop4({
             </h3>
           </div>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Tus cuatro obras cumbre en vitrina
+            {esMiPerfil ? 'Tus cuatro obras cumbre en vitrina' : 'Las cuatro obras cumbre en vitrina'}
           </p>
         </div>
 
@@ -62,12 +63,14 @@ export default function VitrinaTop4({
           return (
             <div
               key={`${top4Mode}-slot-${slot}`}
-              draggable={Boolean(fav)}
-              onDragStart={() => setArrastrandoSlot(slot)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleDropIntercambio(slot, top4Mode)}
-              onClick={() => onSeleccionarSlot(slot, top4Mode)}
-              className={`group relative aspect-[2/3] rounded-2xl bg-zinc-950 border border-zinc-800 hover:border-amber-400/80 transition-all cursor-pointer shadow-lg overflow-hidden flex flex-col justify-between ${
+              draggable={esMiPerfil && Boolean(fav)}
+              onDragStart={esMiPerfil ? () => setArrastrandoSlot(slot) : undefined}
+              onDragOver={esMiPerfil ? (e) => e.preventDefault() : undefined}
+              onDrop={esMiPerfil ? () => handleDropIntercambio(slot, top4Mode) : undefined}
+              onClick={esMiPerfil ? () => onSeleccionarSlot(slot, top4Mode) : undefined}
+              className={`group relative aspect-[2/3] rounded-2xl bg-zinc-950 border border-zinc-800 ${
+                esMiPerfil ? 'hover:border-amber-400/80 cursor-pointer' : 'cursor-default'
+              } transition-all shadow-lg overflow-hidden flex flex-col justify-between ${
                 arrastrandoSlot === slot ? 'opacity-40 border-rose-500 scale-95' : ''
               }`}
             >
@@ -90,16 +93,18 @@ export default function VitrinaTop4({
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />
 
-                  <div className="absolute top-2.5 right-2.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      type="button"
-                      onClick={(e) => handleEliminarFavorito(e, fav.posicion, top4Mode)}
-                      className="w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center text-xs font-bold transition shadow"
-                      title="Quitar"
-                    >
-                      ✕
-                    </button>
-                  </div>
+                  {esMiPerfil && (
+                    <div className="absolute top-2.5 right-2.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={(e) => handleEliminarFavorito(e, fav.posicion, top4Mode)}
+                        className="w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center text-xs font-bold transition shadow cursor-pointer"
+                        title="Quitar"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
 
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent p-3 flex flex-col justify-end">
                     <p className="text-xs font-bold text-white truncate drop-shadow">
@@ -111,12 +116,14 @@ export default function VitrinaTop4({
                   </div>
                 </>
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center hover:bg-white/5 transition">
-                  <div className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 mb-2 group-hover:bg-rose-600 group-hover:text-white transition">
+                <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
+                  <div className={`w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 mb-2 ${
+                    esMiPerfil ? 'group-hover:bg-rose-600 group-hover:text-white transition' : ''
+                  }`}>
                     <Plus className="w-4 h-4" />
                   </div>
-                  <span className="text-[11px] font-mono font-bold text-zinc-400 group-hover:text-white transition">
-                    Elegir {top4Mode === 'serie' ? 'Serie' : 'Película'} #{slot}
+                  <span className="text-[11px] font-mono font-bold text-zinc-400 transition">
+                    {esMiPerfil ? `Elegir #${slot}` : `Sin obra #${slot}`}
                   </span>
                 </div>
               )}

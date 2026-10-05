@@ -5,12 +5,13 @@ export default function PestanaPendientes({
   pendientes = [],
   cargandoPendientes,
   onQuitarPendiente,
-  onRegistrarObra
+  onRegistrarObra,
+  esMiPerfil = true
 }) {
   if (cargandoPendientes) {
     return (
       <p className="text-xs text-center text-zinc-500 py-16 font-mono animate-pulse">
-        Cargando tu lista de pendientes...
+        {esMiPerfil ? 'Cargando tu lista de pendientes...' : 'Cargando lista de pendientes...'}
       </p>
     );
   }
@@ -18,8 +19,14 @@ export default function PestanaPendientes({
   if (pendientes.length === 0) {
     return (
       <div className="p-16 text-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/40 animate-fadeIn">
-        <p className="text-base font-bold text-zinc-200">Tu lista está vacía.</p>
-        <p className="text-xs text-zinc-500 mt-1">Añade títulos desde Inicio o el Buscador tocando "Ver más tarde".</p>
+        <p className="text-base font-bold text-zinc-200">
+          {esMiPerfil ? 'Tu lista está vacía.' : 'Este usuario no tiene obras en su lista.'}
+        </p>
+        <p className="text-xs text-zinc-500 mt-1">
+          {esMiPerfil 
+            ? 'Añade títulos desde Inicio o el Buscador tocando "Ver más tarde".' 
+            : 'Las películas o series que guarde para ver más tarde aparecerán aquí.'}
+        </p>
       </div>
     );
   }
@@ -61,17 +68,19 @@ export default function PestanaPendientes({
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-black/30 group-hover:from-black/90 transition duration-300" />
 
             <div className="relative z-10 flex justify-end">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onQuitarPendiente(e, item.tmdb_id);
-                }}
-                className="w-7 h-7 rounded-full bg-black/70 hover:bg-rose-600 text-white flex items-center justify-center text-xs transition border border-white/10 opacity-0 group-hover:opacity-100 cursor-pointer"
-                title="Quitar de mi lista"
-              >
-                ✕
-              </button>
+              {esMiPerfil && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onQuitarPendiente(e, item.tmdb_id);
+                  }}
+                  className="w-7 h-7 rounded-full bg-black/70 hover:bg-rose-600 text-white flex items-center justify-center text-xs transition border border-white/10 opacity-0 group-hover:opacity-100 cursor-pointer"
+                  title="Quitar de mi lista"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
             <div className="relative z-10 space-y-0.5">

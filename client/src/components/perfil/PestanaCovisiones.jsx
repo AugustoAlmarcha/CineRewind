@@ -1,6 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function PestanaCovisiones({ covisiones = [], onAbrirModalAmigos }) {
+  const navigate = useNavigate();
+
   if (covisiones.length === 0) {
     return (
       <div className="p-16 text-center rounded-3xl border border-dashed border-zinc-800 bg-zinc-950/40 animate-fadeIn">
@@ -26,29 +29,48 @@ export default function PestanaCovisiones({ covisiones = [], onAbrirModalAmigos 
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-        {covisiones.map((co, idx) => (
-          <div key={idx} className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center gap-3.5 group hover:border-zinc-700 transition">
-            <img 
-              src={co.avatar} 
-              alt={co.nombre} 
-              className="w-11 h-11 rounded-2xl object-cover border border-zinc-700 shadow-sm shrink-0" 
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-white truncate">{co.nombre}</h4>
-                {co.tipo === 'texto' && (
-                  <span className="text-[9px] font-mono text-zinc-500 uppercase bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
-                    En Sala
-                  </span>
-                )}
+        {covisiones.map((co, idx) => {
+          const esClickeable = co.tipo === 'registrado' && co.username;
+          const targetUser = esClickeable ? co.username.replace('@', '') : null;
+
+          return (
+            <div 
+              key={idx} 
+              onClick={() => {
+                if (targetUser) navigate(`/perfil/${targetUser}`);
+              }}
+              className={`p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center gap-3.5 group transition ${
+                esClickeable ? 'hover:border-rose-500/50 hover:bg-zinc-900/60 cursor-pointer' : ''
+              }`}
+            >
+              <img 
+                src={co.avatar} 
+                alt={co.nombre} 
+                className="w-11 h-11 rounded-2xl object-cover border border-zinc-700 shadow-sm shrink-0 group-hover:scale-105 transition" 
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-white truncate group-hover:text-rose-400 transition">
+                    {co.nombre}
+                  </h4>
+                  {co.tipo === 'texto' ? (
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                      En Sala
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-mono text-rose-400/80 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
+                      Ver Perfil →
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-zinc-400 font-mono truncate">{co.username}</p>
+                <span className="text-[10px] font-bold text-rose-400 block pt-0.5">
+                  🍿 {co.totalObras} {co.totalObras === 1 ? 'obra vista juntos' : 'obras vistas juntos'}
+                </span>
               </div>
-              <p className="text-[10px] text-zinc-400 font-mono truncate">{co.username}</p>
-              <span className="text-[10px] font-bold text-rose-400 block pt-0.5">
-                🍿 {co.totalObras} {co.totalObras === 1 ? 'obra vista juntos' : 'obras vistas juntos'}
-              </span>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

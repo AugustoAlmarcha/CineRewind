@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   buscarCinefilosAPI,
   enviarSolicitudAmistadAPI,
@@ -11,6 +12,7 @@ import {
 } from '../../api';
 
 export default function ModalAmigos({ onClose, onActualizado }) {
+  const navigate = useNavigate();
   const [pestana, setPestana] = useState('buscar'); // 'buscar' | 'pendientes' | 'amigos' | 'covisiones'
   const [query, setQuery] = useState('');
   const [resultados, setResultados] = useState([]);
@@ -294,23 +296,34 @@ export default function ModalAmigos({ onClose, onActualizado }) {
                 {resultados.map((user) => (
                   <div
                     key={user.id}
-                    className="p-3.5 rounded-2xl bg-white dark:bg-[#1c1c24] border border-neutral-200 dark:border-white/5 flex items-center justify-between shadow-xs"
+                    className="p-3.5 rounded-2xl bg-white dark:bg-[#1c1c24] border border-neutral-200 dark:border-white/5 flex items-center justify-between shadow-xs gap-3"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-white/10 overflow-hidden flex items-center justify-center font-bold text-rose-600 flex-shrink-0">
+                    <div 
+                      onClick={() => {
+                        onClose();
+                        navigate(`/perfil/${user.username}`);
+                      }}
+                      className="flex items-center gap-3 cursor-pointer group/user flex-1 min-w-0"
+                      title="Visitar perfil"
+                    >
+                      <div className="w-11 h-11 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-white/10 overflow-hidden flex items-center justify-center font-bold text-rose-600 flex-shrink-0 group-hover/user:scale-105 transition">
                         {user.avatar_url ? (
                           <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
                         ) : (
                           user.nombre ? user.nombre.charAt(0).toUpperCase() : '?'
                         )}
                       </div>
-                      <div>
-                        <h4 className="text-sm font-black text-neutral-900 dark:text-white">{user.nombre}</h4>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono">@{user.username}</p>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-black text-neutral-900 dark:text-white truncate group-hover/user:text-rose-500 transition">
+                          {user.nombre}
+                        </h4>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono truncate">
+                          @{user.username} <span className="text-[10px] text-rose-500 font-sans ml-1">· Ver perfil →</span>
+                        </p>
                       </div>
                     </div>
 
-                    <div>
+                    <div className="shrink-0">
                       {user.estado_relacion === 'amigos' && (
                         <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
                           ✓ Amigos
@@ -400,23 +413,34 @@ export default function ModalAmigos({ onClose, onActualizado }) {
                 amigos.map((amigo) => (
                   <div
                     key={amigo.id}
-                    className="p-3.5 rounded-2xl bg-white dark:bg-[#1c1c24] border border-neutral-200 dark:border-white/5 flex items-center justify-between shadow-xs"
+                    className="p-3.5 rounded-2xl bg-white dark:bg-[#1c1c24] border border-neutral-200 dark:border-white/5 flex items-center justify-between shadow-xs gap-3"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-white/10 overflow-hidden flex items-center justify-center font-bold text-rose-600 flex-shrink-0">
+                    <div 
+                      onClick={() => {
+                        onClose();
+                        navigate(`/perfil/${amigo.username}`);
+                      }}
+                      className="flex items-center gap-3 cursor-pointer group/amigo flex-1 min-w-0"
+                      title="Visitar perfil"
+                    >
+                      <div className="w-11 h-11 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-white/10 overflow-hidden flex items-center justify-center font-bold text-rose-600 flex-shrink-0 group-hover/amigo:scale-105 transition">
                         {amigo.avatar_url ? (
                           <img src={amigo.avatar_url} alt={amigo.username} className="w-full h-full object-cover" />
                         ) : (
                           amigo.nombre ? amigo.nombre.charAt(0).toUpperCase() : '?'
                         )}
                       </div>
-                      <div>
-                        <h4 className="text-sm font-black text-neutral-900 dark:text-white">{amigo.nombre}</h4>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono">@{amigo.username}</p>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-black text-neutral-900 dark:text-white truncate group-hover/amigo:text-rose-500 transition">
+                          {amigo.nombre}
+                        </h4>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono truncate">
+                          @{amigo.username} <span className="text-[10px] text-rose-500 font-sans ml-1">· Ver perfil →</span>
+                        </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 shrink-0">
                       <span className="text-[10px] font-mono text-neutral-400 hidden sm:inline">
                         Amigos desde {new Date(amigo.fecha_amistad).toLocaleDateString()}
                       </span>

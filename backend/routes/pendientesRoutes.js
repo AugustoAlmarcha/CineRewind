@@ -5,9 +5,9 @@ const {
   alternarPendiente,
   eliminarPendiente
 } = require('../controllers/pendientesController');
-const { verificarToken } = require('../middlewares/authMiddleware');
+const { verificarToken, extraerTokenOpcional } = require('../middlewares/authMiddleware');
 
-router.get('/', verificarToken, obtenerPendientes);
+router.get('/', extraerTokenOpcional, obtenerPendientes);
 router.post('/', verificarToken, alternarPendiente);
 router.delete('/:tmdb_id', verificarToken, eliminarPendiente);
 

@@ -94,15 +94,15 @@ export default function SelectorAmigosEtiquetar({
       )}
 
       {/* 2. Campo para personas sin cuenta ("Mamá", "Hermana", etc.) */}
-      <div className="pt-2 border-t border-neutral-200/80 dark:border-white/5 space-y-1.5">
-        <div className="flex items-center justify-between">
+      <div className="pt-2 border-t border-neutral-200/80 dark:border-white/5 space-y-2">
+        <div className="flex items-center justify-between flex-wrap gap-1">
           <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">
             Acompañantes sin cuenta:
           </span>
           {/* Chips de atajos rápidos sugeridos */}
           {setVistoConTexto && (
-            <div className="flex items-center gap-1">
-              {['Mamá', 'Hermana', 'Familia'].map((sugerencia) => (
+            <div className="flex items-center gap-1 flex-wrap">
+              {['Mamá', 'Papá', 'Hermana', 'Pareja', 'Familia'].map((sugerencia) => (
                 <button
                   key={sugerencia}
                   type="button"
@@ -122,13 +122,47 @@ export default function SelectorAmigosEtiquetar({
           )}
         </div>
 
-        <input
-          type="text"
-          value={vistoConTexto}
-          onChange={(e) => setVistoConTexto && setVistoConTexto(e.target.value)}
-          placeholder="Escribe un nombre..."
-          className="w-full px-3 py-2 rounded-xl text-xs bg-white dark:bg-[#121216] border border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-rose-500 transition"
-        />
+        <div className="relative">
+          <input
+            type="text"
+            value={vistoConTexto}
+            onChange={(e) => setVistoConTexto && setVistoConTexto(e.target.value)}
+            placeholder="Escribe un nombre (ej: Mamá)..."
+            className="w-full px-3 py-2 rounded-xl text-xs bg-white dark:bg-[#121216] border border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-rose-500 transition"
+          />
+          {vistoConTexto && (
+            <button
+              type="button"
+              onClick={() => setVistoConTexto && setVistoConTexto('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white cursor-pointer"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Vista previa inmediata de la carita que quedará en la foto */}
+        {vistoConTexto?.trim() && (
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-700 dark:text-purple-300 animate-fadeIn">
+            <div className="flex -space-x-1.5 overflow-hidden flex-shrink-0">
+              {vistoConTexto.split(',').map((s) => s.trim()).filter(Boolean).map((nombre, idx) => (
+                <div 
+                  key={idx} 
+                  className="w-6 h-6 rounded-full overflow-hidden ring-2 ring-black/40 bg-gradient-to-tr from-purple-600 via-rose-500 to-amber-400 flex items-center justify-center shadow-xs"
+                >
+                  <img
+                    src={`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(nombre)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`}
+                    alt={nombre}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+            <span className="text-[11px] font-semibold truncate">
+              Carita lista en la foto: <span className="font-black text-rose-500">{vistoConTexto}</span>
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

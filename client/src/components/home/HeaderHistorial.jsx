@@ -108,7 +108,7 @@ export default function HeaderHistorial({
               }}
               className="text-rose-600 dark:text-rose-500 hover:underline cursor-pointer"
             >
-              ← Volver al catálogo de series
+              ← Volver al catálogo
             </button>
             <span className="text-neutral-400">/ {serieSeleccionadaTotal.titulo}</span>
           </div>

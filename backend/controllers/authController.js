@@ -79,17 +79,19 @@ const registrarUsuario = async (req, res) => {
     const passwordHash = await bcrypt.hash(password, salt);
 
     const nuevoUsuarioQuery = `
-      INSERT INTO usuarios (nombre, username, email, password_hash, avatar_url)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, nombre, username, email, avatar_url, biografia, banner_url, creado_en;
+      INSERT INTO usuarios (nombre, username, email, password_hash, avatar_url, banner_url)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, nombre, username, email, rol, avatar_url, biografia, banner_url, creado_en;
     `;
     const avatarDefault = `https://api.dicebear.com/7.x/bottts/svg?seed=${usernameLimpio}`;
+    const bannerDefault = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1600&q=80';
     const resultado = await pool.query(nuevoUsuarioQuery, [
       nombre.trim(),
       usernameLimpio,
       emailLimpio,
       passwordHash,
       avatarDefault,
+      bannerDefault,
     ]);
 
     const usuarioCreado = resultado.rows[0];
@@ -199,15 +201,17 @@ const loginGoogle = async (req, res) => {
         : usernameBase;
 
       const insertQuery = `
-        INSERT INTO usuarios (nombre, username, email, password_hash, avatar_url)
-        VALUES ($1, $2, $3, NULL, $4)
+        INSERT INTO usuarios (nombre, username, email, password_hash, avatar_url, banner_url)
+        VALUES ($1, $2, $3, NULL, $4, $5)
         RETURNING id, nombre, username, email, rol, avatar_url, biografia, banner_url, creado_en;
       `;
+      const bannerDefault = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1600&q=80';
       const nuevoRes = await pool.query(insertQuery, [
         name || usernameFinal,
         usernameFinal,
         emailLimpio,
         picture || `https://api.dicebear.com/7.x/bottts/svg?seed=${usernameFinal}`,
+        bannerDefault,
       ]);
       usuario = nuevoRes.rows[0];
     }
@@ -254,7 +258,7 @@ const obtenerPerfilActual = async (req, res) => {
 // PUT: /api/auth/perfil
 const actualizarPerfil = async (req, res) => {
   const usuarioId = req.usuario?.id;
-  const { nombre, username, biografia, avatar_url } = req.body;
+  const { nombre, username, biografia, avatar_url, banner_url } = req.body;
 
   if (!usuarioId) {
     return res.status(401).json({ error: 'Sesión no autorizada' });
@@ -292,9 +296,10 @@ const actualizarPerfil = async (req, res) => {
         nombre = $1,
         username = COALESCE($2, username),
         biografia = $3,
-        avatar_url = $4
-      WHERE id = $5
-      RETURNING id, nombre, username, email, avatar_url, biografia, banner_url, creado_en;
+        avatar_url = $4,
+        banner_url = CASE WHEN $5::boolean THEN $6 ELSE banner_url END
+      WHERE id = $7
+      RETURNING id, nombre, username, email, rol, avatar_url, biografia, banner_url, creado_en;
     `;
 
     const resultado = await pool.query(query, [
@@ -302,6 +307,8 @@ const actualizarPerfil = async (req, res) => {
       usernameLimpio || null,
       biografia ? biografia.trim() : null,
       avatar_url || null,
+      banner_url !== undefined,
+      banner_url || null,
       usuarioId
     ]);
 
@@ -407,6 +414,58 @@ const cambiarPassword = async (req, res) => {
   }
 };
 
+// GET: /api/auth/usuario/:username (Perfil público de cualquier cinéfilo con estado de relación)
+const obtenerPerfilPublico = async (req, res) => {
+  const { username } = req.params;
+  const usuarioActualId = req.usuario?.id || null;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Nombre de usuario requerido' });
+  }
+
+  try {
+    const query = `
+      SELECT 
+        u.id,
+        u.nombre,
+        u.username,
+        u.avatar_url,
+        u.biografia,
+        u.banner_url,
+        u.rol,
+        u.creado_en,
+        CASE
+          WHEN $1::int IS NULL THEN 'ninguno'
+          WHEN u.id = $1 THEN 'propio'
+          WHEN a.estado = 'aceptada' THEN 'amigos'
+          WHEN a.estado = 'pendiente' AND a.remitente_id = $1 THEN 'solicitud_enviada'
+          WHEN a.estado = 'pendiente' AND a.destinatario_id = $1 THEN 'solicitud_recibida'
+          ELSE 'ninguno'
+        END AS estado_relacion,
+        a.id AS amistad_id
+      FROM usuarios u
+      LEFT JOIN amistades a ON (
+        (a.remitente_id = $1 AND a.destinatario_id = u.id)
+        OR
+        (a.remitente_id = u.id AND a.destinatario_id = $1)
+      )
+      WHERE LOWER(u.username) = LOWER($2)
+      LIMIT 1;
+    `;
+
+    const resultado = await pool.query(query, [usuarioActualId, username.trim()]);
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.json(resultado.rows[0]);
+  } catch (error) {
+    console.error('Error al obtener perfil público:', error.message);
+    res.status(500).json({ error: 'Error del servidor al cargar el perfil' });
+  }
+};
+
 module.exports = {
   registrarUsuario,
   iniciarSesion,
@@ -414,5 +473,6 @@ module.exports = {
   comprobarDisponibilidadUsername,
   actualizarPerfil,
   obtenerPerfilActual,
+  obtenerPerfilPublico,
   cambiarPassword,
 };

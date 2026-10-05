@@ -5,17 +5,19 @@ const {
   iniciarSesion, 
   loginGoogle,
   obtenerPerfilActual,
+  obtenerPerfilPublico,
   actualizarPerfil,
   comprobarDisponibilidadUsername,
   cambiarPassword
 } = require('../controllers/authController');
-const { verificarToken } = require('../middlewares/authMiddleware');
+const { verificarToken, extraerTokenOpcional } = require('../middlewares/authMiddleware');
 
 // Rutas de autenticación pública
 router.post('/registro', registrarUsuario);
 router.post('/login', iniciarSesion);
 router.post('/google', loginGoogle);
 router.get('/comprobar-username', comprobarDisponibilidadUsername);
+router.get('/usuario/:username', extraerTokenOpcional, obtenerPerfilPublico);
 router.put('/cambiar-password', verificarToken, cambiarPassword);
 
 // Verificación y actualización de sesión activa (JWT)
