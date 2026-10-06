@@ -13,7 +13,7 @@ import {
   obtenerPendientesAPI,   
   alternarPendienteAPI    
 } from '../../api';
-import { obtenerFechaHoyLocal } from '../../utils/fechas';
+import { obtenerFechaHoyLocal, obtenerFechaAyerLocal, formatearFecha } from '../../utils/fechas';
 import BarraConfiguracionRegistro from './BarraConfiguracionRegistro';
 import ListaEpisodios from './ListaEpisodios';
 import SelectorTemporadaBarra from './SelectorTemporadaBarra';
@@ -500,7 +500,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                 {episodiosSeleccionados.length} {episodiosSeleccionados.length === 1 ? 'capítulo seleccionado' : 'capítulos seleccionados'}
               </span>
               <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
-                📅 Con fecha: <strong className="text-neutral-700 dark:text-neutral-300">{noRecuerdaFecha ? 'Estreno' : (fechaVisto === obtenerFechaHoyLocal() ? 'Hoy' : fechaVisto === obtenerFechaAyerLocal() ? 'Ayer' : fechaVisto)}</strong>
+                📅 Con fecha: <strong className="text-neutral-700 dark:text-neutral-300">{noRecuerdaFecha ? 'Estreno' : (fechaVisto === obtenerFechaHoyLocal() ? 'Hoy' : fechaVisto === obtenerFechaAyerLocal() ? 'Ayer' : formatearFecha(fechaVisto))}</strong>
               </span>
             </div>
             <button 
