@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import LogoPlataforma from '../common/LogoPlataforma';
 import { obtenerAmigosAPI } from '../../api';
-import { Users, Info, X, Check, Trash2, Layers } from 'lucide-react';
+import { Users, Info, X, Check, Trash2, Layers, Zap } from 'lucide-react';
 
 export default function ViendoCard({
   serie,
@@ -23,7 +23,7 @@ export default function ViendoCard({
   // Referencia para detectar doble toque rápido en celular sobre la tarjeta base
   const ultimoTapRef = useRef(0);
 
-  const idSerie = serie.obra_id || serie.id;
+  const idSerie = serie.obra_id || serie.tmdb_id || serie.id;
 
   useEffect(() => {
     let montado = true;
@@ -132,15 +132,26 @@ export default function ViendoCard({
             </div>
           )}
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-4 pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent flex flex-col justify-between p-3.5 pointer-events-none">
             <div className="flex justify-between items-center">
               <LogoPlataforma nombre={serie.plataforma} />
             </div>
-            <div>
-              <h3 className="text-sm font-black text-white truncate drop-shadow">{serie.titulo}</h3>
-              <p className="text-xs font-bold text-rose-400 mt-0.5">
-                T{proximaTemporada} · E{proximoEpisodio}
-              </p>
+
+            <div className="space-y-2">
+              <div>
+                <h3 className="text-sm font-black text-white truncate drop-shadow">{serie.titulo}</h3>
+                <p className="text-xs font-bold text-rose-400 mt-0.5">
+                  T{proximaTemporada} · E{proximoEpisodio}
+                </p>
+              </div>
+
+              {/* Pastilla interactiva destacada que invita a abrir y registrar */}
+              <div className="pt-0.5">
+                <div className="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1.5 rounded-xl bg-rose-600/90 text-white shadow-lg shadow-rose-600/40 border border-rose-400/40 backdrop-blur-md group-hover:bg-rose-500 group-hover:scale-105 transition-all duration-200">
+                  <Zap className="w-3.5 h-3.5 fill-amber-300 text-amber-300 shrink-0" />
+                  <span className="truncate">Toca para registrar E{proximoEpisodio}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
