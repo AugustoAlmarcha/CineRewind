@@ -44,20 +44,21 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
   const [datosTemporada, setDatosTemporada] = useState(null);
   const [cargandoEpisodios, setCargandoEpisodios] = useState(false);
   
-  const [plataforma, setPlataforma] = useState(null);
+  const [plataforma, setPlataforma] = useState(() => obra?.plataforma || null);
   const [fechaVisto, setFechaVisto] = useState(obtenerFechaHoyLocal());
   const [noRecuerdaFecha, setNoRecuerdaFecha] = useState(false);
 
   const [episodiosYaVistos, setEpisodiosYaVistos] = useState([]);
   const [episodiosSeleccionados, setEpisodiosSeleccionados] = useState([]);
 
-  // Estado para co-visualización
   const [amigosSeleccionados, setAmigosSeleccionados] = useState([]);
   const [vistoConTexto, setVistoConTexto] = useState('');
   const [errorRegistro, setErrorRegistro] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [esPendiente, setEsPendiente] = useState(false);
   const [cargandoPendiente, setCargandoPendiente] = useState(false);
+  const [fichaDetalle, setFichaDetalle] = useState(null);
+  const [calificacionDirecta, setCalificacionDirecta] = useState(0);
 
   // Comprobar estado en pendientes
   useEffect(() => {
@@ -133,6 +134,14 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         
         const detalle = await obtenerDetallePeliculaAPI(tipoConsulta, tmdbIdReal);
         if (!cancelado && detalle) {
+          setFichaDetalle(detalle);
+          setObraActual((prev) => ({
+            ...prev,
+            ...detalle,
+            titulo: prev?.titulo || detalle.titulo,
+            sinopsis: detalle.sinopsis || prev?.sinopsis,
+            poster_path: prev?.poster_path || detalle.poster_path,
+          }));
           if (esSerie) {
             setTotalTemporadas(Number(detalle.total_temporadas) || 1);
           }
@@ -144,7 +153,9 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         const dataProv = await obtenerProveedoresAPI(tipoConsulta, tmdbIdReal, usuario?.id || null);
         if (!cancelado && dataProv) {
           const lista = Array.isArray(dataProv) ? dataProv : (dataProv?.plataformas || []);
-          if (dataProv?.ultima_plataforma) {
+          if (obra?.plataforma) {
+            setPlataforma(obra.plataforma);
+          } else if (dataProv?.ultima_plataforma) {
             setPlataforma(dataProv.ultima_plataforma);
           } else if (lista.length === 1) {
             setPlataforma(lista[0]);
@@ -310,6 +321,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         plataforma: plataforma || null,
         amigos_etiquetados: amigosSeleccionados, 
         visto_con_texto: vistoConTexto.trim() || null,
+        calificacion: calificacionDirecta > 0 ? calificacionDirecta : null,
       });
 
       onRegistroCompletado();
@@ -326,22 +338,24 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
   const listaTemporadas = Array.from({ length: Math.max(1, totalTemporadas) }, (_, i) => i + 1);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md sm:p-4 select-none animate-fadeIn">
-      <div className="bg-[#fcfaf7] dark:bg-[#141418] border-t sm:border border-neutral-300 dark:border-white/10 rounded-t-3xl sm:rounded-3xl max-w-3xl w-full h-[94vh] sm:h-[88vh] flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white transition-colors relative">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/80 backdrop-blur-md pt-1.5 sm:p-4 select-none animate-fadeIn">
+      <div className={`bg-[#fcfaf7] dark:bg-[#141418] border-t sm:border border-neutral-300 dark:border-white/10 rounded-t-3xl sm:rounded-3xl max-w-3xl w-full flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white transition-colors relative ${
+        esSerie ? 'h-[94dvh] sm:h-[88vh]' : 'h-auto max-h-[98dvh] sm:max-h-[92vh]'
+      }`}>
         
         {/* Cabecera compacta */}
-        <div className="p-3.5 sm:p-4 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between gap-3 bg-[#fcfaf7] dark:bg-[#141418] z-20 flex-shrink-0">
+        <div className="p-3 sm:p-4 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between gap-3 bg-[#fcfaf7] dark:bg-[#141418] z-20 flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <img 
               src={obraActual?.poster_path} 
               alt={obraActual?.titulo} 
-              className="w-10 h-14 sm:w-11 sm:h-16 object-cover rounded-xl shadow-md border border-black/10 dark:border-white/10 flex-shrink-0" 
+              className="w-9 h-13 sm:w-11 sm:h-16 object-cover rounded-xl shadow-md border border-black/10 dark:border-white/10 flex-shrink-0" 
             />
             <div className="min-w-0">
               <span className="text-[10px] font-black text-rose-600 dark:text-rose-500 uppercase tracking-widest block">
                 {obraActual?.tipo}
               </span>
-              <h2 className="text-base sm:text-xl font-black truncate leading-tight">
+              <h2 className="text-sm sm:text-xl font-black truncate leading-tight">
                 {obraActual?.titulo}
               </h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono">
@@ -393,8 +407,12 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           </div>
         )}
 
-        {/* Contenedor con los chips */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+        {/* Contenedor con los chips y vistas */}
+        <div className={`overflow-y-auto ${
+          esSerie 
+            ? 'flex-1 p-3.5 sm:p-6 space-y-4' 
+            : 'p-3 sm:p-5 space-y-2.5 sm:space-y-3.5'
+        }`}>
           <BarraConfiguracionRegistro
             plataforma={plataforma}
             setPlataforma={setPlataforma}
@@ -406,16 +424,21 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
             setAmigosSeleccionados={setAmigosSeleccionados}
             vistoConTexto={vistoConTexto}
             setVistoConTexto={setVistoConTexto}
-            repartoActores={repartoActores}
+            repartoActores={esSerie ? repartoActores : []}
             onSeleccionarActor={(actor) => setActorParaFilmografia(actor)}
           />
 
           {!esSerie ? (
-            <div className="pt-2">
+            <div className="pt-0.5">
               <VistaRegistroPelicula 
-                sinopsis={obraActual?.sinopsis}
+                obra={obraActual}
+                detalle={fichaDetalle}
+                sinopsis={fichaDetalle?.sinopsis || obraActual?.sinopsis}
                 guardando={guardando}
                 onGuardar={handleGuardarPelicula}
+                calificacion={calificacionDirecta}
+                setCalificacion={setCalificacionDirecta}
+                onSeleccionarActor={(actor) => setActorParaFilmografia(actor)}
               />
             </div>
           ) : (
@@ -445,7 +468,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           )}
         </div>
 
-        {/* Barra inferior para guardar */}
+        {/* Barra inferior para guardar series */}
         {esSerie && episodiosSeleccionados.length > 0 && (
           <div className="p-3.5 sm:p-4 bg-[#fcfaf7] dark:bg-[#18181e] border-t border-neutral-300/80 dark:border-white/10 flex items-center justify-between gap-3 px-4 sm:px-6 flex-shrink-0 z-20">
             <span className="text-xs sm:text-sm font-bold text-neutral-700 dark:text-neutral-200">

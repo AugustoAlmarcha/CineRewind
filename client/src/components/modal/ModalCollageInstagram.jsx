@@ -11,6 +11,7 @@ const obtenerUrlProxy = (url) => {
 export default function ModalCollageInstagram({ abierto, alCerrar, stats }) {
   const [filtro, setFiltro] = useState('todas');
   const [procesando, setProcesando] = useState(false);
+  const [mensajeDescarga, setMensajeDescarga] = useState(null);
   const collageRef = useRef(null);
 
   const titulos = useMemo(() => {
@@ -54,7 +55,8 @@ export default function ModalCollageInstagram({ abierto, alCerrar, stats }) {
         a.download = `CineRewind-Collage-${stats?.anio}.png`;
         a.href = dataUrl;
         a.click();
-        alert('📸 ¡Collage en alta definición guardado en tu galería!');
+        setMensajeDescarga('¡Collage en alta definición guardado en tu galería!');
+        setTimeout(() => setMensajeDescarga(null), 3500);
       }
     } catch (e) {
       console.error(e);
@@ -67,8 +69,16 @@ export default function ModalCollageInstagram({ abierto, alCerrar, stats }) {
 
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-6 bg-black/95 backdrop-blur-2xl">
-      <div className="w-full max-w-lg lg:max-w-xl max-h-[94vh] bg-[#0c0c14] border-2 border-[#facc15] rounded-3xl p-4 sm:p-5 flex flex-col justify-between shadow-[0_0_50px_rgba(250,204,21,0.4)] overflow-hidden">
+      <div className="w-full max-w-lg lg:max-w-xl max-h-[94vh] bg-[#0c0c14] border-2 border-[#facc15] rounded-3xl p-4 sm:p-5 flex flex-col justify-between shadow-[0_0_50px_rgba(250,204,21,0.4)] overflow-hidden relative">
         
+        {/* Notificación Toast elegante */}
+        {mensajeDescarga && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-2xl bg-amber-400 text-black font-black text-xs shadow-xl animate-fadeIn flex items-center gap-2">
+            <span>✓</span>
+            <span>{mensajeDescarga}</span>
+          </div>
+        )}
+
         {/* Cabecera con Logo Oficial */}
         <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
           <div className="flex items-center gap-2">

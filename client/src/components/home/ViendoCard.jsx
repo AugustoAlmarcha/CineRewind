@@ -52,12 +52,19 @@ export default function ViendoCard({
         : `https://image.tmdb.org/t/p/w500${rutaPoster.startsWith('/') ? rutaPoster : `/${rutaPoster}`}`)
     : null;
 
+  const rutaBackdrop = serie.backdrop_path;
+  const backdropUrl = rutaBackdrop
+    ? (rutaBackdrop.startsWith('http')
+        ? rutaBackdrop
+        : `https://image.tmdb.org/t/p/w780${rutaBackdrop.startsWith('/') ? rutaBackdrop : `/${rutaBackdrop}`}`)
+    : null;
+
   const rutaFotoSiguiente = serie.foto_siguiente;
   const fotoCapituloUrl = rutaFotoSiguiente
     ? (rutaFotoSiguiente.startsWith('http')
         ? rutaFotoSiguiente
         : `https://image.tmdb.org/t/p/w780${rutaFotoSiguiente.startsWith('/') ? rutaFotoSiguiente : `/${rutaFotoSiguiente}`}`)
-    : posterUrl;
+    : (backdropUrl || posterUrl);
 
   let alineacionHorizontal = 'sm:left-1/2 sm:-translate-x-1/2';
   if (index === 0) {
@@ -144,15 +151,16 @@ export default function ViendoCard({
             e.stopPropagation();
             if (onAbrirDetalle) onAbrirDetalle(serie);
           }}
+          onMouseLeave={() => setMenuAmigosAbierto(false)}
           className={`hidden sm:flex absolute top-1/2 -translate-y-1/2 ${alineacionHorizontal} w-96 rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] z-50 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-105 transition-all duration-300 ease-out flex-col`}
         >
-          <div className="w-full aspect-video bg-neutral-900 relative overflow-hidden flex-shrink-0">
+          <div className="w-full h-52 sm:h-54 bg-neutral-900 relative overflow-hidden flex-shrink-0">
             {fotoCapituloUrl ? (
               <img
                 src={fotoCapituloUrl}
                 alt={`Capítulo ${proximoEpisodio}`}
                 loading="lazy"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-center"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-xs text-neutral-500 font-bold">
@@ -206,6 +214,64 @@ export default function ViendoCard({
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
+
+                {/* Menú de amigos en escritorio */}
+                {menuAmigosAbierto && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-9 right-0 bg-[#1c1c24] border border-white/15 rounded-2xl p-2.5 shadow-2xl w-56 z-50 animate-fadeIn"
+                  >
+                    <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-white/10">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-neutral-400">
+                        ¿Con quién lo viste?
+                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuAmigosAbierto(false);
+                        }}
+                        className="text-[10px] text-neutral-400 hover:text-white px-1 cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {amigosDisponibles.length === 0 ? (
+                      <p className="text-[11px] text-neutral-500 italic p-1">No tienes amigos agregados aún</p>
+                    ) : (
+                      <div className="max-h-40 overflow-y-auto space-y-1 scrollbar-thin">
+                        {amigosDisponibles.map((amigo) => {
+                          const seleccionado = amigosSeleccionados.includes(amigo.id);
+                          return (
+                            <button
+                              key={amigo.id}
+                              type="button"
+                              onClick={(e) => alternarAmigo(amigo.id, e)}
+                              className={`w-full flex items-center justify-between p-1.5 rounded-xl text-xs transition cursor-pointer ${
+                                seleccionado
+                                  ? 'bg-rose-600 text-white font-bold'
+                                  : 'hover:bg-white/10 text-neutral-300'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                {amigo.avatar_url ? (
+                                  <img src={amigo.avatar_url} alt="" className="w-4 h-4 rounded-full object-cover shrink-0" />
+                                ) : (
+                                  <div className="w-4 h-4 rounded-full bg-rose-500/20 text-rose-500 text-[9px] font-black flex items-center justify-center shrink-0">
+                                    {(amigo.nombre || amigo.username || '?').charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <span className="truncate">@{amigo.username}</span>
+                              </div>
+                              {seleccionado && <span className="text-[11px]">✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -256,12 +322,12 @@ export default function ViendoCard({
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] flex flex-col animate-scaleUp"
           >
-            <div className="w-full aspect-video bg-neutral-900 relative overflow-hidden flex-shrink-0">
+            <div className="w-full h-44 sm:aspect-video bg-neutral-900 relative overflow-hidden flex-shrink-0">
               {fotoCapituloUrl ? (
                 <img
                   src={fotoCapituloUrl}
                   alt={`Capítulo ${proximoEpisodio}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover object-center"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-xs text-neutral-500 font-bold">

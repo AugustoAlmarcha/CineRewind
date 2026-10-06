@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { obtenerTendenciasAPI, obtenerTimelineAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useRuletaSorteo } from '../hooks/useRuletaSorteo';
+import ModalRecomendacionAzar from '../components/modal/ModalRecomendacionAzar';
+import { Sparkles } from 'lucide-react';
 
 const PAISES = [
   { codigo: 'AR', nombre: 'Argentina', banderaUrl: 'https://flagcdn.com/w40/ar.png' },
@@ -30,7 +33,18 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
   const menuPaisesRef = useRef(null);
   const [idsVistos, setIdsVistos] = useState(new Set());
 
-  // Helper para garantizar URL completa de carátula
+  // Ruleta de selección aleatoria entre los títulos en pantalla
+  const {
+    estaGirando,
+    indiceResaltado,
+    ganador,
+    modalGanadorAbierto,
+    iniciarGiro,
+    cerrarModal,
+    registrarRef,
+  } = useRuletaSorteo(obras);
+
+  // Helper para carátulas
   const resolverPoster = useCallback((ruta) => {
     if (!ruta) return null;
     if (ruta.startsWith('http')) return ruta;
@@ -59,7 +73,7 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
     return () => { cancelado = true; };
   }, [usuario, actualizarTrigger]);
 
-  // Cerrar menú flotante al hacer clic afuera
+  // Cerrar menús flotantes al hacer clic afuera
   useEffect(() => {
     const clickAfuera = (e) => {
       if (menuPaisesRef.current && !menuPaisesRef.current.contains(e.target)) {
@@ -116,14 +130,16 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-8 py-10 space-y-8 animate-fadeIn">
+    <main className="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-10 space-y-8 animate-fadeIn">
       
       {/* Cabecera y Controles */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-neutral-300/80 dark:border-white/10 pb-6">
         <div>
           <div className="flex items-center gap-3">
             {modoGlobal ? (
-              <span className="text-3xl">🌐</span>
+              <div className="w-9 h-9 rounded-2xl bg-neutral-200 dark:bg-white/10 flex items-center justify-center shadow-sm">
+                <span className="text-xl select-none">🌍</span>
+              </div>
             ) : (
               <img 
                 src={paisSeleccionado.banderaUrl} 
@@ -131,7 +147,7 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
                 className="w-8 h-6 object-cover rounded shadow-sm"
               />
             )}
-            <h1 className="text-3xl font-black tracking-tight text-neutral-900 dark:text-white">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-neutral-900 dark:text-white">
               {modoGlobal ? 'Tendencias Globales' : `Lo Mejor de ${paisSeleccionado.nombre}`}
             </h1>
           </div>
@@ -143,14 +159,30 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
           </p>
         </div>
 
-        {/* Filtros */}
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Filtros, Ruleta y Selectores */}
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+          {/* Botón ¿Qué ver hoy? (Ruleta de selección aleatoria) */}
+          <button
+            type="button"
+            disabled={cargando || obras.length === 0 || estaGirando}
+            onClick={iniciarGiro}
+            className={`h-10 px-4 rounded-xl font-black text-xs flex items-center gap-2 transition-all duration-300 shadow-md cursor-pointer disabled:opacity-50 select-none ${
+              estaGirando
+                ? 'bg-amber-400 text-neutral-950 ring-4 ring-amber-400/50 animate-pulse'
+                : 'bg-gradient-to-r from-amber-500 via-rose-600 to-rose-700 hover:from-amber-400 hover:to-rose-500 text-white shadow-rose-900/25 hover:scale-105 active:scale-95'
+            }`}
+            title="Elegir al azar entre los títulos cargados en pantalla"
+          >
+            <Sparkles className={`w-3.5 h-3.5 text-white ${estaGirando ? 'animate-spin' : ''}`} />
+            <span>{estaGirando ? 'Eligiendo...' : '¿Qué ver hoy?'}</span>
+          </button>
+
           {/* Tipo Película / Serie */}
           <div className="flex bg-neutral-200 dark:bg-white/5 p-1 rounded-xl border border-neutral-300 dark:border-white/10 shadow-sm">
             <button
               type="button"
               onClick={() => setTipoTendencia('movie')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                 tipoTendencia === 'movie'
                   ? 'bg-rose-600 text-white shadow'
                   : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
@@ -161,7 +193,7 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
             <button
               type="button"
               onClick={() => setTipoTendencia('tv')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                 tipoTendencia === 'tv'
                   ? 'bg-rose-600 text-white shadow'
                   : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
@@ -186,10 +218,11 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
                   : 'bg-neutral-200/80 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-500 hover:text-neutral-800 dark:hover:text-white'
               }`}
             >
-              <span className="text-base leading-none">🌐</span>
+              <span className="text-base select-none">🌍</span>
               <span className="text-xs font-bold hidden sm:inline">Mundo</span>
             </button>
 
+            {/* Botón selector de País */}
             <button
               type="button"
               onClick={() => setMostrarPopUpPaises(!mostrarPopUpPaises)}
@@ -211,6 +244,7 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
               <span className="text-[10px] text-neutral-400">▾</span>
             </button>
 
+            {/* Menú flotante de selección de País */}
             {mostrarPopUpPaises && (
               <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-[#16161a] border border-neutral-300 dark:border-white/15 rounded-2xl shadow-2xl p-3 z-50 animate-fadeIn space-y-2">
                 <p className="text-[11px] font-black uppercase tracking-wider text-neutral-400 px-1">
@@ -263,25 +297,45 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
               const tmdbIdNum = Number(obra.tmdb_id || obra.id);
               const yaVista = idsVistos.has(tmdbIdNum);
               const posterFinal = resolverPoster(obra.poster_path);
+              const esResaltado = indiceResaltado === index;
 
               return (
                 <div
                   key={`${obra.tmdb_id || obra.id}-${index}`}
-                  onClick={() => onSeleccionarObra(obra)}
-                  className={`aspect-[2/3] relative rounded-3xl overflow-hidden shadow-lg border transition-all duration-300 cursor-pointer group bg-[#141418] hover:-translate-y-1.5 hover:shadow-2xl select-none ${
-                    yaVista 
+                  ref={(el) => registrarRef(index, el)}
+                  onClick={() => {
+                    if (!estaGirando) {
+                      onSeleccionarObra({ ...obra, desdeTendencias: true });
+                    }
+                  }}
+                  className={`aspect-[2/3] relative rounded-3xl overflow-hidden shadow-lg border transition-all duration-200 select-none ${
+                    estaGirando ? 'cursor-wait' : 'cursor-pointer group hover:-translate-y-1.5 hover:shadow-2xl'
+                  } bg-[#141418] ${
+                    esResaltado
+                      ? 'ring-4 ring-amber-400 border-amber-300 shadow-[0_0_35px_rgba(251,191,36,0.95)] scale-[1.05] z-30 brightness-110'
+                      : estaGirando
+                      ? 'opacity-35 brightness-75 scale-95 border-neutral-800'
+                      : yaVista 
                       ? 'ring-2 ring-emerald-500 border-emerald-500/40 shadow-emerald-500/20' 
                       : 'border-neutral-300/40 dark:border-white/10'
                   }`}
                 >
+                  {/* Badge flotante animado de la ruleta cuando la obra está resaltada */}
+                  {esResaltado && (
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-40 bg-amber-400 text-neutral-950 font-black text-[10px] px-2.5 py-0.5 rounded-full shadow-lg flex items-center gap-1 uppercase tracking-wider animate-bounce">
+                      <Sparkles className="w-3 h-3 text-neutral-950" />
+                      <span>{estaGirando ? 'Sorteando' : '¡Elegida!'}</span>
+                    </div>
+                  )}
+
                   {posterFinal ? (
                     <img 
                       src={posterFinal} 
                       alt={obra.titulo} 
                       loading="lazy" 
-                      className={`w-full h-full object-cover group-hover:scale-105 transition duration-300 ${
-                        yaVista ? 'brightness-90' : 'brightness-95'
-                      }`}
+                      className={`w-full h-full object-cover transition duration-300 ${
+                        !estaGirando ? 'group-hover:scale-105' : ''
+                      } ${yaVista ? 'brightness-90' : 'brightness-95'}`}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center p-4 text-center text-xs font-bold text-neutral-400">
@@ -292,7 +346,7 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
                   {/* Capa de información y badges */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-4 pointer-events-none">
                     <div className="flex justify-between items-start">
-                      <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-rose-600 text-white rounded-md shadow">
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-rose-600 text-white rounded-md shadow flex items-center gap-1">
                         {obra.tipo || (tipoTendencia === 'movie' ? 'Película' : 'Serie')}
                       </span>
 
@@ -313,7 +367,7 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
                     <div>
                       <h4 className="text-sm font-black text-white truncate drop-shadow">{obra.titulo}</h4>
                       <p className="text-[11px] text-neutral-300 font-bold mt-0.5">
-                        {obra.anio ? `${obra.anio} · ` : ''}Clic para registrar
+                        {obra.anio ? `${obra.anio} · ` : ''}Clic para ver detalles
                       </p>
                     </div>
                   </div>
@@ -327,7 +381,7 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
             <div className="pt-6 pb-12 flex justify-center">
               <button
                 type="button"
-                disabled={cargandoMas}
+                disabled={cargandoMas || estaGirando}
                 onClick={handleCargarMas}
                 className="bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 text-neutral-800 dark:text-white font-extrabold px-8 py-3 rounded-2xl shadow-md transition-all duration-200 cursor-pointer text-xs disabled:opacity-50"
               >
@@ -341,6 +395,19 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
           No se encontraron obras para esta selección.
         </div>
       )}
+
+      {/* Modal de recomendación al azar */}
+      <ModalRecomendacionAzar
+        abierto={modalGanadorAbierto}
+        obra={ganador}
+        alCerrar={cerrarModal}
+        alSeleccionar={(obraElegida) => {
+          cerrarModal();
+          onSeleccionarObra({ ...obraElegida, desdeTendencias: true });
+        }}
+        alGirarDeNuevo={iniciarGiro}
+        origen="tendencias"
+      />
 
     </main>
   );

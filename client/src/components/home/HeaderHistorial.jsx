@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { obtenerAmigosAPI } from '../../api';
 import { Calendar, Layers, Film, Tv, Users, Trash2, X , Search} from 'lucide-react';
 export default function HeaderHistorial({
@@ -21,6 +21,7 @@ export default function HeaderHistorial({
   setSoloConAmigos,
   amigosFiltro = [],
   setAmigosFiltro,
+  timelineCompleto = [],
 }) {
   const puedeSeleccionar = (!vistaTotal && mesSeleccionado !== null) || (vistaTotal && serieSeleccionadaTotal !== null);
   const [amigosDisponibles, setAmigosDisponibles] = useState([]);
@@ -53,6 +54,24 @@ export default function HeaderHistorial({
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
+
+  // Extraer acompañantes manuales guardados en el historial real
+  const acompanantesManuales = useMemo(() => {
+    if (!Array.isArray(timelineCompleto)) return [];
+    const mapa = new Map();
+    timelineCompleto.forEach((item) => {
+      if (item.visto_con_texto && typeof item.visto_con_texto === 'string') {
+        const nombres = item.visto_con_texto.split(',').map((s) => s.trim()).filter(Boolean);
+        nombres.forEach((nombre) => {
+          const key = nombre.toLowerCase();
+          if (!mapa.has(key)) {
+            mapa.set(key, nombre);
+          }
+        });
+      }
+    });
+    return Array.from(mapa.values()).sort((a, b) => a.localeCompare(b));
+  }, [timelineCompleto]);
 
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-200 dark:border-white/10 pb-5">
@@ -207,7 +226,7 @@ export default function HeaderHistorial({
 
           {/* Menú flotante: se cierra al hacer clic afuera o al tocar la flechita */}
           {menuAmigosAbierto && soloConAmigos && (
-            <div className="absolute right-0 top-12 bg-white dark:bg-[#1a1a24] border border-neutral-200 dark:border-white/15 rounded-2xl p-3 shadow-2xl w-60 z-50 animate-fadeIn">
+            <div className="absolute right-0 top-12 bg-white dark:bg-[#1a1a24] border border-neutral-200 dark:border-white/15 rounded-2xl p-3 shadow-2xl w-64 sm:w-72 z-50 animate-fadeIn">
               <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-neutral-100 dark:border-white/5">
                 <p className="text-[10px] font-black uppercase text-neutral-400">Ver vistas con:</p>
                 <div className="flex items-center gap-2">
@@ -230,28 +249,84 @@ export default function HeaderHistorial({
                 </div>
               </div>
 
-              {amigosDisponibles.length === 0 ? (
-                <p className="text-xs text-neutral-400 italic py-2 text-center">No tienes amigos agregados.</p>
+              {amigosDisponibles.length === 0 && acompanantesManuales.length === 0 ? (
+                <p className="text-xs text-neutral-400 italic py-3 text-center">No hay amigos ni acompañantes registrados en tu historial.</p>
               ) : (
-                <div className="max-h-48 overflow-y-auto space-y-1">
-                  {amigosDisponibles.map((a) => {
-                    const activo = amigosFiltro.includes(a.id);
-                    return (
-                      <button
-                        key={a.id}
-                        type="button"
-                        onClick={() => alternarAmigoFiltro(a.id)}
-                        className={`w-full flex items-center justify-between p-2 rounded-xl text-xs transition cursor-pointer ${
-                          activo 
-                            ? 'bg-rose-600 text-white font-bold' 
-                            : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-700 dark:text-neutral-300'
-                        }`}
-                      >
-                        <span className="truncate">@{a.username}</span>
-                        {activo && <span>✓</span>}
-                      </button>
-                    );
-                  })}
+                <div className="max-h-60 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
+                  {/* 1. Amigos registrados en la app */}
+                  {amigosDisponibles.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-1 px-1">
+                        Amigos en la app
+                      </p>
+                      <div className="space-y-1">
+                        {amigosDisponibles.map((a) => {
+                          const activo = amigosFiltro.includes(a.id);
+                          return (
+                            <button
+                              key={a.id}
+                              type="button"
+                              onClick={() => alternarAmigoFiltro(a.id)}
+                              className={`w-full flex items-center justify-between p-2 rounded-xl text-xs transition cursor-pointer ${
+                                activo 
+                                  ? 'bg-rose-600 text-white font-bold' 
+                                  : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-700 dark:text-neutral-300'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                {a.avatar_url ? (
+                                  <img src={a.avatar_url} alt={a.username} className="w-5 h-5 rounded-full object-cover shrink-0" />
+                                ) : (
+                                  <div className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-500 text-[10px] font-black flex items-center justify-center shrink-0">
+                                    {(a.nombre || a.username || '?').charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <span className="truncate">@{a.username}</span>
+                              </div>
+                              {activo && <span className="ml-1 text-xs">✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Acompañantes manuales guardados en la BD */}
+                  {acompanantesManuales.length > 0 && (
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-1 px-1">
+                        Acompañantes guardados
+                      </p>
+                      <div className="space-y-1">
+                        {acompanantesManuales.map((nombre) => {
+                          const filtroKey = `texto:${nombre.toLowerCase()}`;
+                          const activo = amigosFiltro.includes(filtroKey);
+                          return (
+                            <button
+                              key={filtroKey}
+                              type="button"
+                              onClick={() => alternarAmigoFiltro(filtroKey)}
+                              className={`w-full flex items-center justify-between p-2 rounded-xl text-xs transition cursor-pointer ${
+                                activo 
+                                  ? 'bg-rose-600 text-white font-bold' 
+                                  : 'hover:bg-neutral-100 dark:hover:bg-white/5 text-neutral-700 dark:text-neutral-300'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                <img
+                                  src={`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(nombre)}&backgroundColor=e11d48,ff7043`}
+                                  alt={nombre}
+                                  className="w-5 h-5 rounded-full bg-neutral-200 dark:bg-neutral-800 shrink-0"
+                                />
+                                <span className="truncate">{nombre}</span>
+                              </div>
+                              {activo && <span className="ml-1 text-xs">✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

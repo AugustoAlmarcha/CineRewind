@@ -162,7 +162,9 @@ const pool = {
   },
 };
 
-// Warm up DB in background
-getPGlite().catch(() => {});
+// Warm up DB in background only if using PGlite
+if (activeEngine === 'pglite') {
+  getPGlite().catch(() => {});
+}
 
 module.exports = pool;

@@ -28,6 +28,7 @@ const registrarVisualizacion = async (req, res) => {
     es_final_temporada,
     amigos_etiquetados,
     visto_con_texto,
+    calificacion,
   } = req.body;
 
   if (!tmdb_id || !tipo || !titulo || !fecha_visto) {
@@ -55,19 +56,32 @@ const registrarVisualizacion = async (req, res) => {
     ]);
     const obra_id = resObra.rows[0].id;
 
-    const tempNum = temporada !== undefined && temporada !== null ? parseInt(temporada, 10) : null;
-    const epNum = episodio !== undefined && episodio !== null ? parseInt(episodio, 10) : null;
+    const tempNum = temporada !== undefined && temporada !== null && !isNaN(parseInt(temporada, 10)) ? parseInt(temporada, 10) : null;
+    const epNum = episodio !== undefined && episodio !== null && !isNaN(parseInt(episodio, 10)) ? parseInt(episodio, 10) : null;
 
     if (tipo.toLowerCase() === 'serie') {
-      const existeCap = await pool.query(
-        `SELECT id FROM historial_visualizaciones 
-         WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5`,
-        [usuario_id, obra_id, tempNum, epNum, fecha_visto]
-      );
-      if (existeCap.rows.length > 0) {
-        return res.status(409).json({ 
-          error: `Ya registraste el capítulo ${epNum} de la temporada ${tempNum} en esta misma fecha.` 
-        });
+      if (tempNum !== null && epNum !== null) {
+        const existeCap = await pool.query(
+          `SELECT id FROM historial_visualizaciones 
+           WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5`,
+          [usuario_id, obra_id, tempNum, epNum, fecha_visto]
+        );
+        if (existeCap.rows.length > 0) {
+          return res.status(409).json({ 
+            error: `Ya registraste el capítulo ${epNum} de la temporada ${tempNum} en esta misma fecha.` 
+          });
+        }
+      } else {
+        const existeSerieSinCap = await pool.query(
+          `SELECT id FROM historial_visualizaciones 
+           WHERE usuario_id = $1 AND obra_id = $2 AND temporada IS NULL AND episodio IS NULL AND fecha_visto = $3`,
+          [usuario_id, obra_id, fecha_visto]
+        );
+        if (existeSerieSinCap.rows.length > 0) {
+          return res.status(409).json({ 
+            error: 'Esta serie ya fue registrada en esa fecha.' 
+          });
+        }
       }
     } else {
       const existePeli = await pool.query(
@@ -82,10 +96,12 @@ const registrarVisualizacion = async (req, res) => {
       }
     }
 
+    const califNum = calificacion !== undefined && calificacion !== null && Number(calificacion) > 0 ? Number(calificacion) : null;
+
     const queryHistorial = `
       INSERT INTO historial_visualizaciones 
-        (usuario_id, obra_id, fecha_visto, plataforma, pais, temporada, episodio, es_final_temporada, visto_con_texto)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        (usuario_id, obra_id, fecha_visto, plataforma, pais, temporada, episodio, es_final_temporada, visto_con_texto, calificacion)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *;
     `;
     const resHistorial = await pool.query(queryHistorial, [
@@ -97,7 +113,8 @@ const registrarVisualizacion = async (req, res) => {
       tempNum,
       epNum,
       Boolean(es_final_temporada),
-      visto_con_texto ? String(visto_con_texto).trim() : null
+      visto_con_texto ? String(visto_con_texto).trim() : null,
+      califNum
     ]);
 
     const visualizacionId = resHistorial.rows[0].id;
@@ -117,7 +134,7 @@ const registrarVisualizacion = async (req, res) => {
       }
     }
 
-    if (tipo.toLowerCase() === 'serie') {
+    if (tipo.toLowerCase() === 'serie' && tempNum !== null && epNum !== null) {
       const fechaRegistro = resHistorial.rows[0].creado_en;
 
       await pool.query(
@@ -423,7 +440,7 @@ const obtenerEpisodiosVistosTemporada = async (req, res) => {
 // ========================================================
 const actualizarReseniaYCalificacion = async (req, res) => {
   const { id } = req.params;
-  const { calificacion, resenia, plataforma, amigos_etiquetados, visto_con_texto } = req.body;
+  const { calificacion, resenia, plataforma, amigos_etiquetados, visto_con_texto, fecha_visto } = req.body;
   const usuario_id = req.usuario?.id;
 
   if (!usuario_id) {
@@ -455,6 +472,11 @@ const actualizarReseniaYCalificacion = async (req, res) => {
     if (visto_con_texto !== undefined) {
       campos.push(`visto_con_texto = $${idx++}`);
       valores.push(visto_con_texto ? String(visto_con_texto).trim() : null);
+    }
+    if (fecha_visto !== undefined && fecha_visto) {
+      const fechaLimpia = String(fecha_visto).split('T')[0];
+      campos.push(`fecha_visto = $${idx++}`);
+      valores.push(fechaLimpia);
     }
 
     let resultado;

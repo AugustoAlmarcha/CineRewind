@@ -8,7 +8,7 @@ import {
 import CalificadorEstrellas from '../common/CalificadorEstrellas';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
 import SelectorAmigosEtiquetar from './SelectorAmigosEtiquetar';
-import { Tv, Users, Clapperboard, BookOpen, ChevronDown } from 'lucide-react';
+import { Tv, Users, Clapperboard, BookOpen, ChevronDown, Calendar } from 'lucide-react';
 
 const PLATAFORMAS_DISPONIBLES = [
   'Netflix', 'Max', 'Disney+', 'Prime Video', 'Apple TV+', 'Cine', 'Paramount+', 'Mubi', 'Crunchyroll'
@@ -38,6 +38,7 @@ export default function ModalDetalleTimeline({
     item.amigos_covision ? item.amigos_covision.map((a) => a.amigo_id) : []
   );
   const [vistoConTexto, setVistoConTexto] = useState(item.visto_con_texto || '');
+  const [fechaVisto, setFechaVisto] = useState(item.fecha_visto ? item.fecha_visto.split('T')[0] : '');
   const [guardando, setGuardando] = useState(false);
   const [detalle, setDetalle] = useState(null);
   const [actores, setActores] = useState([]);
@@ -66,6 +67,7 @@ export default function ModalDetalleTimeline({
     setCalificacion(obraActual.calificacion ? Number(obraActual.calificacion) : 0);
     setResenia(obraActual.resenia || '');
     setPlataforma(obraActual.plataforma || '');
+    setFechaVisto(obraActual.fecha_visto ? obraActual.fecha_visto.split('T')[0] : '');
 
     const idParaTMDb = obraActual.tmdb_id || 
                        obraActual.obra_tmdb_id || 
@@ -140,6 +142,7 @@ export default function ModalDetalleTimeline({
         plataforma: plataforma || null,
         amigos_etiquetados: amigosSeleccionados,
         visto_con_texto: vistoConTexto.trim() || null,
+        fecha_visto: fechaVisto || null,
       });
 
       if (esSerie && obraIdReal && plataforma && plataforma !== 'Sin plataforma' && alcancePlataforma !== 'solo_este') {
@@ -210,9 +213,16 @@ export default function ModalDetalleTimeline({
                   </>
                 )}
                 {item.fecha_visto && (
-                  <span className="text-[11px] text-neutral-600 dark:text-neutral-400 font-medium">
-                    📅 {formatearFecha(item.fecha_visto)}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSeccionExpandida(seccionExpandida === 'fecha' ? null : 'fecha')}
+                    className="text-[11px] text-neutral-600 dark:text-neutral-400 hover:text-rose-500 font-medium cursor-pointer transition flex items-center gap-1.5 group"
+                    title="Clic para cambiar la fecha"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span>{formatearFecha(fechaVisto || item.fecha_visto)}</span>
+                    <span className="text-[9px] opacity-70 group-hover:opacity-100 group-hover:underline">(cambiar)</span>
+                  </button>
                 )}
                 {item.plataforma && (
                   <span className="px-1.5 py-0.5 rounded bg-neutral-200/90 dark:bg-white/10 text-[10px] font-mono font-bold text-neutral-700 dark:text-neutral-300">
@@ -269,6 +279,23 @@ export default function ModalDetalleTimeline({
             {/* 2. BARRA DE OPCIONES COMPACTAS (Estilo ModalRegistrar: Plataforma, Acompañantes, Reparto, Sinopsis) */}
             <div className="pt-2 border-t border-neutral-200 dark:border-white/10 space-y-3">
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Botón Fecha */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionExpandida(seccionExpandida === 'fecha' ? null : 'fecha')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                    seccionExpandida === 'fecha'
+                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                      : fechaVisto && fechaVisto !== (item.fecha_visto ? item.fecha_visto.split('T')[0] : '')
+                      ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-600 dark:text-amber-400'
+                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{fechaVisto ? formatearFecha(fechaVisto) : 'Fecha'}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'fecha' ? 'rotate-180' : ''}`} />
+                </button>
+
                 {/* Botón Plataforma */}
                 <button
                   type="button"
@@ -282,7 +309,7 @@ export default function ModalDetalleTimeline({
                   }`}
                 >
                   <Tv className="w-3.5 h-3.5" />
-                  <span>{plataforma ? `📺 ${plataforma}` : 'Plataforma'}</span>
+                  <span>{plataforma || 'Plataforma'}</span>
                   <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'plataforma' ? 'rotate-180' : ''}`} />
                 </button>
 
@@ -339,6 +366,51 @@ export default function ModalDetalleTimeline({
                   </button>
                 )}
               </div>
+
+              {/* PANEL DESPLEGABLE: CAMBIAR FECHA */}
+              {seccionExpandida === 'fecha' && (
+                <div className="space-y-3 p-4 rounded-2xl bg-neutral-100/70 dark:bg-white/5 border border-neutral-200 dark:border-white/10 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                      Fecha en que la viste
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFechaVisto(new Date().toISOString().split('T')[0])}
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white transition cursor-pointer"
+                      >
+                        Hoy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const d = new Date();
+                          d.setDate(d.getDate() - 1);
+                          setFechaVisto(d.toISOString().split('T')[0]);
+                        }}
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white transition cursor-pointer"
+                      >
+                        Ayer
+                      </button>
+                    </div>
+                  </div>
+
+                  <input
+                    type="date"
+                    value={fechaVisto}
+                    max={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setFechaVisto(e.target.value)}
+                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs font-bold text-neutral-900 dark:text-white focus:outline-none focus:border-rose-500 cursor-pointer"
+                  />
+
+                  {fechaVisto && fechaVisto !== (item.fecha_visto ? item.fecha_visto.split('T')[0] : '') && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">
+                      Al guardar, se moverá automáticamente a esta fecha en tu diario.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* PANEL DESPLEGABLE: PLATAFORMA */}
               {seccionExpandida === 'plataforma' && (
@@ -421,8 +493,9 @@ export default function ModalDetalleTimeline({
               {seccionExpandida === 'reparto' && (
                 <div className="p-4 rounded-2xl bg-neutral-100/70 dark:bg-white/5 border border-neutral-200 dark:border-white/10 space-y-3 animate-fadeIn">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase text-neutral-500 dark:text-neutral-400">
-                      🎭 {esSerie ? 'Elenco del capítulo' : 'Elenco Principal'} {actores.length > 0 ? `(${actores.length})` : ''}
+                    <span className="text-xs font-black uppercase text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
+                      <Clapperboard className="w-3.5 h-3.5 text-rose-500" />
+                      <span>{esSerie ? 'Elenco del capítulo' : 'Elenco Principal'} {actores.length > 0 ? `(${actores.length})` : ''}</span>
                     </span>
                   </div>
 
@@ -441,7 +514,7 @@ export default function ModalDetalleTimeline({
                               <img src={actor.foto} alt={actor.nombre} className="w-full h-full object-cover" />
                             ) : (
                               <div className="w-full h-full flex flex-col items-center justify-center text-neutral-500 text-xs">
-                                <span>🎭</span>
+                                <Users className="w-6 h-6 mb-1 text-neutral-600" />
                                 <span className="text-[10px]">Sin foto</span>
                               </div>
                             )}

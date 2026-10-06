@@ -56,6 +56,7 @@ export const obtenerTendenciasAPI = async (tipo = 'movie', pais = 'GLOBAL', pagi
   return res.json();
 };
 
+
 export const obtenerFilmografiaActorAPI = async (personId) => {
   const res = await fetch(`/api/peliculas/actor/${personId}/obras`);
   if (!res.ok) throw new Error('Error al obtener la filmografía del actor');

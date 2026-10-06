@@ -1,4 +1,5 @@
 import React from 'react';
+import { Users } from 'lucide-react';
 
 export default function GaleriaRepartoPrincipal({ 
   reparto, 
@@ -17,7 +18,7 @@ export default function GaleriaRepartoPrincipal({
           onClick={onToggleMostrar}
           className="text-xs font-bold px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-white/10 bg-neutral-100 dark:bg-white/5 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 transition flex items-center gap-1.5 cursor-pointer"
         >
-          <span>🎭</span>
+          <Users className="w-3.5 h-3.5 text-rose-500" />
           <span>{mostrar ? 'Ocultar Reparto' : `Ver Reparto General (${reparto.length})`}</span>
         </button>
       </div>
@@ -26,8 +27,9 @@ export default function GaleriaRepartoPrincipal({
       {mostrar && (
         <div className="px-6 py-4 border-b border-neutral-200 dark:border-white/10 bg-neutral-50/50 dark:bg-black/20 animate-fadeIn">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-xs font-black uppercase tracking-wider text-neutral-500">
-              Elenco Principal
+            <h4 className="text-xs font-black uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-rose-500" />
+              <span>Elenco Principal</span>
             </h4>
             <span className="text-[11px] text-neutral-400">
               Toca a un actor para ver sus películas
@@ -50,7 +52,9 @@ export default function GaleriaRepartoPrincipal({
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-lg">🎭</div>
+                    <div className="w-full h-full flex items-center justify-center text-rose-500 font-black text-sm">
+                      {(actor.nombre || '?').charAt(0)}
+                    </div>
                   )}
                 </div>
                 <div className="p-2">

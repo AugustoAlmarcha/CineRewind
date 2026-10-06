@@ -42,6 +42,11 @@ const obtenerViendoActualmente = async (req, res) => {
     return res.status(400).json({ error: 'ID de usuario requerido' });
   }
 
+  const usuarioIdNum = parseInt(usuario_id, 10);
+  if (isNaN(usuarioIdNum)) {
+    return res.status(400).json({ error: 'ID de usuario inválido' });
+  }
+
   try {
     const query = `
       WITH ultimos_vistos AS (
@@ -54,6 +59,8 @@ const obtenerViendoActualmente = async (req, res) => {
         INNER JOIN historial_visualizaciones h 
           ON h.obra_id = s.obra_id 
           AND h.usuario_id = s.usuario_id
+          AND h.temporada IS NOT NULL
+          AND h.episodio IS NOT NULL
           AND h.creado_en >= (COALESCE(s.fecha_reinicio, '1970-01-01'::timestamp) - INTERVAL '2 minutes')
         WHERE s.usuario_id = $1 AND s.activo = true
         GROUP BY s.obra_id, s.fecha_reinicio, s.total_episodios_temporada
@@ -76,7 +83,7 @@ const obtenerViendoActualmente = async (req, res) => {
       ORDER BY u.max_historial_id DESC;
     `;
 
-    const resultado = await pool.query(query, [usuario_id]);
+    const resultado = await pool.query(query, [usuarioIdNum]);
 
     // Procesamos todas las series EN PARALELO con Promise.all (evita sumar segundos)
     const seriesFiltradas = (await Promise.all(
@@ -88,7 +95,12 @@ const obtenerViendoActualmente = async (req, res) => {
 
         const tempActual = parseInt(serie.temporada_actual, 10);
         const epActual = parseInt(serie.episodio_actual, 10);
+        if (isNaN(tempActual) || isNaN(epActual)) {
+          return null;
+        }
+
         let totalCaps = serie.total_episodios_temporada ? parseInt(serie.total_episodios_temporada, 10) : null;
+        if (totalCaps !== null && isNaN(totalCaps)) totalCaps = null;
 
         // 1. Obtener episodios ya vistos en este ciclo
         const resVistos = await pool.query(
@@ -97,7 +109,7 @@ const obtenerViendoActualmente = async (req, res) => {
              AND obra_id = $2 
              AND temporada = $3
              AND creado_en >= (COALESCE($4, '1970-01-01'::timestamp) - INTERVAL '2 minutes')`,
-          [usuario_id, serie.obra_id, tempActual, serie.fecha_reinicio]
+          [usuarioIdNum, serie.obra_id, tempActual, serie.fecha_reinicio]
         );
         const setVistos = new Set(resVistos.rows.map((r) => parseInt(r.episodio, 10)));
 
@@ -130,7 +142,7 @@ const obtenerViendoActualmente = async (req, res) => {
           if (totalTemps && tempActual >= totalTemps) {
             await pool.query(
               'UPDATE seguimiento_series SET activo = false, actualizado_en = CURRENT_TIMESTAMP WHERE usuario_id = $1 AND obra_id = $2;',
-              [usuario_id, serie.obra_id]
+              [usuarioIdNum, serie.obra_id]
             );
             return null; // Se descarta del carrusel
           } else {
@@ -143,7 +155,7 @@ const obtenerViendoActualmente = async (req, res) => {
                  AND obra_id = $2 
                  AND temporada = $3
                  AND creado_en >= (COALESCE($4, '1970-01-01'::timestamp) - INTERVAL '2 minutes')`,
-              [usuario_id, serie.obra_id, sigTemp, serie.fecha_reinicio]
+              [usuarioIdNum, serie.obra_id, sigTemp, serie.fecha_reinicio]
             );
             const setVistosNueva = new Set(resVistosNueva.rows.map((r) => parseInt(r.episodio, 10)));
             while (setVistosNueva.has(sigEp)) {
@@ -192,6 +204,9 @@ const avanzarCapitulo = async (req, res) => {
 
   let tempNum = parseInt(temporada, 10);
   let epNum = parseInt(episodio_actual, 10);
+  if (isNaN(tempNum) || isNaN(epNum)) {
+    return res.status(400).json({ error: 'Temporada y episodio deben ser números válidos' });
+  }
   const apiKey = process.env.TMDB_API_KEY;
 
   try {

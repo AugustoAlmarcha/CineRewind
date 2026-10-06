@@ -498,6 +498,7 @@ export default function Home({ actualizarTrigger }) {
           setSoloConAmigos={setSoloConAmigos}
           amigosFiltro={amigosFiltro}
           setAmigosFiltro={setAmigosFiltro}
+          timelineCompleto={timeline}
         />
 
         <GrillaHistorial 

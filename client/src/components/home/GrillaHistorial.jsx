@@ -89,23 +89,39 @@ export default function GrillaHistorial({
   amigosFiltro = [],
 }) {
 
-  // Helper para verificar si un registro cumple con el filtro de amigos
+  // Helper para verificar si un registro cumple con el filtro de amigos o acompañantes
   const pasaFiltroAmigos = (item) => {
     if (!soloConAmigos) return true;
 
     const amigos = Array.isArray(item.amigos_covision) ? item.amigos_covision : [];
-    const tieneTextoManual = Boolean(item.visto_con_texto && item.visto_con_texto.trim());
+    const nombresManuales = item.visto_con_texto
+      ? item.visto_con_texto.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+      : [];
 
     // Si no tiene amigos de la app ni acompañante manual, no pasa el filtro
-    if (amigos.length === 0 && !tieneTextoManual) return false;
+    if (amigos.length === 0 && nombresManuales.length === 0) return false;
 
-    // Si seleccionaste amigos puntuales del desplegable (ej: Pepe)
+    // Si seleccionaste amigos o acompañantes puntuales del desplegable
     if (amigosFiltro && amigosFiltro.length > 0) {
-      if (amigos.length === 0) return false;
-      return amigos.some((a) => amigosFiltro.includes(a.amigo_id));
+      // 1. Coincide con amigos de la app (comparando ID)
+      const coincideAmigoApp = amigos.some((a) =>
+        amigosFiltro.some((filtroId) => String(filtroId) === String(a.amigo_id))
+      );
+
+      // 2. Coincide con acompañantes de texto manual (ej: "texto:lucas vecino" o "texto:mamá")
+      const coincideManual = nombresManuales.some((nombre) =>
+        amigosFiltro.some((filtro) => {
+          if (typeof filtro === 'string' && filtro.startsWith('texto:')) {
+            return filtro.slice(6).toLowerCase() === nombre;
+          }
+          return typeof filtro === 'string' && filtro.toLowerCase() === nombre;
+        })
+      );
+
+      return coincideAmigoApp || coincideManual;
     }
 
-    // Si está en "Con amigos" general, pasa cualquiera que se haya visto acompañado
+    // Si está en "Con amigos" general (sin selección puntual), pasa cualquiera visto acompañado
     return true;
   };
 

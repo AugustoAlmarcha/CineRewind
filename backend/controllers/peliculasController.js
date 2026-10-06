@@ -86,12 +86,14 @@ const obtenerDetallePelicula = async (req, res) => {
       return res.status(404).json({ error: 'Obra no encontrada en TMDb' });
     }
 
-    const reparto = (data.credits?.cast || []).slice(0, 15).map((actor) => ({
+    const reparto = (data.credits?.cast || []).slice(0, 25).map((actor) => ({
       id: actor.id,
       nombre: actor.name,
       personaje: actor.character,
       foto: actor.profile_path ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` : null,
     }));
+
+    const director = (data.credits?.crew || []).find((c) => c.job === 'Director' || c.department === 'Directing')?.name || null;
 
     const detalle = {
       tmdb_id: data.id,
@@ -100,10 +102,14 @@ const obtenerDetallePelicula = async (req, res) => {
       anio: (data.release_date || data.first_air_date || '').substring(0, 4),
       sinopsis: data.overview,
       poster_path: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
+      backdrop_path: data.backdrop_path ? `https://image.tmdb.org/t/p/w1280${data.backdrop_path}` : null,
       duracion_minutos: data.runtime || (data.episode_run_time ? data.episode_run_time[0] : null),
       generos: (data.genres || []).map((g) => g.name),
       total_temporadas: data.number_of_seasons || null,
       total_episodios: data.number_of_episodes || null,
+      calificacion: data.vote_average ? Number(data.vote_average.toFixed(1)) : null,
+      director,
+      tagline: data.tagline || null,
       reparto,
     };
 
