@@ -1,10 +1,71 @@
 import React, { useState } from 'react';
 import { comprobarUsernameAPI, cambiarPasswordAPI } from '../../api';
+import {
+  User,
+  Image as ImageIcon,
+  Smile,
+  Lock,
+  X,
+  Check,
+  RotateCw,
+  Sparkles,
+  Link,
+  ShieldCheck,
+  AlertCircle
+} from 'lucide-react';
 
 // ========================================================
-// 1. AVATARES: POKÉMON, SUPERHÉROES Y ROBOTS RETRO
+// 1. FOTOGRAMAS PANORÁMICOS (CON NOMBRES SINCEROS Y REALES)
 // ========================================================
-const CATEGORIAS_AVATARES = [
+export const PORTADAS_PREDETERMINADAS = [
+  {
+    id: 'sala_cine',
+    titulo: 'Sala de Cine con Butacas Rojas',
+    categoria: 'Cine Clásico',
+    url: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1600&q=80',
+  },
+  {
+    id: 'neon_cinema',
+    titulo: 'Entrada de Cine con Neón Rojo',
+    categoria: 'Cine Retro',
+    url: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=1600&q=80',
+  },
+  {
+    id: 'espacio',
+    titulo: 'Planeta Azul y Estrellas',
+    categoria: 'Espacio Exterior',
+    url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80',
+  },
+  {
+    id: 'ciudad_rascacielos',
+    titulo: 'Ciudad Nocturna con Rascacielos',
+    categoria: 'Metrópolis',
+    url: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1600&q=80',
+  },
+  {
+    id: 'luces_ciudad',
+    titulo: 'Luces Bokeh de Tráfico y Ciudad',
+    categoria: 'Urbano Nocturno',
+    url: 'https://images.unsplash.com/photo-1498084393753-b411b2d26b34?auto=format&fit=crop&w=1600&q=80',
+  },
+  {
+    id: 'montana',
+    titulo: 'Montaña',
+    categoria: 'Naturaleza',
+    url: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1600&q=80',
+  },
+  {
+    id: 'cielo_gris',
+    titulo: 'Cielo Gris y Árboles',
+    categoria: 'Naturaleza',
+    url: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1600&q=80',
+  },
+];
+
+// ========================================================
+// 2. AVATARES RESTAURADOS: POKÉMON, SUPERHÉROES Y ROBOTS RETRO
+// ========================================================
+export const CATEGORIAS_AVATARES = [
   {
     id: 'pokemon',
     titulo: '⚡ Pokémon',
@@ -22,7 +83,7 @@ const CATEGORIAS_AVATARES = [
       { id: 'dragonite', nombre: 'Dragonite', url: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/149.png' },
       { id: 'psyduck', nombre: 'Psyduck', url: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/54.png' },
       { id: 'jigglypuff', nombre: 'Jigglypuff', url: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/39.png' },
-    ]
+    ],
   },
   {
     id: 'heroes',
@@ -41,58 +102,27 @@ const CATEGORIAS_AVATARES = [
       { id: 'venom', nombre: 'Venom', url: 'https://raw.githubusercontent.com/akabab/superhero-api/master/api/images/sm/687-venom.jpg' },
       { id: 'cap', nombre: 'Capitán América', url: 'https://raw.githubusercontent.com/akabab/superhero-api/master/api/images/sm/149-captain-america.jpg' },
       { id: 'flash', nombre: 'The Flash', url: 'https://raw.githubusercontent.com/akabab/superhero-api/master/api/images/sm/263-flash.jpg' },
-    ]
+    ],
   },
   {
     id: 'robots',
     titulo: '🤖 Robots Retro',
-    tipo: 'dinamico'
-  }
-];
-
-// ========================================================
-// 2. FOTOGRAMAS PANORÁMICOS (CON SUS NOMBRES REALES Y SINCEROS)
-// ========================================================
-export const PORTADAS_PREDETERMINADAS = [
-  {
-    id: 'desierto',
-    titulo: 'Cielo Gris',
-    url: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1600&q=80',
-  },
-  {
-    id: 'ciudad',
-    titulo: 'Ciudad Nocturna con Rascacielos',
-    url: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1600&q=80',
-  },
-  {
-    id: 'espacio',
-    titulo: 'Planeta Azul y Estrellas',
-    url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80',
-  },
-  {
-    id: 'fuego',
-    titulo: 'Luces de ciudad',
-    url: 'https://images.unsplash.com/photo-1498084393753-b411b2d26b34?auto=format&fit=crop&w=1600&q=80',
-  },
-  {
-    id: 'cyberpunk',
-    titulo: 'Montaña',
-    url: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1600&q=80',
-  },
-  {
-    id: 'sala_cine',
-    titulo: 'Sala de Cine con Butacas Rojas',
-    url: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1600&q=80',
+    tipo: 'dinamico',
+    semillas: [
+      ['Gizmo', 'Buster', 'Pepper', 'Bandit'],
+      ['Sparky', 'Bolt', 'Chip', 'Rusty'],
+      ['Felix', 'Aneka', 'GoldMech', 'Shadow'],
+    ],
   },
 ];
 
 export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info', onClose, onGuardar }) {
-  const [seccionModal, setSeccionModal] = useState(subpestanaInicial);
+  const [seccionModal, setSeccionModal] = useState(subpestanaInicial); // 'info' | 'portada' | 'avatares' | 'seguridad'
 
   const [nombre, setNombre] = useState(usuario?.nombre || '');
   const [username, setUsername] = useState(usuario?.username || '');
   const [biografia, setBiografia] = useState(usuario?.biografia || '');
-  
+
   const [avatarSeleccionado, setAvatarSeleccionado] = useState(
     usuario?.avatar_url || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/94.png'
   );
@@ -103,37 +133,34 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
 
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
-  
-  // Categoría por defecto: Pokémon
-  const [categoriaActiva, setCategoriaActiva] = useState('pokemon');
-  const [paginaOpciones, setPaginaOpciones] = useState(0);
+
+  // Categorías de Avatares
+  const [categoriaAvatarActiva, setCategoriaAvatarActiva] = useState('pokemon');
+  const [paginaAvatar, setPaginaAvatar] = useState(0);
   const [urlPersonalizadaAvatar, setUrlPersonalizadaAvatar] = useState('');
   const [urlPersonalizadaBanner, setUrlPersonalizadaBanner] = useState('');
 
+  // Validación de Username
   const [usernameDisponible, setUsernameDisponible] = useState(true);
   const [verificandoUsername, setVerificandoUsername] = useState(false);
 
-  const semillasRobots = [
-    ['Gizmo', 'Buster', 'Pepper', 'Bandit'],
-    ['Sparky', 'Bolt', 'Chip', 'Rusty'],
-    ['Felix', 'Aneka', 'GoldMech', 'Shadow']
-  ];
+  const catActual =
+    CATEGORIAS_AVATARES.find((c) => c.id === categoriaAvatarActiva) || CATEGORIAS_AVATARES[0];
 
-  const catActual = CATEGORIAS_AVATARES.find((c) => c.id === categoriaActiva) || CATEGORIAS_AVATARES[0];
   let avataresAMostrar = [];
-  let totalPaginas = 1;
+  let totalPaginasAvatar = 1;
 
   if (catActual.tipo === 'dinamico') {
-    totalPaginas = semillasRobots.length;
-    const paginaActual = paginaOpciones % semillasRobots.length;
-    avataresAMostrar = semillasRobots[paginaActual].map((seed, idx) => ({
+    totalPaginasAvatar = catActual.semillas.length;
+    const paginaActual = paginaAvatar % catActual.semillas.length;
+    avataresAMostrar = catActual.semillas[paginaActual].map((seed, idx) => ({
       id: `bot-${paginaActual}-${idx}`,
       nombre: `Robot ${seed}`,
-      url: `https://api.dicebear.com/7.x/bottts/svg?seed=${seed}&backgroundColor=ff5722,ff7043`
+      url: `https://api.dicebear.com/7.x/bottts/svg?seed=${seed}&backgroundColor=1c1c24`,
     }));
   } else {
-    totalPaginas = Math.ceil(catActual.avatares.length / 4);
-    const inicio = (paginaOpciones % totalPaginas) * 4;
+    totalPaginasAvatar = Math.ceil(catActual.avatares.length / 4);
+    const inicio = (paginaAvatar % totalPaginasAvatar) * 4;
     avataresAMostrar = catActual.avatares.slice(inicio, inicio + 4);
   }
 
@@ -168,13 +195,13 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
     return () => clearTimeout(temporizador);
   };
 
-  const handleRotarOpciones = () => {
-    setPaginaOpciones((prev) => (prev + 1) % totalPaginas);
+  const handleRotarAvatares = () => {
+    setPaginaAvatar((prev) => (prev + 1) % totalPaginasAvatar);
   };
 
-  const handleCambiarCategoria = (id) => {
-    setCategoriaActiva(id);
-    setPaginaOpciones(0);
+  const handleCambiarCategoriaAvatar = (id) => {
+    setCategoriaAvatarActiva(id);
+    setPaginaAvatar(0);
   };
 
   const handleSeleccionarAvatar = (url) => {
@@ -243,93 +270,144 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn">
-      <div className="bg-[#111118] border border-zinc-800 rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl space-y-6 text-white max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-fadeIn select-none">
+      <div className="bg-[#141419] border border-white/10 rounded-3xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl space-y-5 text-white max-h-[92vh] flex flex-col overflow-hidden">
         
         {/* Cabecera */}
-        <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-[0.2em] font-black text-rose-500">
-              CINEREWIND · PERSONALIZACIÓN
-            </span>
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight">Editar Perfil</h2>
+        <div className="flex items-center justify-between border-b border-white/10 pb-3.5 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center text-rose-500 shadow-sm">
+              <Sparkles className="w-4 h-4 stroke-[2.2]" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-widest font-black text-rose-500 block">
+                CineRewind · Ajustes
+              </span>
+              <h2 className="text-lg sm:text-xl font-black tracking-tight leading-tight">
+                Editar Perfil
+              </h2>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-zinc-800 hover:bg-rose-600 hover:text-white flex items-center justify-center text-xs font-bold transition cursor-pointer"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-rose-600 hover:text-white flex items-center justify-center text-xs font-bold transition cursor-pointer"
+            title="Cerrar"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Pestañas del Modal */}
-        <div className="flex items-center gap-1 border-b border-zinc-800/80 pb-2 text-xs font-bold overflow-x-auto">
+        {/* VISTA PREVIA EN VIVO DE CABECERA (ESTILO TWITTER / DISCORD) */}
+        <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-neutral-950 flex-shrink-0">
+          {/* Banner */}
+          <div className="w-full h-24 sm:h-28 relative overflow-hidden bg-neutral-900">
+            <img
+              src={bannerSeleccionado}
+              alt="Portada de perfil"
+              className="w-full h-full object-cover transition duration-300"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+            <span className="absolute top-2 right-2 text-[10px] font-mono bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-md text-neutral-300 font-bold border border-white/10">
+              Vista previa
+            </span>
+          </div>
+
+          {/* Avatar sobrepuesto + Datos en vivo */}
+          <div className="p-3 sm:p-3.5 pt-0 flex items-end gap-3 -mt-7 sm:-mt-8 relative z-10">
+            <div className="w-15 h-15 sm:w-17 sm:h-17 rounded-2xl bg-[#141419] border-2 border-rose-500 overflow-hidden shadow-2xl shrink-0 p-1 flex items-center justify-center">
+              <img
+                src={avatarSeleccionado}
+                alt="Avatar"
+                className="w-full h-full object-contain rounded-xl"
+              />
+            </div>
+            <div className="min-w-0 flex-1 pb-0.5">
+              <h3 className="text-sm sm:text-base font-black truncate drop-shadow">
+                {nombre || 'Tu Nombre'}
+              </h3>
+              <p className="text-xs text-rose-400 font-mono truncate font-bold">
+                @{username || 'usuario'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Pestañas Segmentadas Tipo Píldora (Modern UI) */}
+        <div className="bg-black/40 p-1 rounded-2xl flex gap-1 border border-white/5 flex-shrink-0 overflow-x-auto scrollbar-none">
           <button
             type="button"
             onClick={() => setSeccionModal('info')}
-            className={`px-3.5 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
               seccionModal === 'info'
                 ? 'bg-rose-600 text-white shadow-sm'
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            👤 Datos & Bio
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSeccionModal('portada')}
-            className={`px-3.5 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
-              seccionModal === 'portada'
-                ? 'bg-rose-600 text-white shadow-sm'
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
-            }`}
-          >
-            🖼️ Portada Panorámica
+            <User className="w-3.5 h-3.5" />
+            <span>Datos & Bio</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSeccionModal('avatares')}
-            className={`px-3.5 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
               seccionModal === 'avatares'
                 ? 'bg-rose-600 text-white shadow-sm'
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            🎭 Avatares de Perfil
+            <Smile className="w-3.5 h-3.5" />
+            <span>Avatares</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSeccionModal('portada')}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+              seccionModal === 'portada'
+                ? 'bg-rose-600 text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <ImageIcon className="w-3.5 h-3.5" />
+            <span>Portada</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSeccionModal('seguridad')}
-            className={`px-3.5 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
               seccionModal === 'seguridad'
                 ? 'bg-rose-600 text-white shadow-sm'
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            🔒 Contraseña
+            <Lock className="w-3.5 h-3.5" />
+            <span>Seguridad</span>
           </button>
         </div>
 
         {error && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold text-center">
-            ⚠️ {error}
+          <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center justify-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Contenedor scrolleable del formulario */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
 
-          {/* 1. DATOS BÁSICOS */}
+          {/* 1. SECCIÓN: DATOS BÁSICOS & BIO */}
           {seccionModal === 'info' && (
-            <div className="space-y-4">
+            <div className="space-y-3.5 animate-fadeIn">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Nombre</label>
-                    <span className="text-[10px] text-zinc-500 font-mono">{nombre.length}/20</span>
+                    <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                      Nombre
+                    </label>
+                    <span className="text-[10px] text-neutral-500 font-mono">{nombre.length}/20</span>
                   </div>
                   <input
                     type="text"
@@ -337,16 +415,19 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
                     required
                     value={nombre}
                     onChange={(e) => setNombre(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl bg-zinc-900 border border-zinc-800 text-white focus:outline-none focus:border-rose-500 font-bold transition"
+                    placeholder="Tu nombre cinéfilo..."
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl bg-neutral-900 border border-white/10 text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 font-bold transition"
                   />
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Usuario (@)</label>
+                    <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                      Usuario (@)
+                    </label>
                     {username.length >= 3 && username !== usuario?.username && (
                       <span className={`text-[11px] font-black tracking-tight ${
-                        verificandoUsername ? 'text-zinc-400' : usernameDisponible ? 'text-emerald-400' : 'text-rose-400'
+                        verificandoUsername ? 'text-neutral-400' : usernameDisponible ? 'text-emerald-400' : 'text-rose-400'
                       }`}>
                         {verificandoUsername ? 'Buscando...' : usernameDisponible ? '✓ Disponible' : '✕ Ocupado'}
                       </span>
@@ -358,143 +439,68 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
                     required
                     value={username}
                     onChange={(e) => handleCambioUsername(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-sm rounded-xl bg-zinc-900 border border-zinc-800 text-white focus:outline-none focus:border-rose-500 font-bold transition"
+                    placeholder="ej: augusto_cine"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl bg-neutral-900 border border-white/10 text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 font-bold transition font-mono"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Biografía Cinéfila</label>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                    Biografía Cinéfila
+                  </label>
+                  <span className="text-[10px] text-neutral-500 font-mono">{biografia.length}/160</span>
+                </div>
                 <textarea
                   rows={3}
                   maxLength={160}
                   placeholder="Comparte tus directores, géneros favoritos y qué te apasiona del cine..."
                   value={biografia}
                   onChange={(e) => setBiografia(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-white focus:outline-none focus:border-rose-500 resize-none transition leading-relaxed"
-                />
-                <p className="text-[10px] text-zinc-500 text-right">{biografia.length}/160 caracteres</p>
-              </div>
-            </div>
-          )}
-
-          {/* 2. PORTADA PANORÁMICA (NOMBRES SINCEROS) */}
-          {seccionModal === 'portada' && (
-            <div className="space-y-4">
-              <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
-                Selecciona tu Fotograma Panorámico
-              </label>
-
-              {/* Vista previa en vivo */}
-              <div className="w-full h-40 rounded-2xl overflow-hidden border-2 border-zinc-800 relative bg-zinc-950 shadow-xl">
-                <img
-                  src={bannerSeleccionado}
-                  alt="Vista previa de portada"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-3">
-                  <span className="text-xs font-bold text-white drop-shadow">
-                    ✓ Imagen seleccionada para tu cabecera
-                  </span>
-                </div>
-              </div>
-
-              {/* Catálogo con nombres sinceros */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
-                {PORTADAS_PREDETERMINADAS.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setBannerSeleccionado(item.url);
-                      setUrlPersonalizadaBanner('');
-                    }}
-                    className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 transition cursor-pointer ${
-                      bannerSeleccionado === item.url
-                        ? 'bg-zinc-800 border-rose-500 text-white shadow-md ring-1 ring-rose-500'
-                        : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800/40'
-                    }`}
-                  >
-                    <div className="w-16 h-10 rounded-lg overflow-hidden shrink-0 border border-zinc-700 bg-zinc-950">
-                      <img
-                        src={item.url}
-                        alt={item.titulo}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <span className="text-xs font-semibold truncate">{item.titulo}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-zinc-400 block mb-1">
-                  O pega el enlace de tu foto panorámica preferida:
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
-                  value={urlPersonalizadaBanner}
-                  onChange={(e) => {
-                    const l = e.target.value;
-                    setUrlPersonalizadaBanner(l);
-                    if (l.trim().startsWith('http')) {
-                      setBannerSeleccionado(l.trim());
-                    }
-                  }}
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-white focus:outline-none focus:border-rose-500 transition font-mono"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl bg-neutral-900 border border-white/10 text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 resize-none transition leading-relaxed"
                 />
               </div>
             </div>
           )}
 
-          {/* 3. AVATARES: SOLO POKÉMON, SUPERHÉROES Y ROBOTS */}
+          {/* 2. SECCIÓN: AVATARES DE PERFIL (POKÉMON, SUPERHÉROES, ROBOTS) */}
           {seccionModal === 'avatares' && (
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-zinc-950 border-2 border-rose-500 p-2 overflow-hidden shadow-md shrink-0 flex items-center justify-center">
-                  <img
-                    src={avatarSeleccionado}
-                    alt="Avatar seleccionado"
-                    className="w-full h-full object-contain"
-                  />
+            <div className="space-y-3.5 animate-fadeIn">
+              {/* Selector de Colección y Botón Rotar */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-neutral-900/60 p-2.5 rounded-2xl border border-white/10">
+                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                  {CATEGORIAS_AVATARES.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => handleCambiarCategoriaAvatar(cat.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
+                        categoriaAvatarActiva === cat.id
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'bg-white/5 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {cat.titulo}
+                    </button>
+                  ))}
                 </div>
 
-                <div className="space-y-2 text-center sm:text-left flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold text-white">Galería de Personajes</p>
-                    {totalPaginas > 1 && (
-                      <button
-                        type="button"
-                        onClick={handleRotarOpciones}
-                        className="px-3 py-1 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-sm"
-                      >
-                        <span>🎲</span> Rotar ({(paginaOpciones % totalPaginas) + 1}/{totalPaginas})
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="flex gap-1.5 flex-wrap justify-center sm:justify-start pt-1">
-                    {CATEGORIAS_AVATARES.map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => handleCambiarCategoria(cat.id)}
-                        className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
-                          categoriaActiva === cat.id
-                            ? 'bg-rose-600 text-white shadow-sm'
-                            : 'bg-zinc-800 text-zinc-400 hover:text-white'
-                        }`}
-                      >
-                        {cat.titulo}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {totalPaginasAvatar > 1 && (
+                  <button
+                    type="button"
+                    onClick={handleRotarAvatares}
+                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0 active:scale-95 shadow-xs"
+                    title="Ver más personajes de esta categoría"
+                  >
+                    <RotateCw className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Rotar ({(paginaAvatar % totalPaginasAvatar) + 1}/{totalPaginasAvatar})</span>
+                  </button>
+                )}
               </div>
 
-              {/* Cuadrícula de 4 avatares rotativos */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-2xl bg-zinc-950/70 border border-zinc-800">
+              {/* Grilla de 4 personajes rotativos */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-2xl bg-black/40 border border-white/5">
                 {avataresAMostrar.map((item) => {
                   const esSeleccionado = avatarSeleccionado === item.url;
                   return (
@@ -502,34 +508,43 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
                       key={item.id}
                       type="button"
                       onClick={() => handleSeleccionarAvatar(item.url)}
-                      className={`p-2.5 rounded-2xl border-2 transition cursor-pointer flex flex-col items-center gap-2 bg-zinc-900 ${
+                      className={`p-3 rounded-2xl border-2 transition cursor-pointer flex flex-col items-center gap-2 bg-neutral-900/80 relative group ${
                         esSeleccionado
-                          ? 'border-rose-600 ring-2 ring-rose-500/30 scale-105 shadow-md'
-                          : 'border-transparent hover:border-zinc-700'
+                          ? 'border-rose-500 bg-rose-500/10 ring-2 ring-rose-500/30 scale-105 shadow-md'
+                          : 'border-white/10 hover:border-white/30 hover:scale-102'
                       }`}
+                      title={item.nombre}
                     >
-                      <div className="w-16 h-16 flex items-center justify-center overflow-hidden rounded-xl bg-zinc-950 p-1">
+                      <div className="w-16 h-16 sm:w-18 sm:h-18 flex items-center justify-center overflow-hidden rounded-xl bg-neutral-950 p-1">
                         <img
                           src={item.url}
                           alt={item.nombre}
                           className="w-full h-full object-contain"
+                          loading="lazy"
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-zinc-300 truncate w-full text-center">
+                      <span className="text-[11px] font-bold text-neutral-200 truncate w-full text-center">
                         {item.nombre}
                       </span>
+                      {esSeleccionado && (
+                        <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center shadow">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                      )}
                     </button>
                   );
                 })}
               </div>
 
-              <div>
-                <label className="text-[11px] font-bold text-zinc-400 block mb-1">
-                  O escribe la URL directa de cualquier imagen:
+              {/* Opción de foto personalizada con URL libre */}
+              <div className="p-3 rounded-2xl bg-neutral-900/60 border border-white/10 space-y-1.5">
+                <label className="text-[11px] font-bold text-neutral-300 flex items-center gap-1.5">
+                  <Link className="w-3 h-3 text-rose-500" />
+                  <span>O pega el enlace de tu propia foto favorita:</span>
                 </label>
                 <input
                   type="url"
-                  placeholder="https://ejemplo.com/tu-foto.png"
+                  placeholder="https://ejemplo.com/tu-foto.jpg (o enlace de Imgur / Pinterest / Discord)"
                   value={urlPersonalizadaAvatar}
                   onChange={(e) => {
                     const l = e.target.value;
@@ -538,15 +553,92 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
                       setAvatarSeleccionado(l.trim());
                     }
                   }}
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-white focus:outline-none focus:border-rose-500 transition font-mono"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-neutral-950 border border-white/10 text-white focus:outline-none focus:border-rose-500 transition font-mono"
                 />
               </div>
             </div>
           )}
 
-          {/* 4. CONTRASEÑA */}
+          {/* 3. SECCIÓN: PORTADAS PANORÁMICAS CON NOMBRES SINCEROS */}
+          {seccionModal === 'portada' && (
+            <div className="space-y-3.5 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">
+                  Fotogramas Panorámicos
+                </label>
+                <span className="text-[10px] font-mono text-neutral-500">
+                  {PORTADAS_PREDETERMINADAS.length} fotos disponibles
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
+                {PORTADAS_PREDETERMINADAS.map((item) => {
+                  const esSeleccionado = bannerSeleccionado === item.url;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setBannerSeleccionado(item.url);
+                        setUrlPersonalizadaBanner('');
+                      }}
+                      className={`p-2 rounded-2xl border text-left flex items-center gap-2.5 transition cursor-pointer ${
+                        esSeleccionado
+                          ? 'bg-rose-500/10 border-rose-500 text-white shadow-md ring-1 ring-rose-500'
+                          : 'bg-neutral-900/60 border-white/10 text-neutral-400 hover:text-white hover:bg-neutral-900'
+                      }`}
+                    >
+                      <div className="w-16 h-11 rounded-xl overflow-hidden shrink-0 border border-white/10 bg-neutral-950 relative">
+                        <img
+                          src={item.url}
+                          alt={item.titulo}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                        {esSeleccionado && (
+                          <div className="absolute inset-0 bg-rose-600/30 flex items-center justify-center">
+                            <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[10px] font-mono text-rose-400 block font-bold leading-tight">
+                          {item.categoria}
+                        </span>
+                        <h4 className="text-xs font-bold text-white truncate leading-tight mt-0.5">
+                          {item.titulo}
+                        </h4>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="p-3 rounded-2xl bg-neutral-900/60 border border-white/10 space-y-1.5">
+                <label className="text-[11px] font-bold text-neutral-300 flex items-center gap-1.5">
+                  <Link className="w-3 h-3 text-rose-500" />
+                  <span>O pega el enlace de tu portada personalizada:</span>
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://images.unsplash.com/... o enlace de tu fotograma preferido"
+                  value={urlPersonalizadaBanner}
+                  onChange={(e) => {
+                    const l = e.target.value;
+                    setUrlPersonalizadaBanner(l);
+                    if (l.trim().startsWith('http')) {
+                      setBannerSeleccionado(l.trim());
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-neutral-950 border border-white/10 text-white focus:outline-none focus:border-rose-500 transition font-mono"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 4. SECCIÓN: SEGURIDAD & CONTRASEÑA */}
           {seccionModal === 'seguridad' && (
-            <div className="space-y-4">
+            <div className="space-y-3.5 animate-fadeIn">
               {errorPass && (
                 <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold text-center">
                   ⚠️ {errorPass}
@@ -554,52 +646,59 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
               )}
 
               {mensajePass && (
-                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold text-center">
-                  {mensajePass}
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold text-center flex items-center justify-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <span>{mensajePass}</span>
                 </div>
               )}
 
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-400 mb-1">Contraseña Actual</label>
+              <div className="space-y-1">
+                <label className="block text-[11px] font-bold text-neutral-400">
+                  Contraseña Actual
+                </label>
                 <input
                   type="password"
                   value={passActual}
                   onChange={(e) => setPassActual(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-white outline-none focus:border-rose-500"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-neutral-900 border border-white/10 text-white outline-none focus:border-rose-500 font-mono"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-bold text-zinc-400 mb-1">Nueva Contraseña (mínimo 6)</label>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-neutral-400">
+                    Nueva Contraseña (mínimo 6)
+                  </label>
                   <input
                     type="password"
                     value={passNueva}
                     onChange={(e) => setPassNueva(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-white outline-none focus:border-rose-500"
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-neutral-900 border border-white/10 text-white outline-none focus:border-rose-500 font-mono"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold text-zinc-400 mb-1">Repetir Nueva Contraseña</label>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-neutral-400">
+                    Repetir Nueva Contraseña
+                  </label>
                   <input
                     type="password"
                     value={passRepetir}
                     onChange={(e) => setPassRepetir(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-white outline-none focus:border-rose-500"
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-neutral-900 border border-white/10 text-white outline-none focus:border-rose-500 font-mono"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="flex justify-end pt-1">
                 <button
                   type="button"
                   disabled={guardandoPass || !passActual || !passNueva || !passRepetir}
                   onClick={handleCambiarPassword}
-                  className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-xl transition cursor-pointer disabled:opacity-40"
+                  className="px-4 py-2 bg-neutral-800 hover:bg-rose-600 text-white text-xs font-black rounded-xl transition cursor-pointer disabled:opacity-40 shadow-sm"
                 >
                   {guardandoPass ? 'Actualizando...' : 'Actualizar Contraseña'}
                 </button>
@@ -607,23 +706,25 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
             </div>
           )}
 
-          {/* Botones de acción */}
-          <div className="flex gap-3 pt-3 border-t border-zinc-800">
+          {/* Botones de acción inferiores */}
+          <div className="flex gap-2.5 pt-3 border-t border-white/10 flex-shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-zinc-800 text-xs font-bold text-zinc-400 hover:bg-zinc-800 hover:text-white transition cursor-pointer"
+              className="flex-1 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-neutral-400 hover:bg-white/5 hover:text-white transition cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={guardando || !usernameDisponible || verificandoUsername}
-              className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-xs font-black text-white shadow-md transition cursor-pointer disabled:opacity-50"
+              className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-xs font-black text-white shadow-md transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
-              {guardando ? 'Guardando...' : 'Guardar Cambios'}
+              <Check className="w-3.5 h-3.5 stroke-[3]" />
+              <span>{guardando ? 'Guardando...' : 'Guardar Cambios'}</span>
             </button>
           </div>
+
         </form>
 
       </div>
