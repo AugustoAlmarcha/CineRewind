@@ -145,9 +145,9 @@ export default function ViendoCard({
                 </p>
               </div>
 
-              {/* Pastilla interactiva táctil: solo en celulares (oculta en PC) */}
-              <div className="pt-0.5 sm:hidden">
-                <div className="inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1.5 rounded-xl bg-rose-600/90 text-white shadow-lg shadow-rose-600/40 border border-rose-400/40 backdrop-blur-md">
+              {/* Pastilla interactiva táctil: centrada en celulares (oculta en PC) */}
+              <div className="pt-0.5 sm:hidden flex justify-center w-full">
+                <div className="w-full justify-center inline-flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1.5 rounded-xl bg-rose-600/90 text-white shadow-lg shadow-rose-600/40 border border-rose-400/40 backdrop-blur-md">
                   <Zap className="w-3.5 h-3.5 fill-amber-300 text-amber-300 shrink-0" />
                   <span className="truncate">Toca para registrar E{proximoEpisodio}</span>
                 </div>
