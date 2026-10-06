@@ -104,6 +104,17 @@ CREATE TABLE IF NOT EXISTS covisualizaciones (
     CONSTRAINT uq_covision_par UNIQUE (visualizacion_id, amigo_id)
 );
 
+-- 9. Tabla de Calificaciones y Reseñas de Temporadas y Series Completas
+CREATE TABLE IF NOT EXISTS calificaciones_series (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    obra_id INTEGER NOT NULL REFERENCES obras_catalogo(id) ON DELETE CASCADE,
+    temporada INTEGER DEFAULT NULL, -- NULL = Serie Completa; Número = Temporada específica (1, 2, 3...)
+    calificacion NUMERIC(2, 1) NOT NULL,
+    resenia TEXT,
+    fecha_calificado TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ==========================================================
 -- Índices de Rendimiento (PostgreSQL)
 -- ==========================================================
@@ -149,3 +160,15 @@ ON covisualizaciones (amigo_id, estado);
 
 CREATE INDEX IF NOT EXISTS idx_covisualizaciones_visualizacion 
 ON covisualizaciones (visualizacion_id);
+
+-- Calificaciones de Series y Temporadas
+CREATE UNIQUE INDEX IF NOT EXISTS idx_calif_serie_global 
+ON calificaciones_series (usuario_id, obra_id) 
+WHERE temporada IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_calif_serie_temporada 
+ON calificaciones_series (usuario_id, obra_id, temporada) 
+WHERE temporada IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_calif_serie_usuario 
+ON calificaciones_series (usuario_id, fecha_calificado DESC);

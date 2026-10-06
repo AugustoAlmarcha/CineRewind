@@ -18,8 +18,12 @@ const {
   obtenerEstadisticasUsuario,
   obtenerRecordsUsuario,
   obtenerWrappedPeriodo,
-  proxyImagen
+  proxyImagen,
+  guardarCalificacionSerieTemporada,
+  obtenerCalificacionesSerie,
+  obtenerCalificacionesSeriesUsuario
 } = require('../controllers/historialController');
+
 
 // Controlador de Seguimiento de Series (Carrusel)
 const {
@@ -57,6 +61,11 @@ router.get('/records', extraerTokenOpcional, obtenerRecordsUsuario);
 // RUTAS DE WRAPPED (Soporta /wrapped y /wrapped-periodo para evitar errores 404)
 router.get('/wrapped', verificarToken, obtenerWrappedPeriodo);
 router.get('/wrapped-periodo', verificarToken, obtenerWrappedPeriodo);
+
+// RUTAS DE CALIFICACIONES DE TEMPORADAS Y SERIES COMPLETAS
+router.get('/calificaciones-series/:tmdb_id', extraerTokenOpcional, obtenerCalificacionesSerie);
+router.get('/calificaciones-series-usuario/:usuario_id', extraerTokenOpcional, obtenerCalificacionesSeriesUsuario);
+router.post('/calificaciones-series', verificarToken, guardarCalificacionSerieTemporada);
 
 // 🌟 RUTA PROXY PARA DESCARGAR IMÁGENES SIN BLOQUEO DE CORS
 router.get('/proxy-image', proxyImagen);

@@ -157,6 +157,37 @@ export const guardarReseniaAPI = async (id, datos) => {
   return res.json();
 };
 
+export const guardarCalificacionSerieTemporadaAPI = async (datos) => {
+  const res = await fetch('/api/historial/calificaciones-series', {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(datos),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al guardar la calificación');
+  }
+  return res.json();
+};
+
+export const obtenerCalificacionesSerieAPI = async (tmdbId, usuarioId = null) => {
+  if (!tmdbId) return { serie: null, temporadas: {} };
+  const url = usuarioId
+    ? `/api/historial/calificaciones-series/${tmdbId}?usuario_id=${usuarioId}`
+    : `/api/historial/calificaciones-series/${tmdbId}`;
+  const res = await fetch(url, { headers: getHeaders() });
+  if (!res.ok) return { serie: null, temporadas: {} };
+  return res.json();
+};
+
+export const obtenerCalificacionesSeriesUsuarioAPI = async (usuarioId) => {
+  if (!usuarioId) return [];
+  const res = await fetch(`/api/historial/calificaciones-series-usuario/${usuarioId}`, { headers: getHeaders() });
+  if (!res.ok) return [];
+  return res.json();
+};
+
+
 export const eliminarLoteAPI = async (ids) => {
   const res = await fetch('/api/historial/lote/eliminar', {
     method: 'DELETE',

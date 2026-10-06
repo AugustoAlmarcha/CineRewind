@@ -13,22 +13,27 @@ import {
   Calendar,
   Tv,
   Users,
-  Edit3
+  Edit3,
+  Award
 } from 'lucide-react';
 import { formatearFecha } from '../../utils/fechas';
+import ModalCalificarSerie from '../modal/ModalCalificarSerie';
 
 export default function PestanaResenias({ 
   resenias = [], 
   esMiPerfil = false, 
-  onAbrirDetalle 
+  onAbrirDetalle,
+  onActualizado
 }) {
   const contenedorRef = useRef(null);
 
   // Estados de filtrado y búsqueda
   const [busqueda, setBusqueda] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('todas'); // 'todas' | 'peliculas' | 'series_completas' | 'temporadas' | 'capitulos'
   const [filtroTipo, setFiltroTipo] = useState('todos'); // 'todos' | 'con_texto' | 'solo_estrellas'
   const [filtroEstrellas, setFiltroEstrellas] = useState('todas'); // 'todas' | '5' | '4' | '3' | '2' | '1'
   const [orden, setOrden] = useState('recientes'); // 'recientes' | 'antiguas' | 'mayor_nota' | 'menor_nota' | 'alfabetico'
+  const [itemCalificarSerie, setItemCalificarSerie] = useState(null);
 
   // Paginación
   const [pagina, setPagina] = useState(1);
@@ -43,6 +48,22 @@ export default function PestanaResenias({
     return resenias.filter((r) => (!r.resenia || r.resenia.trim() === '') && Number(r.calificacion) > 0).length;
   }, [resenias]);
 
+  const totalPeliculas = useMemo(() => {
+    return resenias.filter((r) => r.tipo_categoria === 'pelicula' || (r.tipo === 'pelicula' && !r.es_temporada && !r.es_serie_completa)).length;
+  }, [resenias]);
+
+  const totalSeriesCompletas = useMemo(() => {
+    return resenias.filter((r) => r.tipo_categoria === 'serie_completa' || r.es_serie_completa).length;
+  }, [resenias]);
+
+  const totalTemporadas = useMemo(() => {
+    return resenias.filter((r) => r.tipo_categoria === 'temporada' || r.es_temporada).length;
+  }, [resenias]);
+
+  const totalCapitulos = useMemo(() => {
+    return resenias.filter((r) => r.tipo_categoria === 'capitulo' || (r.tipo === 'serie' && r.episodio && !r.es_temporada && !r.es_serie_completa)).length;
+  }, [resenias]);
+
   // Filtrado y ordenación
   const reseniasFiltradas = useMemo(() => {
     return resenias
@@ -55,7 +76,24 @@ export default function PestanaResenias({
           if (!matchTitulo && !matchResenia) return false;
         }
 
-        // Filtro por tipo
+        // Filtro por categoría de obra
+        if (filtroCategoria !== 'todas') {
+          if (filtroCategoria === 'peliculas') {
+            const esPeli = item.tipo_categoria === 'pelicula' || (item.tipo === 'pelicula' && !item.es_temporada && !item.es_serie_completa);
+            if (!esPeli) return false;
+          } else if (filtroCategoria === 'series_completas') {
+            const esSerieComp = item.tipo_categoria === 'serie_completa' || item.es_serie_completa;
+            if (!esSerieComp) return false;
+          } else if (filtroCategoria === 'temporadas') {
+            const esTemp = item.tipo_categoria === 'temporada' || item.es_temporada;
+            if (!esTemp) return false;
+          } else if (filtroCategoria === 'capitulos') {
+            const esCap = item.tipo_categoria === 'capitulo' || (item.tipo === 'serie' && item.episodio && !item.es_temporada && !item.es_serie_completa);
+            if (!esCap) return false;
+          }
+        }
+
+        // Filtro por tipo de reseña
         if (filtroTipo === 'con_texto') {
           if (!item.resenia || item.resenia.trim() === '') return false;
         } else if (filtroTipo === 'solo_estrellas') {
@@ -88,14 +126,15 @@ export default function PestanaResenias({
         }
         return 0;
       });
-  }, [resenias, busqueda, filtroTipo, filtroEstrellas, orden]);
+  }, [resenias, busqueda, filtroCategoria, filtroTipo, filtroEstrellas, orden]);
 
   // Al cambiar filtros o búsqueda, volver a la página 1
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroTipo, filtroEstrellas, orden]);
+  }, [busqueda, filtroCategoria, filtroTipo, filtroEstrellas, orden]);
 
   // Cálculos de paginación
+
   const totalPaginas = Math.max(1, Math.ceil(reseniasFiltradas.length / porPagina));
   const indiceInicio = (pagina - 1) * porPagina;
   const itemsPagina = reseniasFiltradas.slice(indiceInicio, indiceInicio + porPagina);
@@ -181,10 +220,78 @@ export default function PestanaResenias({
           </div>
         </div>
 
+        {/* TIRA DE CATEGORÍAS */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin select-none pt-1">
+          <button
+            type="button"
+            onClick={() => setFiltroCategoria('todas')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
+              filtroCategoria === 'todas'
+                ? 'bg-rose-600 text-white shadow-xs font-black'
+                : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 border border-white/5'
+            }`}
+          >
+            Todas ({resenias.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFiltroCategoria('peliculas')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              filtroCategoria === 'peliculas'
+                ? 'bg-rose-600 text-white shadow-xs font-black'
+                : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 border border-white/5'
+            }`}
+          >
+            <Film className="w-3.5 h-3.5 text-rose-400" />
+            <span>Películas ({totalPeliculas})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFiltroCategoria('series_completas')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              filtroCategoria === 'series_completas'
+                ? 'bg-rose-600 text-white shadow-xs font-black'
+                : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 border border-white/5'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5 text-amber-400" />
+            <span>Series Completas ({totalSeriesCompletas})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFiltroCategoria('temporadas')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              filtroCategoria === 'temporadas'
+                ? 'bg-rose-600 text-white shadow-xs font-black'
+                : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 border border-white/5'
+            }`}
+          >
+            <Star className="w-3.5 h-3.5 text-amber-400" />
+            <span>Temporadas ({totalTemporadas})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFiltroCategoria('capitulos')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              filtroCategoria === 'capitulos'
+                ? 'bg-rose-600 text-white shadow-xs font-black'
+                : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 border border-white/5'
+            }`}
+          >
+            <Tv className="w-3.5 h-3.5 text-rose-400" />
+            <span>Capítulos ({totalCapitulos})</span>
+          </button>
+        </div>
+
         {/* 2. CHIPS DE FILTRO POR TIPO Y ESTRELLAS */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5">
           {/* Filtros de Tipo */}
           <div className="flex flex-wrap items-center gap-1.5">
+
             <button
               type="button"
               onClick={() => setFiltroTipo('todos')}
@@ -286,7 +393,14 @@ export default function PestanaResenias({
             return (
               <div 
                 key={item.visualizacion_id || item.id} 
-                onClick={() => esMiPerfil && onAbrirDetalle?.(item)}
+                onClick={() => {
+                  if (!esMiPerfil) return;
+                  if (item.es_serie_completa || item.es_temporada || item.tipo_categoria === 'serie_completa' || item.tipo_categoria === 'temporada') {
+                    setItemCalificarSerie(item);
+                  } else {
+                    onAbrirDetalle?.(item);
+                  }
+                }}
                 className={`bg-[#13131c] border border-white/5 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:gap-5 relative transition shadow-lg group ${
                   esMiPerfil ? 'hover:border-white/20 hover:bg-[#161622] cursor-pointer' : 'hover:border-white/10'
                 }`}
@@ -321,13 +435,30 @@ export default function PestanaResenias({
                         </span>
                       </div>
 
-                      {item.temporada && (
+                      {/* Distintivo de categoría */}
+                      {(item.es_serie_completa || item.tipo_categoria === 'serie_completa') ? (
+                        <span className="inline-flex items-center gap-1.5 mt-1 text-[10px] font-mono font-black px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          <Award className="w-3 h-3 text-amber-400" />
+                          <span>🏆 SERIE COMPLETA</span>
+                        </span>
+                      ) : (item.es_temporada || item.tipo_categoria === 'temporada') ? (
+                        <span className="inline-flex items-center gap-1.5 mt-1 text-[10px] font-mono font-black px-2.5 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                          <Tv className="w-3 h-3 text-rose-400" />
+                          <span>⭐ TEMPORADA {item.temporada}</span>
+                        </span>
+                      ) : (item.episodio) ? (
                         <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-zinc-800/80 text-zinc-300 border border-white/5">
                           <Tv className="w-2.5 h-2.5 text-rose-400" />
                           <span>T{item.temporada} : E{item.episodio}</span>
                         </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-zinc-800/80 text-zinc-300 border border-white/5">
+                          <Film className="w-2.5 h-2.5 text-rose-400" />
+                          <span>Película</span>
+                        </span>
                       )}
                     </div>
+
 
                     {/* Medalla de Nota Dorada */}
                     {tieneCalif && (
@@ -469,6 +600,21 @@ export default function PestanaResenias({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Modal para editar calificación de serie o temporada */}
+      {itemCalificarSerie && (
+        <ModalCalificarSerie
+          obra={itemCalificarSerie}
+          temporadaInicial={itemCalificarSerie.temporada}
+
+          temporadasDisponibles={itemCalificarSerie.temporada ? [itemCalificarSerie.temporada] : []}
+          onClose={() => setItemCalificarSerie(null)}
+          onActualizado={() => {
+            setItemCalificarSerie(null);
+            if (onActualizado) onActualizado();
+          }}
+        />
       )}
     </div>
   );

@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import SelectorAmigosEtiquetar from './SelectorAmigosEtiquetar';
 import GaleriaRepartoPrincipal from './GaleriaRepartoPrincipal';
 import { Calendar, Tv, Users, Clapperboard, ChevronDown, ChevronUp, X, Check } from 'lucide-react';
+import { obtenerFechaHoyLocal, obtenerFechaAyerLocal } from '../../utils/fechas';
+
 
 const PLATAFORMAS = [
   { id: 'Netflix', nombre: 'Netflix', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg' },
@@ -120,27 +122,69 @@ export default function BarraConfiguracionRegistro({
   const primerDiaSemana = new Date(anioNavegacion, mesNavegacion, 1).getDay();
   const diasEnElMes = new Date(anioNavegacion, mesNavegacion + 1, 0).getDate();
 
+  const fechaHoy = obtenerFechaHoyLocal();
+  const fechaAyer = obtenerFechaAyerLocal();
+  const esHoy = fechaVisto === fechaHoy && !noRecuerdaFecha;
+  const esAyer = fechaVisto === fechaAyer && !noRecuerdaFecha;
+  const esOtraFecha = !esHoy && !esAyer && !noRecuerdaFecha;
+
   return (
     <div ref={barraRef} className="space-y-2">
       {/* 1. TIRA HORIZONTAL DE MICRO-CHIPS */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin select-none">
         
-        {/* Chip Fecha */}
-        <button
-          type="button"
-          onClick={() => togglePanel('fecha')}
-          className={`h-8 px-3 rounded-full text-xs font-bold flex items-center gap-1.5 flex-shrink-0 transition-all cursor-pointer border ${
-            panelActivo === 'fecha'
-              ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-              : noRecuerdaFecha
-                ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
-                : 'bg-white dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:border-neutral-400'
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>{textoFechaChip}</span>
-          {panelActivo === 'fecha' ? <ChevronUp className="w-3 h-3 opacity-60" /> : <ChevronDown className="w-3 h-3 opacity-60" />}
-        </button>
+        {/* GRUPO DE ACCESO RÁPIDO A FECHA (HOY / AYER / OTRA FECHA) */}
+        <div className="flex items-center p-0.5 rounded-full bg-neutral-200/80 dark:bg-white/10 border border-neutral-300 dark:border-white/10 flex-shrink-0 shadow-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setFechaVisto(fechaHoy);
+              if (noRecuerdaFecha && onToggleNoRecuerda) onToggleNoRecuerda();
+              setPanelActivo(null);
+            }}
+            className={`h-7 px-3 rounded-full text-xs font-black transition-all cursor-pointer ${
+              esHoy
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'text-neutral-700 dark:text-neutral-300 hover:text-rose-600 dark:hover:text-white'
+            }`}
+            title="Visto hoy"
+          >
+            Hoy
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setFechaVisto(fechaAyer);
+              if (noRecuerdaFecha && onToggleNoRecuerda) onToggleNoRecuerda();
+              setPanelActivo(null);
+            }}
+            className={`h-7 px-3 rounded-full text-xs font-black transition-all cursor-pointer ${
+              esAyer
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'text-neutral-700 dark:text-neutral-300 hover:text-rose-600 dark:hover:text-white'
+            }`}
+            title="Visto ayer"
+          >
+            Ayer
+          </button>
+
+          <button
+            type="button"
+            onClick={() => togglePanel('fecha')}
+            className={`h-7 px-2.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+              panelActivo === 'fecha' || esOtraFecha || noRecuerdaFecha
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'text-neutral-700 dark:text-neutral-300 hover:text-rose-600 dark:hover:text-white'
+            }`}
+            title="Elegir otra fecha o usar fecha de estreno"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{noRecuerdaFecha ? 'Estreno' : (esOtraFecha ? textoFechaChip : 'Otra fecha')}</span>
+            {panelActivo === 'fecha' ? <ChevronUp className="w-3 h-3 opacity-60" /> : <ChevronDown className="w-3 h-3 opacity-60" />}
+          </button>
+        </div>
+
 
         {/* Chip Plataforma */}
         <button
@@ -219,20 +263,36 @@ export default function BarraConfiguracionRegistro({
           {panelActivo === 'fecha' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const hoy = new Date();
-                    const y = hoy.getFullYear();
-                    const m = String(hoy.getMonth() + 1).padStart(2, '0');
-                    const d = String(hoy.getDate()).padStart(2, '0');
-                    setFechaVisto(`${y}-${m}-${d}`);
-                    setPanelActivo(null);
-                  }}
-                  className="px-3 py-1 rounded-xl text-xs font-black bg-rose-600 text-white cursor-pointer hover:bg-rose-700 transition"
-                >
-                  Hoy
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFechaVisto(fechaHoy);
+                      if (noRecuerdaFecha && onToggleNoRecuerda) onToggleNoRecuerda();
+                      setPanelActivo(null);
+                    }}
+                    className={`px-3 py-1 rounded-xl text-xs font-black cursor-pointer transition ${
+                      esHoy ? 'bg-rose-600 text-white' : 'bg-neutral-200 dark:bg-white/10 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-300'
+                    }`}
+                  >
+                    Hoy
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFechaVisto(fechaAyer);
+                      if (noRecuerdaFecha && onToggleNoRecuerda) onToggleNoRecuerda();
+                      setPanelActivo(null);
+                    }}
+                    className={`px-3 py-1 rounded-xl text-xs font-black cursor-pointer transition ${
+                      esAyer ? 'bg-rose-600 text-white' : 'bg-neutral-200 dark:bg-white/10 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-300'
+                    }`}
+                  >
+                    Ayer
+                  </button>
+                </div>
+
 
                 <button
                   type="button"

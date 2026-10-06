@@ -819,6 +819,182 @@ const proxyImagen = async (req, res) => {
   }
 };
 
+// ========================================================
+// 13. CALIFICACIONES Y RESEÑAS DE TEMPORADAS Y SERIES COMPLETAS
+// ========================================================
+const guardarCalificacionSerieTemporada = async (req, res) => {
+  const usuario_id = req.usuario?.id;
+  if (!usuario_id) {
+    return res.status(401).json({ error: 'Debes iniciar sesión para calificar.' });
+  }
+
+  const {
+    tmdb_id,
+    titulo,
+    poster_path,
+    temporada,
+    calificacion,
+    resenia
+  } = req.body;
+
+  if (!tmdb_id) {
+    return res.status(400).json({ error: 'Falta el tmdb_id de la serie.' });
+  }
+
+  const tempNum = (temporada !== undefined && temporada !== null && !isNaN(parseInt(temporada, 10)) && parseInt(temporada, 10) > 0)
+    ? parseInt(temporada, 10)
+    : null;
+
+  const califNum = (calificacion !== undefined && calificacion !== null) ? parseFloat(calificacion) : null;
+
+  try {
+    // 1. Asegurar registro en obras_catalogo
+    const posterNormalizado = poster_path
+      ? (poster_path.startsWith('http') ? poster_path : `https://image.tmdb.org/t/p/w500${poster_path.startsWith('/') ? poster_path : `/${poster_path}`}`)
+      : null;
+
+    const resObra = await pool.query(`
+      INSERT INTO obras_catalogo (tmdb_id, tipo, titulo, poster_path)
+      VALUES ($1, 'serie', $2, $3)
+      ON CONFLICT (tmdb_id) DO UPDATE SET 
+        titulo = COALESCE(EXCLUDED.titulo, obras_catalogo.titulo),
+        poster_path = COALESCE(EXCLUDED.poster_path, obras_catalogo.poster_path)
+      RETURNING id;
+    `, [tmdb_id, titulo || 'Serie', posterNormalizado]);
+
+    const obra_id = resObra.rows[0].id;
+
+    // Si la calificación es nula o 0 y no hay reseña, eliminarla
+    if ((!califNum || califNum <= 0) && (!resenia || !resenia.trim())) {
+      if (tempNum !== null) {
+        await pool.query(
+          `DELETE FROM calificaciones_series WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3`,
+          [usuario_id, obra_id, tempNum]
+        );
+      } else {
+        await pool.query(
+          `DELETE FROM calificaciones_series WHERE usuario_id = $1 AND obra_id = $2 AND temporada IS NULL`,
+          [usuario_id, obra_id]
+        );
+      }
+      return res.json({ mensaje: 'Calificación eliminada exitosamente', calificacion: null, resenia: null });
+    }
+
+    // 2. Upsert en calificaciones_series
+    let resultado;
+    if (tempNum !== null) {
+      resultado = await pool.query(`
+        INSERT INTO calificaciones_series (usuario_id, obra_id, temporada, calificacion, resenia, fecha_calificado)
+        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+        ON CONFLICT (usuario_id, obra_id, temporada) WHERE temporada IS NOT NULL
+        DO UPDATE SET 
+          calificacion = EXCLUDED.calificacion,
+          resenia = EXCLUDED.resenia,
+          fecha_calificado = CURRENT_TIMESTAMP
+        RETURNING *;
+      `, [usuario_id, obra_id, tempNum, califNum, resenia?.trim() || null]);
+    } else {
+      resultado = await pool.query(`
+        INSERT INTO calificaciones_series (usuario_id, obra_id, temporada, calificacion, resenia, fecha_calificado)
+        VALUES ($1, $2, NULL, $3, $4, CURRENT_TIMESTAMP)
+        ON CONFLICT (usuario_id, obra_id) WHERE temporada IS NULL
+        DO UPDATE SET 
+          calificacion = EXCLUDED.calificacion,
+          resenia = EXCLUDED.resenia,
+          fecha_calificado = CURRENT_TIMESTAMP
+        RETURNING *;
+      `, [usuario_id, obra_id, califNum, resenia?.trim() || null]);
+    }
+
+    return res.json({
+      mensaje: tempNum ? `Temporada ${tempNum} calificada exitosamente` : 'Serie calificada exitosamente',
+      calificacion: resultado.rows[0]
+    });
+  } catch (err) {
+    console.error('Error al guardar calificación de serie/temporada:', err);
+    return res.status(500).json({ error: 'Error interno al guardar la calificación.' });
+  }
+};
+
+const obtenerCalificacionesSerie = async (req, res) => {
+  const { tmdb_id } = req.params;
+  const usuario_id = req.query.usuario_id || req.usuario?.id;
+
+  if (!tmdb_id) {
+    return res.status(400).json({ error: 'Falta tmdb_id' });
+  }
+  if (!usuario_id) {
+    return res.status(401).json({ error: 'Usuario no identificado' });
+  }
+
+  try {
+    const resCalif = await pool.query(`
+      SELECT 
+        cs.id,
+        cs.temporada,
+        cs.calificacion,
+        cs.resenia,
+        cs.fecha_calificado
+      FROM calificaciones_series cs
+      INNER JOIN obras_catalogo o ON cs.obra_id = o.id
+      WHERE o.tmdb_id = $1 AND cs.usuario_id = $2
+      ORDER BY cs.temporada ASC NULLS FIRST;
+    `, [parseInt(tmdb_id, 10), usuario_id]);
+
+    let serie = null;
+    const temporadas = {};
+
+    resCalif.rows.forEach((row) => {
+      if (row.temporada === null) {
+        serie = row;
+      } else {
+        temporadas[row.temporada] = row;
+      }
+    });
+
+    return res.json({ serie, temporadas });
+  } catch (err) {
+    console.error('Error al obtener calificaciones de serie:', err);
+    return res.status(500).json({ error: 'Error interno al consultar calificaciones.' });
+  }
+};
+
+const obtenerCalificacionesSeriesUsuario = async (req, res) => {
+  const usuario_id = req.params.usuario_id || req.usuario?.id;
+  if (!usuario_id) {
+    return res.status(400).json({ error: 'ID de usuario requerido' });
+  }
+
+  try {
+    const resCalif = await pool.query(`
+      SELECT 
+        cs.id,
+        cs.id AS visualizacion_id,
+        cs.temporada,
+        cs.calificacion,
+        cs.resenia,
+        cs.fecha_calificado,
+        cs.fecha_calificado AS fecha_visto,
+        o.id AS obra_id,
+        o.tmdb_id,
+        o.tipo,
+        o.titulo,
+        o.poster_path,
+        CASE WHEN cs.temporada IS NULL THEN true ELSE false END AS es_serie_completa,
+        CASE WHEN cs.temporada IS NOT NULL THEN true ELSE false END AS es_temporada
+      FROM calificaciones_series cs
+      INNER JOIN obras_catalogo o ON cs.obra_id = o.id
+      WHERE cs.usuario_id = $1
+      ORDER BY cs.fecha_calificado DESC;
+    `, [usuario_id]);
+
+    return res.json(resCalif.rows);
+  } catch (err) {
+    console.error('Error al obtener calificaciones de series de usuario:', err);
+    return res.status(500).json({ error: 'Error interno al consultar calificaciones del usuario.' });
+  }
+};
+
 module.exports = {
   registrarVisualizacion,
   obtenerTimeline,
@@ -832,5 +1008,8 @@ module.exports = {
   eliminarLoteVisualizaciones,
   actualizarPlataformaSerie,
   obtenerWrappedPeriodo,
-  proxyImagen
-};
+  proxyImagen,
+  guardarCalificacionSerieTemporada,
+  obtenerCalificacionesSerie,
+  obtenerCalificacionesSeriesUsuario
+};

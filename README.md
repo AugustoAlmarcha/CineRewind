@@ -5,13 +5,13 @@
   # 🍿 CineRewind
   **Tu diario cinéfilo definitivo: seguimiento activo de series, co-visiones con amigos y estadísticas anuales.**
 
-  [![Live Demo](https://img.shields.io/badge/🌐_Sitio_Web-cine--rewind.vercel.app-e11d48?style=for-the-badge)](https://cine-rewind.vercel.app/)
+  [![Live Demo](https://img.shields.io/badge/🌐_Sitio_Web-cinerewind.com.ar-e11d48?style=for-the-badge)](https://cinerewind.com.ar)
   [![GitHub License](https://img.shields.io/badge/Licencia-MIT-zinc?style=for-the-badge)](LICENSE)
 
   <br />
 
   <p align="center">
-    <a href="https://cine-rewind.vercel.app/"><strong>🚀 Probar Aplicación en Vivo »</strong></a>
+    <a href="https://cinerewind.com.ar"><strong>🚀 Probar Aplicación en Vivo (cinerewind.com.ar) »</strong></a>
     <br />
     <br />
     <a href="#-características-principales">Características</a> ·
@@ -39,16 +39,19 @@
 
 ## 📖 Acerca del Proyecto
 
-**CineRewind** es una plataforma web Full-Stack moderna para amantes del cine y las series. Permite documentar cada película vista, llevar el progreso exacto capítulo a capítulo de tus series en curso, conectar con amigos para etiquetarse en co-visiones y generar un resumen interactivo anual con estadísticas personales al estilo Spotify Wrapped.
+**CineRewind** es una plataforma web Full-Stack moderna para amantes del cine y las series. Permite documentar cada película vista, llevar el progreso exacto capítulo a capítulo de tus series en curso, calificar temporadas completas y series globales, conectar con amigos para etiquetarse en co-visiones y generar un resumen interactivo anual con estadísticas personales al estilo Spotify Wrapped.
 
-> 🌐 **App en Producción:** [https://cine-rewind.vercel.app/](https://cine-rewind.vercel.app/)
+> 🌐 **App en Producción:** [https://cinerewind.com.ar](https://cinerewind.com.ar) (Espejo Vercel: [cine-rewind.vercel.app](https://cine-rewind.vercel.app/))
 
 ---
 
 ## ✨ Características Principales
 
 * 📺 **Tracker de Series en Curso**: Seguimiento inteligente de episodios con botón de avance rápido de 1 clic, detección de fin de temporada y rewatch.
+* ⭐ **Calificación de Temporadas y Series Completas**: Posibilidad de puntuar y reseñar temporadas individuales (T1, T2...) y otorgar un veredicto definitivo a la serie completa, con filtros organizados en el perfil de usuario.
+* 📅 **Selector Rápido de Fecha**: Botones de 1 toque `[ Hoy ]` `[ Ayer ]` `[ 📅 Otra fecha ]` con confirmación clara para registrar visualizaciones sin confusiones en dispositivos móviles.
 * 📅 **Línea de Tiempo y Diario Cinemático**: Registro cronológico ordenado por carpetas de año y mes, con filtros por formato (película o serie), plataforma de streaming y co-visiones.
+
 * 🍿 **Bienvenida y Onboarding Dinámico**: Detección de cuentas nuevas con buscador integrado en vivo y vitrina de inicio rápido de 1 clic.
 * 🎥 **Tendencias Globales y Locales**: Cartelera actualizada de los títulos más populares de la semana con selector por país y botón directo para ver **Trailers Oficiales en YouTube**.
 * 🎲 **Ruleta Cinematográfica "¿Qué ver hoy?"**: Algoritmo de recomendación aleatoria animada entre las películas y series de la cartelera o tu lista de pendientes.

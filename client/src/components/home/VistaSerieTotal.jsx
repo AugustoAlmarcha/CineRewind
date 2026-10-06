@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import TimelineScrubber from './TimelineScrubber';
+import { Award, Star } from 'lucide-react';
+import ModalCalificarSerie from '../modal/ModalCalificarSerie';
+import { obtenerCalificacionesSerieAPI } from '../../api';
 
 export default function VistaSerieTotal({ 
   serie, 
@@ -12,6 +15,39 @@ export default function VistaSerieTotal({
 }) {
   const esSerie = serie?.tipo?.toLowerCase() === 'serie';
   const esSaga = Boolean(serie?.esSaga);
+
+  const tmdbId = Number(serie?.tmdb_id || serie?.registros?.[0]?.tmdb_id || serie?.obra_id);
+
+  const [calificacionesSerie, setCalificacionesSerie] = useState({ serie: null, temporadas: {} });
+  const [modalCalificarAbierto, setModalCalificarAbierto] = useState(false);
+  const [temporadaSeleccionadaModal, setTemporadaSeleccionadaModal] = useState(null);
+
+  const temporadasVistas = useMemo(() => {
+    if (!esSerie || !Array.isArray(serie?.registros)) return [];
+    const temps = serie.registros
+      .map((r) => Number(r.temporada))
+      .filter((t) => !isNaN(t) && t > 0);
+    return [...new Set(temps)].sort((a, b) => a - b);
+  }, [esSerie, serie?.registros]);
+
+  const cargarCalificaciones = useCallback(async () => {
+    if (!esSerie || !tmdbId) return;
+    try {
+      const data = await obtenerCalificacionesSerieAPI(tmdbId);
+      if (data) {
+        setCalificacionesSerie({
+          serie: data.serie || null,
+          temporadas: data.temporadas || {}
+        });
+      }
+    } catch (err) {
+      console.warn('Error al cargar calificaciones de serie:', err);
+    }
+  }, [esSerie, tmdbId]);
+
+  useEffect(() => {
+    cargarCalificaciones();
+  }, [cargarCalificaciones]);
 
   const puntosScrubberSerie = gruposPorDia.map(([fecha, items]) => {
     const [y, m, d] = fecha.split('-');
@@ -31,25 +67,115 @@ export default function VistaSerieTotal({
   });
 
   return (
-    <div className="space-y-12 pt-4 relative">
+    <div className="space-y-8 sm:space-y-12 pt-4 relative">
       <TimelineScrubber puntos={puntosScrubberSerie} />
 
       {/* Cabecera de la obra / saga / serie */}
-      <div className="flex items-center justify-between border-b border-neutral-200 dark:border-white/10 pb-4">
-        <div>
-          <span className="text-xs font-black uppercase tracking-wider text-rose-600">
-            {esSerie ? 'Historial de serie' : (esSaga ? 'Saga cinematográfica' : 'Historial de película')}
+      <div className="space-y-4 border-b border-neutral-200 dark:border-white/10 pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <span className="text-xs font-black uppercase tracking-wider text-rose-600">
+              {esSerie ? 'Historial de serie' : (esSaga ? 'Saga cinematográfica' : 'Historial de película')}
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white leading-tight">
+              {serie.titulo}
+            </h2>
+          </div>
+          <span className="text-xs font-black px-3 py-1.5 bg-rose-600 text-white rounded-xl shadow shrink-0">
+            {esSerie 
+              ? `${serie.registros.length} capítulos vistos`
+              : esSaga 
+              ? `${serie.registros.length} visualizaciones · ${serie.peliculasDistintas?.length || 1} películas`
+              : `${serie.registros.length} ${serie.registros.length === 1 ? 'visualización registrada' : 'visualizaciones registradas'}`}
           </span>
-          <h2 className="text-3xl font-black text-neutral-900 dark:text-white">{serie.titulo}</h2>
         </div>
-        <span className="text-xs font-black px-3 py-1.5 bg-rose-600 text-white rounded-xl shadow">
-          {esSerie 
-            ? `${serie.registros.length} capítulos vistos`
-            : esSaga 
-            ? `${serie.registros.length} visualizaciones · ${serie.peliculasDistintas?.length || 1} películas`
-            : `${serie.registros.length} ${serie.registros.length === 1 ? 'visualización registrada' : 'visualizaciones registradas'}`}
-        </span>
+
+        {/* Panel de Veredicto & Calificaciones (Serie Completa y Temporadas) */}
+        {esSerie && (
+          <div className="p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-neutral-200/60 dark:bg-white/[0.03] border border-neutral-300 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+            <div className="space-y-1.5 min-w-0">
+              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span>Calificaciones & Veredicto</span>
+              </span>
+
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                {/* Botón / Pill Serie Completa */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTemporadaSeleccionadaModal(null);
+                    setModalCalificarAbierto(true);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 border ${
+                    calificacionesSerie.serie?.calificacion
+                      ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 font-black'
+                      : 'bg-white dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:border-rose-500'
+                  }`}
+                  title="Calificar la serie completa"
+                >
+                  <Award className="w-3 h-3 text-amber-500" />
+                  <span>Serie Completa:</span>
+                  <span className="text-amber-500 font-black">
+                    {calificacionesSerie.serie?.calificacion 
+                      ? `★ ${Number(calificacionesSerie.serie.calificacion).toFixed(1)}` 
+                      : '+ Calificar'}
+                  </span>
+                </button>
+
+                {/* Pills interactivos de Temporadas */}
+                {temporadasVistas.map((temp) => {
+                  const califT = calificacionesSerie.temporadas[temp]?.calificacion;
+                  return (
+                    <button
+                      key={`temp-pill-${temp}`}
+                      type="button"
+                      onClick={() => {
+                        setTemporadaSeleccionadaModal(temp);
+                        setModalCalificarAbierto(true);
+                      }}
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs active:scale-95 border ${
+                        califT
+                          ? 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400 font-black'
+                          : 'bg-white dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-rose-500'
+                      }`}
+                      title={`Calificar Temporada ${temp}`}
+                    >
+                      <span>T{temp}:</span>
+                      <span className={califT ? 'text-amber-500 font-black' : 'text-neutral-400'}>
+                        {califT ? `★ ${Number(califT).toFixed(1)}` : '+ Nota'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTemporadaSeleccionadaModal(null);
+                setModalCalificarAbierto(true);
+              }}
+              className="text-xs font-black px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white transition cursor-pointer shadow flex items-center justify-center gap-1.5 active:scale-95 shrink-0 self-start md:self-auto"
+            >
+              <Star className="w-3.5 h-3.5 fill-current" />
+              <span>Calificar Serie / Temporada</span>
+            </button>
+          </div>
+        )}
       </div>
+
+      {modalCalificarAbierto && (
+        <ModalCalificarSerie
+          obra={serie}
+          temporadaInicial={temporadaSeleccionadaModal}
+          temporadasDisponibles={temporadasVistas}
+          onClose={() => setModalCalificarAbierto(false)}
+          onActualizado={cargarCalificaciones}
+        />
+      )}
+
 
       {gruposPorDia.map(([fecha, itemsDelDia]) => {
         const [y, m, d] = fecha.split('-');

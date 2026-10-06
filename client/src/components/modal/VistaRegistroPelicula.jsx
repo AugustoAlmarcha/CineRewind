@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Clock, Star, Film, Users, Clapperboard, Check, ChevronDown, ChevronUp, Ticket, ExternalLink } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Clock, Star, Film, Users, Clapperboard, Check, ChevronDown, ChevronUp, Ticket, ExternalLink, Calendar } from 'lucide-react';
+import { obtenerFechaHoyLocal, obtenerFechaAyerLocal, NOMBRES_MESES } from '../../utils/fechas';
 
 export default function VistaRegistroPelicula({
   obra,
@@ -9,8 +10,11 @@ export default function VistaRegistroPelicula({
   onGuardar,
   calificacion = 0,
   setCalificacion,
-  onSeleccionarActor
+  onSeleccionarActor,
+  fechaVisto,
+  noRecuerdaFecha
 }) {
+
   const [mostrarTodoElenco, setMostrarTodoElenco] = useState(false);
 
   const duracion = detalle?.duracion_minutos || obra?.duracion_minutos;
@@ -37,6 +41,20 @@ export default function VistaRegistroPelicula({
   const anioNum = Number(obra?.anio || detalle?.anio || (detalle?.fecha_estreno ? String(detalle.fecha_estreno).substring(0, 4) : 0));
   const anioActual = new Date().getFullYear();
   const esRecienteOEnTendencia = Boolean(obra?.desdeTendencias || (anioNum && anioNum >= anioActual - 1));
+
+  const textoFechaLegible = useMemo(() => {
+    if (!fechaVisto) return 'Hoy';
+    const partes = String(fechaVisto).split('-').map(Number);
+    if (partes.length === 3 && !isNaN(partes[0])) {
+      const hoy = obtenerFechaHoyLocal();
+      const ayer = obtenerFechaAyerLocal();
+      const mesNombre = NOMBRES_MESES[partes[1] - 1] || '';
+      if (fechaVisto === hoy) return `Hoy (${partes[2]} de ${mesNombre})`;
+      if (fechaVisto === ayer) return `Ayer (${partes[2]} de ${mesNombre})`;
+      return `${partes[2]} de ${mesNombre} de ${partes[0]}`;
+    }
+    return fechaVisto;
+  }, [fechaVisto]);
 
   const abrirGoogleCine = (e) => {
     e.stopPropagation();
@@ -263,17 +281,27 @@ export default function VistaRegistroPelicula({
         </div>
       )}
 
-      {/* 6. Botón de registro prominente */}
-      <div className="pt-1 sm:pt-2 text-center">
-        <button
-          type="button"
-          disabled={guardando}
-          onClick={onGuardar}
-          className="w-full sm:w-auto min-w-[260px] bg-gradient-to-r from-rose-600 via-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 active:scale-95 text-white font-black px-6 sm:px-8 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl shadow-xl shadow-rose-900/30 transition-all duration-200 cursor-pointer disabled:opacity-50 text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 mx-auto"
-        >
-          <Check className="w-4 h-4 stroke-[3]" />
-          <span>{guardando ? 'Guardando en tu Timeline...' : 'Registrar Película en Mi Timeline'}</span>
-        </button>
+      {/* 6. Indicador claro de fecha y botón de registro prominente */}
+      <div className="pt-2 sm:pt-3 text-center space-y-2">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-200/60 dark:bg-white/5 border border-neutral-300 dark:border-white/10 text-xs font-medium text-neutral-600 dark:text-neutral-400">
+          <Calendar className="w-3.5 h-3.5 text-rose-500" />
+          <span>Se guardará con fecha:</span>
+          <strong className="text-neutral-900 dark:text-white font-black">
+            {noRecuerdaFecha ? 'Estreno original' : textoFechaLegible}
+          </strong>
+        </div>
+
+        <div>
+          <button
+            type="button"
+            disabled={guardando}
+            onClick={onGuardar}
+            className="w-full sm:w-auto min-w-[260px] bg-gradient-to-r from-rose-600 via-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 active:scale-95 text-white font-black px-6 sm:px-8 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl shadow-xl shadow-rose-900/30 transition-all duration-200 cursor-pointer disabled:opacity-50 text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 mx-auto"
+          >
+            <Check className="w-4 h-4 stroke-[3]" />
+            <span>{guardando ? 'Guardando en tu Timeline...' : 'Registrar Película en Mi Timeline'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );

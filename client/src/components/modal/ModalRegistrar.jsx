@@ -20,7 +20,9 @@ import SelectorTemporadaBarra from './SelectorTemporadaBarra';
 import VistaRegistroPelicula from './VistaRegistroPelicula';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
 import ModalActoresEpisodio from './ModalActoresEpisodio';
+import ModalCalificarSerie from './ModalCalificarSerie';
 import { Bookmark, Check, X, AlertCircle, Play } from 'lucide-react';
+
 
 export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, onCambiarObra }) {
   const { usuario } = useAuth();
@@ -59,6 +61,8 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
   const [cargandoPendiente, setCargandoPendiente] = useState(false);
   const [fichaDetalle, setFichaDetalle] = useState(null);
   const [calificacionDirecta, setCalificacionDirecta] = useState(0);
+  const [modalCalificarSerieAbierto, setModalCalificarSerieAbierto] = useState(false);
+
 
   // Comprobar estado en pendientes
   useEffect(() => {
@@ -455,6 +459,8 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                 calificacion={calificacionDirecta}
                 setCalificacion={setCalificacionDirecta}
                 onSeleccionarActor={(actor) => setActorParaFilmografia(actor)}
+                fechaVisto={fechaVisto}
+                noRecuerdaFecha={noRecuerdaFecha}
               />
             </div>
           ) : (
@@ -465,7 +471,9 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                 onCambiarTemporada={(num) => setTemporadaSeleccionada(num)}
                 faltantesCount={faltantesCount}
                 onMarcarRestantes={handleMarcarRestantes}
+                onAbrirCalificarTemporada={() => setModalCalificarSerieAbierto(true)}
               />
+
 
               {cargandoEpisodios ? (
                 <div className="py-12 text-center text-neutral-400 text-xs font-mono animate-pulse">
@@ -487,15 +495,21 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         {/* Barra inferior para guardar series */}
         {esSerie && episodiosSeleccionados.length > 0 && (
           <div className="p-3.5 sm:p-4 bg-[#fcfaf7] dark:bg-[#18181e] border-t border-neutral-300/80 dark:border-white/10 flex items-center justify-between gap-3 px-4 sm:px-6 flex-shrink-0 z-20">
-            <span className="text-xs sm:text-sm font-bold text-neutral-700 dark:text-neutral-200">
-              {episodiosSeleccionados.length} {episodiosSeleccionados.length === 1 ? 'capítulo seleccionado' : 'capítulos seleccionados'}
-            </span>
+            <div className="min-w-0">
+              <span className="text-xs sm:text-sm font-bold text-neutral-700 dark:text-neutral-200 block truncate">
+                {episodiosSeleccionados.length} {episodiosSeleccionados.length === 1 ? 'capítulo seleccionado' : 'capítulos seleccionados'}
+              </span>
+              <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
+                📅 Con fecha: <strong className="text-neutral-700 dark:text-neutral-300">{noRecuerdaFecha ? 'Estreno' : (fechaVisto === obtenerFechaHoyLocal() ? 'Hoy' : fechaVisto === obtenerFechaAyerLocal() ? 'Ayer' : fechaVisto)}</strong>
+              </span>
+            </div>
             <button 
               type="button" 
               disabled={guardando} 
               onClick={handleGuardarSeleccionados} 
               className="bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-black px-4 sm:px-6 py-2.5 rounded-xl shadow-lg transition cursor-pointer text-xs sm:text-sm flex items-center gap-2 disabled:opacity-50"
             >
+
               {guardando ? (
                 <span>Guardando...</span>
               ) : (
@@ -533,7 +547,19 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           />
         )}
 
+        {modalCalificarSerieAbierto && (
+          <ModalCalificarSerie
+            obra={obraActual}
+            temporadaInicial={temporadaSeleccionada}
+            temporadasDisponibles={listaTemporadas}
+            onClose={() => setModalCalificarSerieAbierto(false)}
+            onActualizado={() => {
+              if (onRegistroCompletado) onRegistroCompletado();
+            }}
+          />
+        )}
+
       </div>
     </div>
   );
-}
+}

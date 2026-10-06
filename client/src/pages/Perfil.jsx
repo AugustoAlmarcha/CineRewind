@@ -36,8 +36,10 @@ import {
   obtenerWrappedPeriodoAPI,
   obtenerPerfilPublicoAPI,
   enviarSolicitudAmistadAPI,
-  responderSolicitudAmistadAPI
+  responderSolicitudAmistadAPI,
+  obtenerCalificacionesSeriesUsuarioAPI
 } from '../api';
+
 
 export default function Perfil() {
   const { usuario, cargandoAuth, actualizarUsuario, iniciarSesion } = useAuth();
@@ -77,6 +79,7 @@ export default function Perfil() {
   const [arrastrandoSlot, setArrastrandoSlot] = useState(null);
 
   const [timeline, setTimeline] = useState([]);
+  const [calificacionesSeries, setCalificacionesSeries] = useState([]);
   const [obrasViendo, setObrasViendo] = useState([]);
   const [pendientes, setPendientes] = useState([]);
   const [cargandoPendientes, setCargandoPendientes] = useState(false);
@@ -134,12 +137,13 @@ export default function Perfil() {
       if (!usuario?.id || !usuario?.username) return;
       setCargandoPerfil(false);
       try {
-        const [s, f, v, t, p] = await Promise.all([
+        const [s, f, v, t, p, cs] = await Promise.all([
           obtenerEstadisticasAPI(usuario.id),
           obtenerFavoritosAPI(usuario.username),
           obtenerViendoActualmenteAPI(usuario.id),
           obtenerTimelineAPI(usuario.id),
-          obtenerPendientesAPI(usuario.id)
+          obtenerPendientesAPI(usuario.id),
+          obtenerCalificacionesSeriesUsuarioAPI(usuario.id)
         ]);
 
         setStats(s || { total_series: 0, total_episodios: 0, total_peliculas: 0, horas_totales: 0 });
@@ -147,6 +151,7 @@ export default function Perfil() {
         setObrasViendo(Array.isArray(v) ? v : []);
         setTimeline(Array.isArray(t) ? t : []);
         setPendientes(Array.isArray(p) ? p : []);
+        setCalificacionesSeries(Array.isArray(cs) ? cs : []);
       } catch (err) {
         console.error('Error al cargar datos del perfil propio:', err);
       }
@@ -160,12 +165,13 @@ export default function Perfil() {
         const usuarioExterno = await obtenerPerfilPublicoAPI(paramUsername);
         setPerfilVisitado(usuarioExterno);
 
-        const [s, f, v, t, p] = await Promise.all([
+        const [s, f, v, t, p, cs] = await Promise.all([
           obtenerEstadisticasAPI(usuarioExterno.id),
           obtenerFavoritosAPI(usuarioExterno.username),
           obtenerViendoActualmenteAPI(usuarioExterno.id),
           obtenerTimelineAPI(usuarioExterno.id),
-          obtenerPendientesAPI(usuarioExterno.id)
+          obtenerPendientesAPI(usuarioExterno.id),
+          obtenerCalificacionesSeriesUsuarioAPI(usuarioExterno.id)
         ]);
 
         setStats(s || { total_series: 0, total_episodios: 0, total_peliculas: 0, horas_totales: 0 });
@@ -173,6 +179,7 @@ export default function Perfil() {
         setObrasViendo(Array.isArray(v) ? v : []);
         setTimeline(Array.isArray(t) ? t : []);
         setPendientes(Array.isArray(p) ? p : []);
+        setCalificacionesSeries(Array.isArray(cs) ? cs : []);
       } catch (err) {
         console.error('Error al cargar datos del perfil visitado:', err);
         setUsuarioNoEncontrado(true);
@@ -181,6 +188,7 @@ export default function Perfil() {
       }
     }
   }, [esMiPerfil, usuario?.id, usuario?.username, paramUsername]);
+
 
   useEffect(() => {
     cargarDatosPerfil();
@@ -294,13 +302,26 @@ export default function Perfil() {
     }
   };
 
-  // Reseñas con texto o calificaciones con estrellas
+  // Reseñas con texto o calificaciones con estrellas (películas, capítulos, temporadas y series completas)
   const listaSoloResenias = useMemo(() => {
-    return timeline.filter(t => 
-      (t.resenia && t.resenia.trim() !== '') || 
-      (t.calificacion !== null && t.calificacion !== undefined && Number(t.calificacion) > 0)
-    );
-  }, [timeline]);
+    const delTimeline = (timeline || [])
+      .filter((t) => 
+        (t.resenia && t.resenia.trim() !== '') || 
+        (t.calificacion !== null && t.calificacion !== undefined && Number(t.calificacion) > 0)
+      )
+      .map((t) => ({
+        ...t,
+        tipo_categoria: t.tipo === 'serie' ? 'capitulo' : 'pelicula'
+      }));
+
+    const deSeries = (Array.isArray(calificacionesSeries) ? calificacionesSeries : []).map((cs) => ({
+      ...cs,
+      tipo_categoria: cs.es_serie_completa ? 'serie_completa' : 'temporada'
+    }));
+
+    return [...delTimeline, ...deSeries].sort((a, b) => new Date(b.fecha_visto || 0) - new Date(a.fecha_visto || 0));
+  }, [timeline, calificacionesSeries]);
+
 
   // Co-visiones combinadas
   const listaCovisionesCombinadas = useMemo(() => {
@@ -562,8 +583,10 @@ export default function Perfil() {
             resenias={listaSoloResenias} 
             esMiPerfil={esMiPerfil}
             onAbrirDetalle={(item) => esMiPerfil && setItemDetalle(item)}
+            onActualizado={cargarDatosPerfil}
           />
         )}
+
         {activeTab === 'viendo' && <PestanaViendo obrasViendo={obrasViendo} onAvanzarCapitulo={handleAvanzarCapitulo} esMiPerfil={esMiPerfil} />}
         {activeTab === 'pendientes' && (
           <PestanaPendientes

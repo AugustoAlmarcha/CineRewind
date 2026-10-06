@@ -7,9 +7,11 @@ import {
 } from '../../api';
 import CalificadorEstrellas from '../common/CalificadorEstrellas';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
+import ModalCalificarSerie from './ModalCalificarSerie';
 import SelectorAmigosEtiquetar from './SelectorAmigosEtiquetar';
-import { Tv, Users, Clapperboard, BookOpen, ChevronDown, Calendar } from 'lucide-react';
+import { Tv, Users, Clapperboard, BookOpen, ChevronDown, Calendar, Award, Star } from 'lucide-react';
 import { obtenerFechaHoyLocal, obtenerFechaAyerLocal } from '../../utils/fechas';
+
 
 const PLATAFORMAS_DISPONIBLES = [
   'Netflix', 'Max', 'Disney+', 'Prime Video', 'Apple TV+', 'Cine', 'Paramount+', 'Mubi', 'Crunchyroll'
@@ -46,8 +48,10 @@ export default function ModalDetalleTimeline({
   const [sinopsisTexto, setSinopsisTexto] = useState(item.sinopsis || '');
   const [cargandoActores, setCargandoActores] = useState(false);
   const [actorSeleccionado, setActorSeleccionado] = useState(null);
+  const [modalCalificarSerieAbierto, setModalCalificarSerieAbierto] = useState(false);
 
   // Sección desplegable activa (estilo pills compactos como ModalRegistrar)
+
   const [seccionExpandida, setSeccionExpandida] = useState(null);
 
   const formatearFecha = (fechaStr) => {
@@ -255,6 +259,23 @@ export default function ModalDetalleTimeline({
                 valor={calificacion} 
                 onChange={setCalificacion} 
               />
+
+              {esSerie && (
+                <div className="flex items-center justify-between p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs">
+                  <span className="font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
+                    <Award className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>¿Quieres calificar la temporada {item.temporada} o la serie completa?</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setModalCalificarSerieAbierto(true)}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black transition cursor-pointer text-xs shrink-0 shadow-xs"
+                  >
+                    Calificar T{item.temporada} / Serie
+                  </button>
+                </div>
+              )}
+
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
@@ -581,6 +602,19 @@ export default function ModalDetalleTimeline({
           }}
         />
       )}
+
+      {modalCalificarSerieAbierto && (
+        <ModalCalificarSerie
+          obra={obraActual}
+          temporadaInicial={item.temporada}
+          temporadasDisponibles={[item.temporada]}
+          onClose={() => setModalCalificarSerieAbierto(false)}
+          onActualizado={() => {
+            if (onActualizado) onActualizado();
+          }}
+        />
+      )}
+
     </>
   );
 }
