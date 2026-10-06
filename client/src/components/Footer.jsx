@@ -99,16 +99,16 @@ export default function Footer() {
               <span>Cafecito (Arg)</span>
             </a>
 
-            {/* Buy Me a Coffee (Internacional - USD) */}
+            {/* PayPal (Internacional - USD / EUR) */}
             <a
-              href="https://buymeacoffee.com/cinerewind"
+              href="https://paypal.me/augustoas09"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-[#FFDD00] hover:bg-[#ebd000] text-neutral-950 shadow-md hover:scale-105 active:scale-95 transition cursor-pointer"
-              title="Buy Me a Coffee (Donaciones internacionales)"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-[#0070BA] hover:bg-[#005ea6] text-white shadow-md hover:scale-105 active:scale-95 transition cursor-pointer"
+              title="Donar con PayPal (Donaciones internacionales en USD / EUR)"
             >
-              <span>💛</span>
-              <span>Buy Me a Coffee</span>
+              <span className="font-serif italic font-extrabold text-sm">P</span>
+              <span>PayPal (USD)</span>
             </a>
           </div>
         </div>
