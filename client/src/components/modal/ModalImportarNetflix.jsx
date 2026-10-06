@@ -1,4 +1,14 @@
 import React, { useState, useRef } from 'react';
+import { 
+  Upload, 
+  CheckCircle2, 
+  AlertTriangle, 
+  Film, 
+  Sparkles, 
+  Check,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
 
 export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar }) {
   const [archivo, setArchivo] = useState(null);
@@ -9,12 +19,26 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
   // Contadores en vivo para la pantalla de carga
   const [contadorImportados, setContadorImportados] = useState(0);
   const [contadorOmitidos, setContadorOmitidos] = useState(0);
+  const [itemsOmitidos, setItemsOmitidos] = useState([]);
 
   const [resumen, setResumen] = useState(null);
   const [error, setError] = useState(null);
+  const [mostrarDetalleOmitidos, setMostrarDetalleOmitidos] = useState(false);
   const inputRef = useRef(null);
 
-  if (!abierto) return null;
+  const handleCerrarModal = () => {
+    setArchivo(null);
+    setProcesando(false);
+    setProgreso(0);
+    setItemActual('');
+    setContadorImportados(0);
+    setContadorOmitidos(0);
+    setItemsOmitidos([]);
+    setResumen(null);
+    setError(null);
+    setMostrarDetalleOmitidos(false);
+    if (alCerrar) alCerrar();
+  };
 
   const handleArchivoSeleccionado = (e) => {
     const file = e.target.files[0];
@@ -22,6 +46,8 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
       setArchivo(file);
       setError(null);
       setResumen(null);
+      setItemsOmitidos([]);
+      setMostrarDetalleOmitidos(false);
     } else {
       setError('Por favor selecciona un archivo .csv válido');
     }
@@ -33,6 +59,8 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
     setProgreso(0);
     setContadorImportados(0);
     setContadorOmitidos(0);
+    setItemsOmitidos([]);
+    setMostrarDetalleOmitidos(false);
     setError(null);
 
     try {
@@ -47,6 +75,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
       let totalImportados = 0;
       let totalOmitidos = 0;
       let noEncontrados = [];
+      let listaOmitidosTotal = [];
 
       for (let i = 0; i < totalLotes; i++) {
         const bloque = datos.slice(i * tamanoLote, (i + 1) * tamanoLote);
@@ -67,6 +96,20 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
           totalImportados += data.importados || 0;
           totalOmitidos += data.omitidos || 0;
 
+          if (data.listaOmitidos && Array.isArray(data.listaOmitidos)) {
+            listaOmitidosTotal.push(...data.listaOmitidos);
+            setItemsOmitidos([...listaOmitidosTotal]);
+          } else if (data.fallidos && Array.isArray(data.fallidos)) {
+            data.fallidos.forEach((f) => {
+              listaOmitidosTotal.push({
+                titulo: f,
+                motivo: 'No encontrado en TMDb',
+                tipo: 'no_encontrado'
+              });
+            });
+            setItemsOmitidos([...listaOmitidosTotal]);
+          }
+
           // Se actualizan los casilleros en tiempo real
           setContadorImportados(totalImportados);
           setContadorOmitidos(totalOmitidos);
@@ -81,8 +124,11 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
         total: datos.length,
         importados: totalImportados,
         omitidos: totalOmitidos,
-        noEncontrados
+        noEncontrados: Array.from(new Set(noEncontrados)),
+        listaOmitidos: listaOmitidosTotal
       });
+
+      if (alCompletar) alCompletar();
 
     } catch (err) {
       setError('Error durante la importación: ' + err.message);
@@ -91,33 +137,44 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
     }
   };
 
+  if (!abierto) return null;
+
+  const listaOmitidosFinal = resumen?.listaOmitidos && resumen.listaOmitidos.length > 0
+    ? resumen.listaOmitidos
+    : (resumen?.noEncontrados || []).map((t) => ({
+        titulo: t,
+        motivo: 'No encontrado en TMDb',
+        tipo: 'no_encontrado'
+      }));
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="relative w-full max-w-md bg-white dark:bg-[#141419] rounded-3xl p-6 sm:p-8 border border-neutral-200 dark:border-white/10 shadow-2xl space-y-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-white dark:bg-[#141419] rounded-3xl p-6 sm:p-7 border border-neutral-200 dark:border-white/10 shadow-2xl space-y-6 scrollbar-thin">
         
-        {/* Cabecera */}
+        {/* Cabecera Principal */}
         <div className="flex items-center justify-between border-b border-neutral-200 dark:border-white/10 pb-4">
           <div>
             <span className="px-2.5 py-0.5 rounded-md bg-red-600/10 text-red-600 dark:text-red-500 font-mono text-[10px] font-black uppercase tracking-wider">
               SINCRONIZACIÓN CSV
             </span>
-            <h3 className="text-xl font-black text-neutral-900 dark:text-white mt-1">
-              Importar Historial
+            <h3 className="text-xl font-black text-neutral-900 dark:text-white mt-1 flex items-center gap-2">
+              <span>🍿</span>
+              <span>Importar Historial</span>
             </h3>
           </div>
           {!procesando && (
             <button
-              onClick={alCerrar}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
+              onClick={handleCerrarModal}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 dark:bg-white/5 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition cursor-pointer text-xs font-bold"
             >
               ✕
             </button>
           )}
         </div>
 
-        {/* Estado 1: Carga y selección */}
+        {/* Estado 1: Carga y Selección de Archivo */}
         {!resumen && !procesando && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <input
               type="file"
               accept=".csv"
@@ -128,7 +185,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
 
             <div
               onClick={() => inputRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all ${
+              className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-all ${
                 archivo 
                   ? 'border-red-500 bg-red-500/5' 
                   : 'border-neutral-300 dark:border-white/15 hover:border-red-500'
@@ -141,7 +198,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
                     {archivo.name}
                   </p>
                   <p className="text-xs font-mono text-neutral-400 mt-1">
-                    {(archivo.size / 1024).toFixed(1)} KB listo
+                    {(archivo.size / 1024).toFixed(1)} KB listo para importar
                   </p>
                 </div>
               ) : (
@@ -165,9 +222,10 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
             <button
               onClick={procesarCSV}
               disabled={!archivo}
-              className="w-full py-3 rounded-2xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-sm transition-all shadow-lg shadow-red-600/20 cursor-pointer"
+              className="w-full py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-black text-sm transition shadow-lg shadow-red-600/20 cursor-pointer flex items-center justify-center gap-2 active:scale-98"
             >
-              Iniciar Importación
+              <Sparkles className="w-4 h-4" />
+              <span>Iniciar Importación</span>
             </button>
           </div>
         )}
@@ -196,53 +254,168 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
                   ✓ Guardados
                 </span>
               </div>
-              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 transition-all">
-                <span className="text-2xl font-black text-amber-500">{contadorOmitidos}</span>
+              <button
+                type="button"
+                onClick={() => itemsOmitidos.length > 0 && setMostrarDetalleOmitidos(!mostrarDetalleOmitidos)}
+                disabled={itemsOmitidos.length === 0}
+                className={`p-3 rounded-2xl border transition-all text-center ${
+                  itemsOmitidos.length > 0
+                    ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 cursor-pointer'
+                    : 'bg-neutral-100 dark:bg-white/5 border-neutral-200 dark:border-white/10 opacity-70 cursor-default'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <span className="text-2xl font-black text-amber-500">{contadorOmitidos}</span>
+                  {itemsOmitidos.length > 0 && (
+                    <span className="text-amber-500">
+                      {mostrarDetalleOmitidos ? <ChevronUp className="w-3.5 h-3.5 inline" /> : <ChevronDown className="w-3.5 h-3.5 inline" />}
+                    </span>
+                  )}
+                </div>
                 <span className="block text-[10px] font-mono text-neutral-400 uppercase font-bold mt-1">
-                  ⚠ Omitidos
+                  ⚠ Omitidos {itemsOmitidos.length > 0 ? '(Ver)' : ''}
                 </span>
-              </div>
+              </button>
             </div>
 
-            <p className="text-[11px] text-neutral-500 font-mono">Sincronizando con catálogo TMDb...</p>
+            {/* Desplegable en vivo si se hace clic durante la carga */}
+            {mostrarDetalleOmitidos && itemsOmitidos.length > 0 && (
+              <div className="max-h-36 overflow-y-auto p-2.5 rounded-2xl bg-neutral-100 dark:bg-black/40 text-left border border-neutral-200 dark:border-white/10 space-y-1.5 scrollbar-thin animate-fadeIn">
+                <p className="text-[10px] font-mono text-neutral-400 uppercase font-bold px-1 pb-1 border-b border-neutral-200 dark:border-white/5">
+                  Omitidos detectados hasta ahora ({itemsOmitidos.length})
+                </p>
+                {itemsOmitidos.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between gap-2 text-[11px] py-1 border-b border-neutral-200/40 dark:border-white/5 last:border-none">
+                    <span className="truncate text-neutral-800 dark:text-neutral-200 font-medium">
+                      • {item.titulo}
+                    </span>
+                    <span className="text-[9px] font-mono shrink-0 text-neutral-400 bg-neutral-200 dark:bg-white/10 px-1.5 py-0.5 rounded">
+                      {item.motivo}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <p className="text-[11px] text-neutral-500 font-mono animate-pulse">
+              Sincronizando bilingüe con catálogo TMDb y aplicando Fuzzy Matching...
+            </p>
           </div>
         )}
 
-        {/* Estado 3: Resumen Final */}
+        {/* Estado 3: Resumen Final y Resultados */}
         {resumen && (
           <div className="py-2 space-y-4">
-            <div className="grid grid-cols-2 gap-3 text-center">
-              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-                <span className="text-2xl font-black text-emerald-500">{resumen.importados}</span>
-                <span className="block text-[10px] font-mono text-neutral-400 uppercase font-bold mt-1">Importados</span>
+            <div className="text-center space-y-1">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-2 border border-emerald-500/20 shadow">
+                <CheckCircle2 className="w-6 h-6" />
               </div>
-              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-                <span className="text-2xl font-black text-amber-500">{resumen.omitidos}</span>
-                <span className="block text-[10px] font-mono text-neutral-400 uppercase font-bold mt-1">Omitidos</span>
-              </div>
+              <h4 className="text-lg font-black text-neutral-900 dark:text-white">
+                ¡Sincronización Completada!
+              </h4>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                Tu historial de Netflix ha sido integrado en tu diario cinéfilo.
+              </p>
             </div>
 
-            {resumen.noEncontrados.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-[11px] font-mono text-neutral-400 uppercase font-bold">No encontrados en TMDb:</span>
-                <div className="max-h-24 overflow-y-auto p-2 rounded-xl bg-neutral-100 dark:bg-white/5 text-[11px] font-mono text-neutral-400 space-y-1">
-                  {resumen.noEncontrados.map((t, idx) => (
-                    <p key={idx} className="truncate">• {t}</p>
-                  ))}
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center justify-center">
+                <span className="text-3xl font-black text-emerald-500">{resumen.importados}</span>
+                <span className="block text-[10px] font-mono text-neutral-400 uppercase font-bold mt-1">
+                  ✓ Guardados
+                </span>
+              </div>
+
+              {/* Botón interactivo de Omitidos */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (resumen.omitidos > 0) {
+                    setMostrarDetalleOmitidos(!mostrarDetalleOmitidos);
+                  }
+                }}
+                disabled={resumen.omitidos === 0}
+                className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center ${
+                  resumen.omitidos > 0
+                    ? 'cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5 active:scale-98'
+                    : 'cursor-default opacity-60'
+                } ${
+                  mostrarDetalleOmitidos
+                    ? 'bg-amber-500/15 border-amber-500/40 ring-2 ring-amber-500/30'
+                    : 'bg-neutral-100 dark:bg-white/5 border-neutral-200 dark:border-white/10'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1.5">
+                  <span className="text-3xl font-black text-amber-500">{resumen.omitidos}</span>
+                  {resumen.omitidos > 0 && (
+                    <span className="text-amber-500">
+                      {mostrarDetalleOmitidos ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </span>
+                  )}
                 </div>
+                <span className="block text-[10px] font-mono text-neutral-500 dark:text-neutral-400 uppercase font-bold mt-1">
+                  ⚠ Omitidos {resumen.omitidos > 0 ? '(Ver lista)' : ''}
+                </span>
+              </button>
+            </div>
+
+            {/* Desplegable interactivo al tocar el botón de Omitidos */}
+            {mostrarDetalleOmitidos && (
+              <div className="space-y-2 pt-1 animate-fadeIn">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] font-mono text-neutral-600 dark:text-neutral-300 font-bold uppercase flex items-center gap-1.5">
+                    <span>📋</span>
+                    <span>Títulos no guardados ({listaOmitidosFinal.length})</span>
+                  </span>
+                  <span className="text-[10px] text-neutral-400 font-mono">
+                    {listaOmitidosFinal.length > 4 ? 'Desliza para ver todos' : ''}
+                  </span>
+                </div>
+
+                {listaOmitidosFinal.length === 0 ? (
+                  <p className="text-xs text-neutral-400 font-mono text-center py-2">
+                    No hubo títulos omitidos en esta importación.
+                  </p>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto p-2 rounded-2xl bg-neutral-100 dark:bg-[#111116] border border-neutral-200 dark:border-white/10 space-y-1.5 scrollbar-thin">
+                    {listaOmitidosFinal.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="p-2.5 rounded-xl bg-white dark:bg-white/5 border border-neutral-200/70 dark:border-white/5 flex items-start justify-between gap-2.5 text-left transition hover:border-neutral-300 dark:hover:border-white/20"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-neutral-900 dark:text-neutral-100 leading-snug">
+                            {item.titulo}
+                          </p>
+                        </div>
+                        <span
+                          className={`text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0 font-medium ${
+                            item.tipo === 'ya_visto'
+                              ? 'bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-white/10'
+                              : item.tipo === 'no_encontrado'
+                              ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                              : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                          }`}
+                        >
+                          {item.motivo}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
             <button
               onClick={() => {
-                alCerrar();
+                handleCerrarModal();
                 if (window.location.pathname.includes('/perfil') || window.location.pathname.includes('/historial')) {
                   window.location.reload();
                 }
               }}
-              className="w-full py-3 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold text-xs uppercase tracking-wider transition-opacity hover:opacity-90 cursor-pointer"
+              className="w-full py-3.5 rounded-2xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-black text-xs uppercase tracking-wider transition hover:opacity-90 cursor-pointer shadow-lg active:scale-98"
             >
-              Cerrar y ver historial
+              Cerrar y Ver Mi Diario
             </button>
           </div>
         )}

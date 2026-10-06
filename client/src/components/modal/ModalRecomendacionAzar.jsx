@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Sparkles, Film, Tv, Star, RotateCcw, CheckCircle2, X } from 'lucide-react';
+import { Sparkles, Film, Tv, Star, RotateCcw, CheckCircle2, X, Play } from 'lucide-react';
 
 export default function ModalRecomendacionAzar({
   abierto,
@@ -143,13 +143,24 @@ export default function ModalRecomendacionAzar({
             <span>Ver detalles / Registrar</span>
           </button>
 
+          <a
+            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${obra.titulo} trailer oficial`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 transition cursor-pointer text-xs shadow-md shrink-0"
+            title="Ver trailer en YouTube"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Trailer</span>
+          </a>
+
           <button
             type="button"
             onClick={alGirarDeNuevo}
-            className="bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white font-bold py-3.5 px-4 rounded-2xl border border-white/10 flex items-center justify-center gap-2 transition cursor-pointer text-xs"
+            className="bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white font-bold py-3.5 px-4 rounded-2xl border border-white/10 flex items-center justify-center gap-2 transition cursor-pointer text-xs shrink-0"
           >
             <RotateCcw className="w-4 h-4 text-amber-400" />
-            <span>Volver a girar</span>
+            <span>Girar</span>
           </button>
         </div>
       </div>

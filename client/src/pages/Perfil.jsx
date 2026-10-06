@@ -19,6 +19,8 @@ import ModalImportarNetflix from '../components/modal/ModalImportarNetflix';
 import ModalAmigos from '../components/modal/ModalAmigos';
 import ModalWrapped from '../components/modal/ModalWrapped';
 import ModalSelectorPeriodoWrapped from '../components/modal/ModalSelectorPeriodoWrapped';
+import ModalDetalleTimeline from '../components/modal/ModalDetalleTimeline';
+import { obtenerFechaHoyLocal } from '../utils/fechas';
 
 import { 
   actualizarPerfilAPI, 
@@ -64,6 +66,7 @@ export default function Perfil() {
   const [obraParaRegistrar, setObraParaRegistrar] = useState(null);
   const [modalNetflixAbierto, setModalNetflixAbierto] = useState(false);
   const [modalAmigosAbierto, setModalAmigosAbierto] = useState(false);
+  const [itemDetalle, setItemDetalle] = useState(null);
 
   // Datos
   const [stats, setStats] = useState({ total_series: 0, total_episodios: 0, total_peliculas: 0, horas_totales: 0 });
@@ -218,7 +221,7 @@ export default function Perfil() {
         obra_id: obraId,
         temporada: temporada || 1,
         episodio: (ultimoEp || 0) + 1,
-        fecha_visto: new Date().toISOString().split('T')[0]
+        fecha_visto: obtenerFechaHoyLocal()
       });
       await cargarDatosPerfil();
     } catch (err) {
@@ -291,9 +294,12 @@ export default function Perfil() {
     }
   };
 
-  // Solo reseñas con texto
+  // Reseñas con texto o calificaciones con estrellas
   const listaSoloResenias = useMemo(() => {
-    return timeline.filter(t => t.resenia && t.resenia.trim() !== '');
+    return timeline.filter(t => 
+      (t.resenia && t.resenia.trim() !== '') || 
+      (t.calificacion !== null && t.calificacion !== undefined && Number(t.calificacion) > 0)
+    );
   }, [timeline]);
 
   // Co-visiones combinadas
@@ -318,18 +324,24 @@ export default function Perfil() {
       }
 
       if (t.visto_con_texto && t.visto_con_texto.trim() !== '') {
-        const acompaniante = t.visto_con_texto.trim();
-        const key = `texto_${acompaniante.toLowerCase()}`;
-        if (!covisiones[key]) {
-          covisiones[key] = {
-            nombre: acompaniante,
-            username: 'Copiloto en sala',
-            avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(acompaniante)}&backgroundColor=e11d48,ff7043`,
-            tipo: 'texto',
-            totalObras: 0,
-          };
-        }
-        covisiones[key].totalObras += 1;
+        const nombresSeparados = t.visto_con_texto
+          .split(',')
+          .map((n) => n.trim())
+          .filter(Boolean);
+
+        nombresSeparados.forEach((acompaniante) => {
+          const key = `texto_${acompaniante.toLowerCase()}`;
+          if (!covisiones[key]) {
+            covisiones[key] = {
+              nombre: acompaniante,
+              username: 'Copiloto en sala',
+              avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(acompaniante)}&backgroundColor=e11d48,ff7043`,
+              tipo: 'texto',
+              totalObras: 0,
+            };
+          }
+          covisiones[key].totalObras += 1;
+        });
       }
     });
 
@@ -545,7 +557,13 @@ export default function Perfil() {
           )}
         </div>
 
-        {activeTab === 'resenias' && <PestanaResenias resenias={listaSoloResenias} />}
+        {activeTab === 'resenias' && (
+          <PestanaResenias 
+            resenias={listaSoloResenias} 
+            esMiPerfil={esMiPerfil}
+            onAbrirDetalle={(item) => esMiPerfil && setItemDetalle(item)}
+          />
+        )}
         {activeTab === 'viendo' && <PestanaViendo obrasViendo={obrasViendo} onAvanzarCapitulo={handleAvanzarCapitulo} esMiPerfil={esMiPerfil} />}
         {activeTab === 'pendientes' && (
           <PestanaPendientes
@@ -597,7 +615,12 @@ export default function Perfil() {
         />
       )}
 
-      {modalAmigosAbierto && <ModalAmigos onClose={() => setModalAmigosAbierto(false)} />}
+      {modalAmigosAbierto && (
+        <ModalAmigos 
+          onClose={() => setModalAmigosAbierto(false)} 
+          onActualizado={cargarDatosPerfil}
+        />
+      )}
 
       {obraParaRegistrar && (
         <ModalRegistrar
@@ -625,6 +648,22 @@ export default function Perfil() {
           abierto={modalNetflixAbierto}
           alCerrar={() => setModalNetflixAbierto(false)}
           alCompletar={cargarDatosPerfil}
+        />
+      )}
+
+      {esMiPerfil && itemDetalle && (
+        <ModalDetalleTimeline 
+          item={itemDetalle}
+          todasLasVisualizaciones={timeline}
+          onClose={() => setItemDetalle(null)}
+          onActualizado={async () => {
+            await cargarDatosPerfil();
+            setItemDetalle(null);
+          }}
+          onSeleccionarObra={(obra) => {
+            setItemDetalle(null);
+            setObraParaRegistrar(obra);
+          }}
         />
       )}
     </main>

@@ -2,9 +2,58 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CineRewind</title>
+    
+    <!-- Título y Favicon -->
+    <title>CineRewind · Tu Diario Cinematográfico y de Series</title>
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="alternate icon" type="image/png" href="/logo.png" />
+    <meta name="theme-color" content="#e11d48" />
+
+    <!-- Meta SEO Básico -->
+    <meta name="description" content="Lleva el registro de tus películas y series favoritas, califica episodios, descubre tendencias y revive tu año cinéfilo con CineRewind Wrapped." />
+    <meta name="author" content="CineRewind" />
+
+    <!-- Open Graph (WhatsApp, Facebook, LinkedIn) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CineRewind" />
+    <meta property="og:title" content="CineRewind · Tu Diario Cinematográfico" />
+    <meta property="og:description" content="Registra lo que ves, califica episodios, comparte con amigos y desbloquea tus estadísticas cinéfilas anuales." />
+    <meta property="og:image" content="/logo.png" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CineRewind · Tu Diario Cinematográfico" />
+    <meta name="twitter:description" content="Registra películas y series, califica episodios y revive tu año con CineRewind Wrapped." />
+    <meta name="twitter:image" content="/logo.png" />
+
+    <!-- Datos Estructurados JSON-LD (Schema.org) para Google -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "CineRewind",
+      "applicationCategory": "EntertainmentApplication",
+      "operatingSystem": "All",
+      "description": "Tu diario cinéfilo definitivo: registra películas y series, califica episodios, comparte con amigos y genera tu CineRewind Wrapped.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
+
+    <!-- Google Analytics (GA4): Listo para activar cuando tengas tu ID (ej: G-XXXXXXXXXX) -->
+    <!--
+    <script async src="https://www.googletagmanager.com/gtag/js?id=TU_ID_GA4"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'TU_ID_GA4');
+    </script>
+    -->
   </head>
   <body>
     <div id="root"></div>

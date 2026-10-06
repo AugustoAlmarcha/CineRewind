@@ -74,17 +74,23 @@ const obtenerDetallePelicula = async (req, res) => {
   const endpointTipo = tipo && (tipo.toLowerCase() === 'serie' || tipo.toLowerCase() === 'tv') ? 'tv' : 'movie';
 
   try {
-    const url = `${TMDB_BASE_URL}/${endpointTipo}/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}&language=es-MX&append_to_response=credits`;
+    const url = `${TMDB_BASE_URL}/${endpointTipo}/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}&language=es-MX&append_to_response=credits,videos`;
     let data = await fetchTMDBConTimeout(url, 3000);
 
     if (!data) {
-      const urlFallback = `${TMDB_BASE_URL}/${endpointTipo}/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}&append_to_response=credits`;
+      const urlFallback = `${TMDB_BASE_URL}/${endpointTipo}/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}&append_to_response=credits,videos`;
       data = await fetchTMDBConTimeout(urlFallback, 2500);
     }
 
     if (!data) {
       return res.status(404).json({ error: 'Obra no encontrada en TMDb' });
     }
+
+    const videos = data.videos?.results || [];
+    const videoTrailer = videos.find((v) => v.site === 'YouTube' && v.type === 'Trailer')
+      || videos.find((v) => v.site === 'YouTube' && v.type === 'Teaser')
+      || videos.find((v) => v.site === 'YouTube');
+    const trailer_youtube_key = videoTrailer ? videoTrailer.key : null;
 
     const reparto = (data.credits?.cast || []).slice(0, 25).map((actor) => ({
       id: actor.id,
@@ -111,6 +117,7 @@ const obtenerDetallePelicula = async (req, res) => {
       director,
       tagline: data.tagline || null,
       reparto,
+      trailer_youtube_key,
     };
 
     res.json(detalle);
@@ -263,11 +270,20 @@ const obtenerProveedoresStreaming = async (req, res) => {
   }
 };
 
-// 6. Tendencias
+// 6. Tendencias (Caché en memoria de 1 hora para máxima velocidad y ahorro de cuota TMDb)
+const cacheTendencias = new Map();
+const TTL_CACHE_TENDENCIAS = 60 * 60 * 1000; // 1 hora en ms
+
 const obtenerTendencias = async (req, res) => {
   const { tipo = 'movie', pais = 'GLOBAL', pagina = 1 } = req.query;
   const endpointTipo = tipo.toLowerCase() === 'serie' || tipo.toLowerCase() === 'tv' ? 'tv' : 'movie';
   const apiKey = process.env.TMDB_API_KEY;
+
+  const claveCache = `${endpointTipo}_${pais}_${pagina}`;
+  const entradaCache = cacheTendencias.get(claveCache);
+  if (entradaCache && (Date.now() - entradaCache.timestamp < TTL_CACHE_TENDENCIAS)) {
+    return res.json(entradaCache.datos);
+  }
 
   try {
     let url = '';
@@ -279,6 +295,7 @@ const obtenerTendencias = async (req, res) => {
 
     const data = await fetchTMDBConTimeout(url, 3000);
     if (!data) {
+      if (entradaCache) return res.json(entradaCache.datos);
       return res.status(500).json({ error: 'Error al consultar catálogo en TMDb' });
     }
 
@@ -292,9 +309,16 @@ const obtenerTendencias = async (req, res) => {
       calificacion: item.vote_average ? item.vote_average.toFixed(1) : null,
     }));
 
+    // Almacenar en caché
+    cacheTendencias.set(claveCache, {
+      timestamp: Date.now(),
+      datos: resultados
+    });
+
     res.json(resultados);
   } catch (error) {
     console.error('Error al obtener tendencias:', error.message);
+    if (entradaCache) return res.json(entradaCache.datos);
     res.status(500).json({ error: 'Error interno al consultar tendencias' });
   }
 };

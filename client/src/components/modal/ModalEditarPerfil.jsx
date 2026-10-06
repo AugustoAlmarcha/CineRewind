@@ -63,9 +63,28 @@ export const PORTADAS_PREDETERMINADAS = [
 ];
 
 // ========================================================
-// 2. AVATARES RESTAURADOS: POKÉMON, SUPERHÉROES Y ROBOTS RETRO
+// 2. AVATARES: CINEREWIND EXCLUSIVOS, POKÉMON, SUPERHÉROES Y ROBOTS
 // ========================================================
 export const CATEGORIAS_AVATARES = [
+  {
+    id: 'cinerewind',
+    titulo: '🎬 CineRewind (Exclusivos)',
+    tipo: 'fijo',
+    avatares: [
+      { id: 'cine_panda', nombre: 'Panda con Pochoclos', url: '/avatares/Avatar_1.png' },
+      { id: 'cine_perro3d', nombre: 'Perro Cinéfilo 3D', url: '/avatares/Avatar_2.png' },
+      { id: 'cine_zorro', nombre: 'Zorro Director', url: '/avatares/Avatar_3.png' },
+      { id: 'cine_gato', nombre: 'Gato Acomodador', url: '/avatares/Avatar_4.png' },
+      { id: 'cine_mapache', nombre: 'Mapache Maratón', url: '/avatares/Avatar_5.png' },
+      { id: 'cine_oso', nombre: 'Oso con Snacks', url: '/avatares/Avatar_6.png' },
+      { id: 'cine_ardilla', nombre: 'Ardilla Directora', url: '/avatares/Avatar_7.png' },
+      { id: 'cine_celuloide', nombre: 'Cachorro en Celuloide', url: '/avatares/Avatar_8.png' },
+      { id: 'cine_lobo', nombre: 'Lobo Espacial Jedi', url: '/avatares/Avatar_9.png' },
+      { id: 'cine_buho', nombre: 'Búho Reseñador', url: '/avatares/Avatar_10.png' },
+      { id: 'cine_cocodrilo', nombre: 'Cocodrilo Espectador', url: '/avatares/Avatar_11.png' },
+      { id: 'cine_leon', nombre: 'León con Óscar', url: '/avatares/Avatar_12.png' },
+    ],
+  },
   {
     id: 'pokemon',
     titulo: '⚡ Pokémon',
@@ -124,7 +143,7 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
   const [biografia, setBiografia] = useState(usuario?.biografia || '');
 
   const [avatarSeleccionado, setAvatarSeleccionado] = useState(
-    usuario?.avatar_url || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/94.png'
+    usuario?.avatar_url || '/avatares/Avatar_1.png'
   );
 
   const [bannerSeleccionado, setBannerSeleccionado] = useState(
@@ -135,7 +154,7 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
   const [guardando, setGuardando] = useState(false);
 
   // Categorías de Avatares
-  const [categoriaAvatarActiva, setCategoriaAvatarActiva] = useState('pokemon');
+  const [categoriaAvatarActiva, setCategoriaAvatarActiva] = useState('cinerewind');
   const [paginaAvatar, setPaginaAvatar] = useState(0);
   const [urlPersonalizadaAvatar, setUrlPersonalizadaAvatar] = useState('');
   const [urlPersonalizadaBanner, setUrlPersonalizadaBanner] = useState('');

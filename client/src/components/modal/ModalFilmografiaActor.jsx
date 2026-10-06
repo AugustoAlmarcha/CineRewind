@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { obtenerFilmografiaActorAPI, obtenerTimelineAPI, registrarVisualizacionAPI } from '../../api';
 import TarjetaFilmografia from './TarjetaFilmografia';
 import { CheckSquare, Check, Calendar, Tv, Sparkles, X, Users, Film } from 'lucide-react';
+import { obtenerFechaHoyLocal, obtenerFechaAyerLocal } from '../../utils/fechas';
 
 export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObra }) {
   const { usuario } = useAuth();
@@ -14,7 +15,7 @@ export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObr
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [obrasSeleccionadas, setObrasSeleccionadas] = useState([]);
   const [modalLoteAbierto, setModalLoteAbierto] = useState(false);
-  const [fechaLote, setFechaLote] = useState(new Date().toISOString().split('T')[0]);
+  const [fechaLote, setFechaLote] = useState(obtenerFechaHoyLocal());
   const [plataformaLote, setPlataformaLote] = useState('');
   const [guardandoLote, setGuardandoLote] = useState(false);
   const [notificacion, setNotificacion] = useState(null);
@@ -79,13 +80,16 @@ export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObr
     try {
       for (const obra of obrasSeleccionadas) {
         try {
+          const esSerie = obra.tipo?.toLowerCase() === 'serie';
           await registrarVisualizacionAPI({
             tmdb_id: obra.tmdb_id || obra.id,
-            tipo: obra.tipo?.toLowerCase() === 'serie' ? 'serie' : 'pelicula',
+            tipo: esSerie ? 'serie' : 'pelicula',
             titulo: obra.titulo,
             poster_path: obra.poster_path,
             fecha_visto: fechaLote,
             plataforma: plataformaLote || null,
+            temporada: esSerie ? 1 : null,
+            episodio: esSerie ? 1 : null,
           });
           guardadas++;
         } catch (err) {
@@ -100,7 +104,7 @@ export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObr
         return nuevo;
       });
 
-      setNotificacion(`¡Se guardaron ${guardadas} película(s) en tu diario!`);
+      setNotificacion(`¡Se guardaron ${guardadas} título(s) en tu diario!`);
       setTimeout(() => setNotificacion(null), 4000);
 
       setObrasSeleccionadas([]);
@@ -216,7 +220,7 @@ export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObr
                 {obrasSeleccionadas.length}
               </span>
               <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                {obrasSeleccionadas.length === 1 ? 'película seleccionada' : 'películas seleccionadas'}
+                {obrasSeleccionadas.length === 1 ? 'obra seleccionada' : 'obras seleccionadas'}
               </span>
             </div>
 
@@ -248,7 +252,7 @@ export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObr
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-rose-500" />
                   <h3 className="font-black text-lg">
-                    Marcar {obrasSeleccionadas.length} películas como vistas
+                    Marcar {obrasSeleccionadas.length} {obrasSeleccionadas.length === 1 ? 'título' : 'títulos'} como {obrasSeleccionadas.length === 1 ? 'visto' : 'vistos'}
                   </h3>
                 </div>
                 <button
@@ -264,15 +268,27 @@ export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObr
               <div className="space-y-1.5">
                 <p className="text-[10px] font-black uppercase text-neutral-400">Obras a registrar en tu diario:</p>
                 <div className="max-h-28 overflow-y-auto flex flex-wrap gap-1.5 p-2 bg-neutral-100 dark:bg-white/5 rounded-2xl border border-neutral-200 dark:border-white/5">
-                  {obrasSeleccionadas.map((o) => (
-                    <span 
-                      key={o.tmdb_id || o.id}
-                      className="px-2.5 py-1 rounded-xl bg-white dark:bg-neutral-800 text-[11px] font-bold border border-neutral-200 dark:border-white/10 shadow-sm truncate max-w-[200px] flex items-center gap-1.5"
-                    >
-                      <Film className="w-3 h-3 text-rose-500 shrink-0" />
-                      <span className="truncate">{o.titulo}</span>
-                    </span>
-                  ))}
+                  {obrasSeleccionadas.map((o) => {
+                    const esSerie = o.tipo?.toLowerCase() === 'serie';
+                    return (
+                      <span 
+                        key={o.tmdb_id || o.id}
+                        className="px-2.5 py-1 rounded-xl bg-white dark:bg-neutral-800 text-[11px] font-bold border border-neutral-200 dark:border-white/10 shadow-sm truncate max-w-[220px] flex items-center gap-1.5"
+                      >
+                        {esSerie ? (
+                          <Tv className="w-3 h-3 text-purple-500 shrink-0" />
+                        ) : (
+                          <Film className="w-3 h-3 text-rose-500 shrink-0" />
+                        )}
+                        <span className="truncate">{o.titulo}</span>
+                        {esSerie && (
+                          <span className="text-[9px] text-purple-600 dark:text-purple-400 font-extrabold shrink-0 bg-purple-50 dark:bg-purple-950/40 px-1 py-0.5 rounded">
+                            T1 · E1
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -286,18 +302,14 @@ export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObr
                   <div className="flex gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setFechaLote(new Date().toISOString().split('T')[0])}
+                      onClick={() => setFechaLote(obtenerFechaHoyLocal())}
                       className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white transition cursor-pointer"
                     >
                       Hoy
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        const d = new Date();
-                        d.setDate(d.getDate() - 1);
-                        setFechaLote(d.toISOString().split('T')[0]);
-                      }}
+                      onClick={() => setFechaLote(obtenerFechaAyerLocal())}
                       className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white transition cursor-pointer"
                     >
                       Ayer
@@ -307,12 +319,14 @@ export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObr
                 <input
                   type="date"
                   value={fechaLote}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={obtenerFechaHoyLocal()}
                   onChange={(e) => setFechaLote(e.target.value)}
                   className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-bold text-neutral-900 dark:text-white focus:outline-none focus:border-rose-500 cursor-pointer"
                 />
                 <p className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                  Podrás cambiar la fecha de cualquiera de ellas más tarde desde tu diario al tocar la película.
+                  {obrasSeleccionadas.some((o) => o.tipo?.toLowerCase() === 'serie')
+                    ? 'Las series se registrarán con el Capítulo 1 (T1 · E1) e iniciarán su seguimiento en tu perfil.'
+                    : 'Podrás cambiar la fecha de cualquiera de ellas más tarde desde tu diario al tocar la película.'}
                 </p>
               </div>
 

@@ -9,6 +9,7 @@ import CalificadorEstrellas from '../common/CalificadorEstrellas';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
 import SelectorAmigosEtiquetar from './SelectorAmigosEtiquetar';
 import { Tv, Users, Clapperboard, BookOpen, ChevronDown, Calendar } from 'lucide-react';
+import { obtenerFechaHoyLocal, obtenerFechaAyerLocal } from '../../utils/fechas';
 
 const PLATAFORMAS_DISPONIBLES = [
   'Netflix', 'Max', 'Disney+', 'Prime Video', 'Apple TV+', 'Cine', 'Paramount+', 'Mubi', 'Crunchyroll'
@@ -377,18 +378,14 @@ export default function ModalDetalleTimeline({
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setFechaVisto(new Date().toISOString().split('T')[0])}
+                        onClick={() => setFechaVisto(obtenerFechaHoyLocal())}
                         className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white transition cursor-pointer"
                       >
                         Hoy
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          const d = new Date();
-                          d.setDate(d.getDate() - 1);
-                          setFechaVisto(d.toISOString().split('T')[0]);
-                        }}
+                        onClick={() => setFechaVisto(obtenerFechaAyerLocal())}
                         className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white transition cursor-pointer"
                       >
                         Ayer
@@ -399,7 +396,7 @@ export default function ModalDetalleTimeline({
                   <input
                     type="date"
                     value={fechaVisto}
-                    max={new Date().toISOString().split('T')[0]}
+                    max={obtenerFechaHoyLocal()}
                     onChange={(e) => setFechaVisto(e.target.value)}
                     className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs font-bold text-neutral-900 dark:text-white focus:outline-none focus:border-rose-500 cursor-pointer"
                   />

@@ -12,19 +12,56 @@ function limpiarTexto(str) {
     .trim();
 }
 
-// 2. Diccionario de alias conocidos para evitar confusiones de búsqueda en TMDb
+// 2. Coeficiente de Sørensen–Dice para Fuzzy Matching (Similitud aproximada)
+function calcularSimilitud(str1, str2) {
+  if (!str1 || !str2) return 0;
+  const s1 = limpiarTexto(str1);
+  const s2 = limpiarTexto(str2);
+  if (s1 === s2) return 1.0;
+  if (!s1 || !s2) return 0;
+
+  // Si una contiene a la otra directamente
+  if ((s1.length > 3 && s2.includes(s1)) || (s2.length > 3 && s1.includes(s2))) {
+    const minLen = Math.min(s1.length, s2.length);
+    const maxLen = Math.max(s1.length, s2.length);
+    return Math.max(0.85, minLen / maxLen);
+  }
+
+  // Generación de bigramas
+  const getBigrams = (str) => {
+    const s = str.replace(/\s+/g, '');
+    const bigrams = new Set();
+    for (let i = 0; i < s.length - 1; i++) {
+      bigrams.add(s.substring(i, i + 2));
+    }
+    return bigrams;
+  };
+
+  const b1 = getBigrams(s1);
+  const b2 = getBigrams(s2);
+  if (b1.size === 0 || b2.size === 0) return 0;
+
+  let intersection = 0;
+  for (const item of b1) {
+    if (b2.has(item)) intersection++;
+  }
+
+  return (2 * intersection) / (b1.size + b2.size);
+}
+
+// 3. Diccionario de alias conocidos para evitar confusiones de búsqueda en TMDb
 const ALIAS_TITULOS = {
   'dr. house': 'House',
   'dr house': 'House',
   'la ley y el orden: unidad de victimas especiales': 'Law & Order: Special Victims Unit',
   'la ley y el orden: unidad de víctimas especiales': 'Law & Order: Special Victims Unit',
-  'el juego del calamar': 'Squid Game'
+  'el juego del calamar': 'Squid Game',
 };
 
-// 3. Consultar obra en TMDb con alias y fallback
+// 4. Consultar obra en TMDb con alias y fallback
 async function buscarObraEnTMDb(titulo, tipoSugerido) {
   const TMDB_API_KEY = process.env.TMDB_API_KEY;
-  if (!TMDB_API_KEY) return null;
+  if (!TMDB_API_KEY || !titulo || !titulo.trim()) return null;
 
   const tituloLimpio = titulo.toLowerCase().trim();
   const queryFinal = ALIAS_TITULOS[tituloLimpio] || titulo;
@@ -68,7 +105,7 @@ async function buscarObraEnTMDb(titulo, tipoSugerido) {
   return resultado;
 }
 
-// 4. Traer lista completa de episodios de la temporada (en inglés y español)
+// 5. Traer lista completa de episodios de la temporada (en inglés y español con nombres originales)
 async function obtenerEpisodiosDeTemporada(tmdb_id, temporada) {
   const TMDB_API_KEY = process.env.TMDB_API_KEY;
   if (!TMDB_API_KEY || !tmdb_id || !temporada) return [];
@@ -90,7 +127,9 @@ async function obtenerEpisodiosDeTemporada(tmdb_id, temporada) {
       return {
         numero: ep.episode_number,
         nombreEn: limpiarTexto(ep.name),
-        nombreEs: limpiarTexto(epEs.name || '')
+        nombreEs: limpiarTexto(epEs.name || ''),
+        nombreEnOriginal: ep.name || '',
+        nombreEsOriginal: epEs.name || ep.name || ''
       };
     });
   } catch {
@@ -98,7 +137,7 @@ async function obtenerEpisodiosDeTemporada(tmdb_id, temporada) {
   }
 }
 
-// 5. Formatear Fecha de CSV (MM/DD/YY o DD/MM/YY) a YYYY-MM-DD
+// 6. Formatear Fecha de CSV (MM/DD/YY o DD/MM/YY) a YYYY-MM-DD
 function parsearFechaNetflix(fechaStr) {
   if (!fechaStr) return new Date().toISOString().split('T')[0];
   const limpia = fechaStr.replace(/"/g, '').trim();
@@ -119,9 +158,12 @@ function parsearFechaNetflix(fechaStr) {
   return new Date().toISOString().split('T')[0];
 }
 
-// 6. Desarmar línea de Netflix
+// 7. Desarmar línea de Netflix
 function clasificarFilaNetflix(tituloCompleto) {
+  if (!tituloCompleto || !tituloCompleto.trim()) return null;
+
   const partes = tituloCompleto.split(':').map((p) => p.trim());
+  if (!partes[0]) return null;
 
   if (partes.length === 1) {
     return {
@@ -135,26 +177,30 @@ function clasificarFilaNetflix(tituloCompleto) {
 
   const tituloPrincipal = partes[0];
   let temporada = 1;
+  let temporadaYaEncontrada = false;
   let episodioDirecto = null;
   const nombresEpisodio = [];
 
   for (let i = 1; i < partes.length; i++) {
     const parte = partes[i];
 
-    // Detección de temporada
-    const matchTempNum = parte.match(/(?:temporada|season|parte|part|volumen|volume|\b\w+\b)\s*(\d+)/i);
-    if (matchTempNum) {
-      temporada = parseInt(matchTempNum[1], 10);
-      continue;
-    }
+    // Detección de temporada (solo si aún no se detectó una)
+    if (!temporadaYaEncontrada) {
+      const matchTempNum = parte.match(/(?:temporada|season|parte|part|volumen|volume)\s*(\d+)/i);
+      if (matchTempNum) {
+        temporada = parseInt(matchTempNum[1], 10);
+        temporadaYaEncontrada = true;
+        continue;
+      }
 
-    if (/first\s*year/i.test(parte)) { temporada = 1; continue; }
-    if (/second\s*year/i.test(parte)) { temporada = 2; continue; }
-    if (/third\s*year/i.test(parte)) { temporada = 3; continue; }
-    if (/fourth\s*year/i.test(parte)) { temporada = 4; continue; }
-    if (/fifth\s*year/i.test(parte)) { temporada = 5; continue; }
-    if (/sixth\s*year/i.test(parte)) { temporada = 6; continue; }
-    if (/miniserie/i.test(parte)) { temporada = 1; continue; }
+      if (/first\s*year/i.test(parte)) { temporada = 1; temporadaYaEncontrada = true; continue; }
+      if (/second\s*year/i.test(parte)) { temporada = 2; temporadaYaEncontrada = true; continue; }
+      if (/third\s*year/i.test(parte)) { temporada = 3; temporadaYaEncontrada = true; continue; }
+      if (/fourth\s*year/i.test(parte)) { temporada = 4; temporadaYaEncontrada = true; continue; }
+      if (/fifth\s*year/i.test(parte)) { temporada = 5; temporadaYaEncontrada = true; continue; }
+      if (/sixth\s*year/i.test(parte)) { temporada = 6; temporadaYaEncontrada = true; continue; }
+      if (/miniserie/i.test(parte)) { temporada = 1; temporadaYaEncontrada = true; continue; }
+    }
 
     // Detección de número explícito de episodio
     const matchCapNum = parte.match(/(?:cap[ií]tulo|episodio|episode|ep\.?)\s*(\d+)/i);
@@ -191,61 +237,330 @@ function clasificarFilaNetflix(tituloCompleto) {
 // Memoria de sesión para deducir secuencias decrecientes (Netflix lee del más nuevo al más viejo)
 const memoriaUltimoEpisodio = new Map();
 
-// 7. Comparación bilingüe con fallback secuencial
+// 8. Comparación bilingüe con Fuzzy Matching y fallback secuencial
 function resolverNumeroEpisodio(nombresEpisodio, listaEpisodiosTmdb, claveSecuencia) {
-  // A. Coincidencias en TMDb
+  let mejorMatch = null;
+  let maxSimilitud = 0;
+
   if (nombresEpisodio.length && listaEpisodiosTmdb.length) {
     for (const nombre of nombresEpisodio) {
       const limpio = limpiarTexto(nombre);
       if (!limpio) continue;
 
-      // 1. Probar en Inglés
-      const matchEn = listaEpisodiosTmdb.find(
-        (ep) =>
-          ep.nombreEn === limpio ||
-          (limpio.length > 3 && ep.nombreEn.includes(limpio)) ||
-          (ep.nombreEn.length > 3 && limpio.includes(ep.nombreEn))
-      );
-      if (matchEn) {
-        memoriaUltimoEpisodio.set(claveSecuencia, matchEn.numero);
-        return matchEn.numero;
-      }
+      for (const ep of listaEpisodiosTmdb) {
+        // Coincidencia exacta o inclusión directa
+        if (ep.nombreEn === limpio || ep.nombreEs === limpio) {
+          memoriaUltimoEpisodio.set(claveSecuencia, ep.numero);
+          return {
+            numero: ep.numero,
+            confianza: 'alta',
+            nombreEpisodio: ep.nombreEsOriginal || ep.nombreEnOriginal || nombre
+          };
+        }
 
-      // 2. Probar en Español
-      const matchEs = listaEpisodiosTmdb.find(
-        (ep) =>
-          ep.nombreEs === limpio ||
-          (limpio.length > 3 && ep.nombreEs.includes(limpio)) ||
-          (ep.nombreEs.length > 3 && limpio.includes(ep.nombreEs))
-      );
-      if (matchEs) {
-        memoriaUltimoEpisodio.set(claveSecuencia, matchEs.numero);
-        return matchEs.numero;
+        // Fuzzy match en Inglés
+        const simEn = calcularSimilitud(limpio, ep.nombreEn);
+        if (simEn > maxSimilitud) {
+          maxSimilitud = simEn;
+          mejorMatch = ep;
+        }
+
+        // Fuzzy match en Español
+        const simEs = calcularSimilitud(limpio, ep.nombreEs);
+        if (simEs > maxSimilitud) {
+          maxSimilitud = simEs;
+          mejorMatch = ep;
+        }
       }
+    }
+
+    // Umbral de Fuzzy Matching (>= 70% de similitud)
+    if (maxSimilitud >= 0.70 && mejorMatch) {
+      memoriaUltimoEpisodio.set(claveSecuencia, mejorMatch.numero);
+      return {
+        numero: mejorMatch.numero,
+        confianza: maxSimilitud >= 0.85 ? 'alta' : 'media',
+        nombreEpisodio: mejorMatch.nombreEsOriginal || mejorMatch.nombreEnOriginal || nombresEpisodio[0]
+      };
     }
   }
 
-  // B. Casos especiales frecuentes
+  // Casos especiales frecuentes
   const total = nombresEpisodio.join(' ').toLowerCase();
-  if (total.includes('broken') && total.includes('parte 2')) return 2;
-  if (total.includes('broken') && total.includes('parte 1')) return 1;
-  if (total.includes('euphoria') && total.includes('parte 2')) return 21;
-  if (total.includes('euphoria') && total.includes('parte 1')) return 20;
+  if (total.includes('broken') && total.includes('parte 2')) return { numero: 2, confianza: 'media', nombreEpisodio: 'Broken: Parte 2' };
+  if (total.includes('broken') && total.includes('parte 1')) return { numero: 1, confianza: 'alta', nombreEpisodio: 'Broken: Parte 1' };
+  if (total.includes('euphoria') && total.includes('parte 2')) return { numero: 21, confianza: 'media', nombreEpisodio: 'Euphoria: Parte 2' };
+  if (total.includes('euphoria') && total.includes('parte 1')) return { numero: 20, confianza: 'alta', nombreEpisodio: 'Euphoria: Parte 1' };
 
-  // C. Inferencia secuencial: si veníamos de un episodio mayor, deducir el anterior
+  // Inferencia secuencial decreciente
   if (memoriaUltimoEpisodio.has(claveSecuencia)) {
     const ultimoVisto = memoriaUltimoEpisodio.get(claveSecuencia);
     if (ultimoVisto > 1) {
       const deducido = ultimoVisto - 1;
       memoriaUltimoEpisodio.set(claveSecuencia, deducido);
-      return deducido;
+      return {
+        numero: deducido,
+        confianza: 'media',
+        nombreEpisodio: nombresEpisodio[0] || `Episodio ${deducido}`
+      };
     }
   }
 
-  return 1;
+  return {
+    numero: 1,
+    confianza: 'baja',
+    nombreEpisodio: nombresEpisodio[0] || 'Episodio 1'
+  };
 }
 
-// 8. Controlador por lotes principal
+// 9. PASO 1: Analizar lote de CSV sin guardar en base de datos (Previsualización)
+const analizarLoteCSV = async (req, res) => {
+  const usuarioId = req.usuario?.id;
+  if (!usuarioId) return res.status(401).json({ error: 'No autorizado' });
+
+  const { lineas } = req.body;
+  if (!lineas || !Array.isArray(lineas)) {
+    return res.status(400).json({ error: 'Datos no válidos' });
+  }
+
+  const cacheTemporadas = new Map();
+  const cacheObras = new Map();
+  const resultados = [];
+
+  for (let index = 0; index < lineas.length; index++) {
+    const linea = lineas[index];
+    if (!linea || !linea.trim()) continue;
+
+    const ultimaComa = linea.lastIndexOf(',');
+    if (ultimaComa === -1) continue;
+
+    const rawTitulo = linea.substring(0, ultimaComa).replace(/^"|"$/g, '').trim();
+    const rawFecha = linea.substring(ultimaComa + 1).replace(/^"|"$/g, '').trim();
+    if (!rawTitulo) continue;
+
+    const obraInfo = clasificarFilaNetflix(rawTitulo);
+    if (!obraInfo || !obraInfo.titulo) {
+      resultados.push({
+        id: `row_${Date.now()}_${index}`,
+        rawTitulo,
+        rawFecha,
+        fechaVisto: parsearFechaNetflix(rawFecha),
+        obra: null,
+        temporada: null,
+        episodio: null,
+        nombreEpisodio: null,
+        estado: 'no_encontrado',
+        motivo: 'Título vacío o formato no reconocido'
+      });
+      continue;
+    }
+
+    const fechaVisto = parsearFechaNetflix(rawFecha);
+
+    try {
+      // 1. Buscar en cache local o TMDb
+      let datosTmdb = cacheObras.get(obraInfo.titulo.toLowerCase());
+      if (datosTmdb === undefined) {
+        datosTmdb = await buscarObraEnTMDb(obraInfo.titulo, obraInfo.tipo);
+        cacheObras.set(obraInfo.titulo.toLowerCase(), datosTmdb);
+      }
+
+      if (!datosTmdb) {
+        resultados.push({
+          id: `row_${Date.now()}_${index}`,
+          rawTitulo,
+          rawFecha,
+          fechaVisto,
+          obra: null,
+          temporada: null,
+          episodio: null,
+          nombreEpisodio: null,
+          estado: 'no_encontrado',
+          motivo: 'No se encontró en la base de datos de películas/series'
+        });
+        continue;
+      }
+
+      // 2. Determinar número de episodio y confianza
+      let numeroEpisodio = obraInfo.episodioDirecto;
+      let confianza = 'alta';
+      let nombreEpisodio = obraInfo.nombresEpisodio[0] || null;
+
+      const claveSecuencia = `${usuarioId}_${datosTmdb.tmdb_id}_T${obraInfo.temporada}`;
+
+      if (datosTmdb.tipo === 'serie' && !numeroEpisodio && obraInfo.temporada) {
+        const claveTemporada = `${datosTmdb.tmdb_id}_T${obraInfo.temporada}`;
+        let listaEpisodios = cacheTemporadas.get(claveTemporada);
+
+        if (!listaEpisodios) {
+          listaEpisodios = await obtenerEpisodiosDeTemporada(datosTmdb.tmdb_id, obraInfo.temporada);
+          cacheTemporadas.set(claveTemporada, listaEpisodios);
+        }
+
+        const resEp = resolverNumeroEpisodio(
+          obraInfo.nombresEpisodio,
+          listaEpisodios,
+          claveSecuencia
+        );
+        numeroEpisodio = resEp.numero;
+        confianza = resEp.confianza;
+        nombreEpisodio = resEp.nombreEpisodio;
+      } else if (numeroEpisodio) {
+        memoriaUltimoEpisodio.set(claveSecuencia, numeroEpisodio);
+        confianza = 'alta';
+      }
+
+      if (datosTmdb.tipo === 'serie' && !numeroEpisodio) {
+        numeroEpisodio = 1;
+        confianza = 'baja';
+      }
+
+      // 3. Comprobar si ya existe en la base de datos
+      let yaVisto = false;
+      const checkSql = datosTmdb.tipo === 'serie'
+        ? `SELECT h.id FROM historial_visualizaciones h
+           JOIN obras_catalogo o ON h.obra_id = o.id
+           WHERE h.usuario_id = $1 AND o.tmdb_id = $2 AND h.temporada = $3 AND h.episodio = $4 AND h.fecha_visto = $5 LIMIT 1`
+        : `SELECT h.id FROM historial_visualizaciones h
+           JOIN obras_catalogo o ON h.obra_id = o.id
+           WHERE h.usuario_id = $1 AND o.tmdb_id = $2 AND h.fecha_visto = $3 LIMIT 1`;
+
+      const checkParams = datosTmdb.tipo === 'serie'
+        ? [usuarioId, datosTmdb.tmdb_id, obraInfo.temporada, numeroEpisodio, fechaVisto]
+        : [usuarioId, datosTmdb.tmdb_id, fechaVisto];
+
+      const resCheck = await pool.query(checkSql, checkParams);
+      yaVisto = resCheck.rows.length > 0;
+
+      // Estado de recomendación
+      let estado = 'seguro'; // 🟢
+      if (yaVisto) {
+        estado = 'ya_visto'; // ⚪
+      } else if (confianza === 'baja' || confianza === 'media') {
+        estado = 'dudoso'; // 🟡
+      }
+
+      resultados.push({
+        id: `row_${Date.now()}_${index}`,
+        rawTitulo,
+        rawFecha,
+        fechaVisto,
+        obra: datosTmdb,
+        temporada: datosTmdb.tipo === 'serie' ? obraInfo.temporada : null,
+        episodio: datosTmdb.tipo === 'serie' ? numeroEpisodio : null,
+        nombreEpisodio,
+        confianza,
+        estado
+      });
+
+    } catch (err) {
+      console.error('Error al analizar línea de CSV:', err.message);
+      resultados.push({
+        id: `row_${Date.now()}_${index}`,
+        rawTitulo,
+        rawFecha,
+        fechaVisto,
+        obra: null,
+        temporada: null,
+        episodio: null,
+        nombreEpisodio: null,
+        estado: 'no_encontrado',
+        motivo: err.message
+      });
+    }
+  }
+
+  res.json({ analizados: resultados });
+};
+
+// 10. PASO 2: Confirmar e Insertar en Lote la Selección Aprobada por el Usuario
+const confirmarImportacionCSV = async (req, res) => {
+  const usuarioId = req.usuario?.id;
+  if (!usuarioId) return res.status(401).json({ error: 'No autorizado' });
+
+  const { items } = req.body;
+  if (!items || !Array.isArray(items)) {
+    return res.status(400).json({ error: 'Lista de obras no válida' });
+  }
+
+  let guardados = 0;
+  let omitidos = 0;
+
+  for (const item of items) {
+    if (!item.obra || !item.obra.tmdb_id) {
+      omitidos++;
+      continue;
+    }
+
+    try {
+      // 1. Obtener o crear obra en catálogo
+      let obraRes = await pool.query(
+        'SELECT id FROM obras_catalogo WHERE tmdb_id = $1 LIMIT 1',
+        [item.obra.tmdb_id]
+      );
+
+      let obraId = obraRes.rows[0]?.id;
+      if (!obraId) {
+        const nueva = await pool.query(
+          `INSERT INTO obras_catalogo (tmdb_id, tipo, titulo, poster_path)
+           VALUES ($1, $2, $3, $4) RETURNING id`,
+          [item.obra.tmdb_id, item.obra.tipo, item.obra.titulo, item.obra.poster_path]
+        );
+        obraId = nueva.rows[0].id;
+      }
+
+      // 2. Verificar duplicado exacto
+      const esSerie = item.obra.tipo === 'serie';
+      let check = null;
+
+      if (esSerie) {
+        check = await pool.query(
+          `SELECT id FROM historial_visualizaciones 
+           WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5 LIMIT 1`,
+          [usuarioId, obraId, item.temporada, item.episodio, item.fechaVisto]
+        );
+      } else {
+        check = await pool.query(
+          `SELECT id FROM historial_visualizaciones 
+           WHERE usuario_id = $1 AND obra_id = $2 AND fecha_visto = $3 LIMIT 1`,
+          [usuarioId, obraId, item.fechaVisto]
+        );
+      }
+
+      if (check.rows.length > 0) {
+        omitidos++;
+        continue;
+      }
+
+      // 3. Insertar visualización en historial
+      await pool.query(
+        `INSERT INTO historial_visualizaciones 
+           (usuario_id, obra_id, temporada, episodio, fecha_visto, plataforma)
+         VALUES ($1, $2, $3, $4, $5, 'Netflix')`,
+        [
+          usuarioId,
+          obraId,
+          esSerie ? item.temporada : null,
+          esSerie ? item.episodio : null,
+          item.fechaVisto
+        ]
+      );
+      guardados++;
+
+    } catch (err) {
+      console.warn(`Error al guardar item ${item.obra?.titulo}:`, err.message);
+      omitidos++;
+    }
+  }
+
+  res.json({
+    mensaje: `Se importaron ${guardados} obras exitosamente`,
+    guardados,
+    omitidos
+  });
+};
+
+// 11. Controlador legado por lotes directo (conservado por compatibilidad)
 const importarLoteCSV = async (req, res) => {
   const usuarioId = req.usuario?.id;
   if (!usuarioId) return res.status(401).json({ error: 'No autorizado' });
@@ -258,6 +573,7 @@ const importarLoteCSV = async (req, res) => {
   let importados = 0;
   let omitidos = 0;
   let fallidos = [];
+  let listaOmitidos = [];
 
   const cacheTemporadas = new Map();
 
@@ -272,10 +588,20 @@ const importarLoteCSV = async (req, res) => {
     if (!rawTitulo) continue;
 
     const obraInfo = clasificarFilaNetflix(rawTitulo);
+    if (!obraInfo || !obraInfo.titulo) {
+      omitidos++;
+      fallidos.push(rawTitulo);
+      listaOmitidos.push({
+        titulo: rawTitulo,
+        motivo: 'Formato o título no reconocido',
+        tipo: 'no_encontrado'
+      });
+      continue;
+    }
+
     const fechaVisto = parsearFechaNetflix(rawFecha);
 
     try {
-      // 1. Obtener o crear obra en catálogo local
       let obraRes = await pool.query(
         'SELECT id, tmdb_id, tipo FROM obras_catalogo WHERE LOWER(titulo) = LOWER($1) LIMIT 1',
         [obraInfo.titulo]
@@ -301,7 +627,9 @@ const importarLoteCSV = async (req, res) => {
           } else {
             const nueva = await pool.query(
               `INSERT INTO obras_catalogo (tmdb_id, tipo, titulo, poster_path)
-               VALUES ($1, $2, $3, $4) RETURNING id, tmdb_id, tipo`,
+               VALUES ($1, $2, $3, $4)
+               ON CONFLICT (tmdb_id) DO UPDATE SET titulo = EXCLUDED.titulo
+               RETURNING id, tmdb_id, tipo`,
               [datosTmdb.tmdb_id, datosTmdb.tipo, datosTmdb.titulo, datosTmdb.poster_path]
             );
             obraId = nueva.rows[0].id;
@@ -313,10 +641,14 @@ const importarLoteCSV = async (req, res) => {
       if (!obraId) {
         omitidos++;
         fallidos.push(obraInfo.titulo);
+        listaOmitidos.push({
+          titulo: rawTitulo,
+          motivo: 'No encontrado en TMDb',
+          tipo: 'no_encontrado'
+        });
         continue;
       }
 
-      // 2. Determinar número de episodio
       let numeroEpisodio = obraInfo.episodioDirecto;
       const claveSecuencia = `${usuarioId}_${obraId}_T${obraInfo.temporada}`;
 
@@ -329,11 +661,12 @@ const importarLoteCSV = async (req, res) => {
           cacheTemporadas.set(claveTemporada, listaEpisodios);
         }
 
-        numeroEpisodio = resolverNumeroEpisodio(
+        const resEp = resolverNumeroEpisodio(
           obraInfo.nombresEpisodio,
           listaEpisodios,
           claveSecuencia
         );
+        numeroEpisodio = resEp.numero;
       } else if (numeroEpisodio) {
         memoriaUltimoEpisodio.set(claveSecuencia, numeroEpisodio);
       }
@@ -342,27 +675,18 @@ const importarLoteCSV = async (req, res) => {
         numeroEpisodio = 1;
       }
 
-      // 3. Verificación Anti-Duplicados (mismo episodio el mismo día)
       let existe = false;
       if (tipoFinal === 'serie') {
         const check = await pool.query(
           `SELECT id FROM historial_visualizaciones 
-           WHERE usuario_id = $1 
-             AND obra_id = $2 
-             AND temporada = $3 
-             AND episodio = $4 
-             AND fecha_visto = $5 
-           LIMIT 1`,
+           WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5 LIMIT 1`,
           [usuarioId, obraId, obraInfo.temporada, numeroEpisodio, fechaVisto]
         );
         existe = check.rows.length > 0;
       } else {
         const check = await pool.query(
           `SELECT id FROM historial_visualizaciones 
-           WHERE usuario_id = $1 
-             AND obra_id = $2 
-             AND fecha_visto = $3 
-           LIMIT 1`,
+           WHERE usuario_id = $1 AND obra_id = $2 AND fecha_visto = $3 LIMIT 1`,
           [usuarioId, obraId, fechaVisto]
         );
         existe = check.rows.length > 0;
@@ -370,10 +694,16 @@ const importarLoteCSV = async (req, res) => {
 
       if (existe) {
         omitidos++;
+        listaOmitidos.push({
+          titulo: rawTitulo,
+          motivo: tipoFinal === 'serie'
+            ? `Ya registrado (T${obraInfo.temporada}: Ep. ${numeroEpisodio})`
+            : 'Ya registrado previamente',
+          tipo: 'ya_visto'
+        });
         continue;
       }
 
-      // 4. Inserción en historial
       await pool.query(
         `INSERT INTO historial_visualizaciones 
            (usuario_id, obra_id, temporada, episodio, fecha_visto, plataforma)
@@ -392,11 +722,19 @@ const importarLoteCSV = async (req, res) => {
       console.error('Error insertando fila:', err.message);
       omitidos++;
       fallidos.push(obraInfo.titulo);
+      listaOmitidos.push({
+        titulo: rawTitulo,
+        motivo: 'Error al registrar en base de datos',
+        tipo: 'error'
+      });
     }
   }
 
-  res.json({ importados, omitidos, fallidos });
+  res.json({ importados, omitidos, fallidos, listaOmitidos });
 };
 
-module.exports = { importarLoteCSV };
-
+module.exports = { 
+  importarLoteCSV,
+  analizarLoteCSV,
+  confirmarImportacionCSV
+};

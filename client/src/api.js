@@ -222,6 +222,30 @@ export const comprobarUsernameAPI = async (username) => {
   return res.json();
 };
 
+// Solicitar correo de recuperación de contraseña
+export const solicitarRecuperacionAPI = async (email) => {
+  const res = await fetch('/api/auth/solicitar-recuperacion', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'No se pudo enviar la solicitud de recuperación');
+  return data;
+};
+
+// Restablecer contraseña con el token recibido por email
+export const restablecerPasswordAPI = async (token, passwordNueva) => {
+  const res = await fetch('/api/auth/restablecer-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, passwordNueva })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'No se pudo restablecer la contraseña');
+  return data;
+};
+
 // Obtener los favoritos del Top 4 de un usuario
 export const obtenerFavoritosAPI = async (username) => {
   const res = await fetch(`/api/favoritos/${username}`);
@@ -516,4 +540,98 @@ export const obtenerWrappedPeriodoAPI = async (anio, mes = null) => {
   }
 
   return await res.json();
+};
+
+// ==========================================
+// ACCIONES DE ADMINISTRACIÓN
+// ==========================================
+
+// Actualizar rol de usuario (Admin)
+export const actualizarRolUsuarioAdminAPI = async (usuarioId, rol) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch(`/api/admin/usuarios/${usuarioId}/rol`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ rol }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Error al actualizar rol de usuario');
+  }
+  return data;
+};
+
+// Eliminar usuario (Admin)
+export const eliminarUsuarioAdminAPI = async (usuarioId) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch(`/api/admin/usuarios/${usuarioId}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Error al eliminar usuario');
+  }
+  return data;
+};
+
+// Obtener lista de reseñas para moderación (Admin)
+export const obtenerReseniasAdminAPI = async () => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/admin/resenias', {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Error al obtener reseñas para moderar');
+  }
+  return data;
+};
+
+// Limpiar texto de reseña ofensiva (Admin)
+export const eliminarTextoReseniaAdminAPI = async (reseniaId) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch(`/api/admin/resenias/${reseniaId}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Error al eliminar texto de reseña');
+  }
+  return data;
+};
+
+// Eliminar registro de visualización fraudulento (Admin)
+export const eliminarVisualizacionAdminAPI = async (visId) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch(`/api/admin/visualizaciones/${visId}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Error al eliminar visualización');
+  }
+  return data;
 };

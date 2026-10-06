@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const pool = require('./config/db');
 const axios = require('axios');
+const { esUrlImagenPermitida } = require('./utils/seguridad');
 
 // 1. IMPORTACIÓN DE RUTAS
 const peliculasRoutes = require('./routes/peliculasRoutes');
@@ -52,9 +53,44 @@ const limiterGeneral = rateLimit({
   }
 });
 
+// Redirección HTTPS forzada en producción (compatible con Railway, Render, etc.)
+if (process.env.NODE_ENV === 'production') {
+  app.enable('trust proxy');
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] && req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect(301, `https://${req.hostname}${req.originalUrl}`);
+    }
+    next();
+  });
+}
+
 // Middlewares globales
-app.use(cors());
-app.use(express.json());
+// 🛡️ Política de CORS: Protege contra orígenes no autorizados permitiendo desarrollo y producción
+const origenesPermitidos = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permitir peticiones sin header Origin (apps móviles, curl, Postman o SSR)
+    if (!origin) return callback(null, true);
+    
+    // Permitir si coincide con la whitelist o si es localhost en desarrollo
+    const esValido = origenesPermitidos.some(o => origin === o || origin.startsWith(o)) ||
+      (process.env.NODE_ENV !== 'production' && origin.includes('localhost'));
+
+    if (esValido) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS: Origen bloqueado por política de seguridad'));
+  },
+  credentials: true
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Aplicación de los limitadores
 app.use('/api', limiterGeneral);
@@ -80,11 +116,25 @@ app.get('/api/proxy-image', async (req, res) => {
   try {
     const { url } = req.query;
     if (!url) {
-      return res.status(400).send('Falta el parámetro url');
+      return res.status(400).json({ error: 'Falta el parámetro url' });
     }
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
+
+    // 🛡️ Anti-SSRF: Bloquea solicitudes a servidores locales, IPs privadas o dominios no autorizados
+    if (!esUrlImagenPermitida(url)) {
+      return res.status(403).json({ 
+        error: 'Dominio de imagen no permitido por la política de seguridad (Anti-SSRF)' 
+      });
+    }
+
+    const response = await axios.get(url, { 
+      responseType: 'arraybuffer',
+      timeout: 8000,
+      maxContentLength: 10 * 1024 * 1024 // Máximo 10 MB por imagen
+    });
+
     res.set('Content-Type', response.headers['content-type'] || 'image/jpeg');
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cache-Control', 'public, max-age=604800, immutable');
     res.send(response.data);
   } catch (error) {
     console.error('Error en proxy-image:', error.message);
@@ -118,6 +168,14 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error('Error no controlado en Express:', err.stack);
   res.status(500).json({ error: 'Error interno del servidor' });
+});
+
+// Asegurar columnas de recuperación de contraseña en PostgreSQL
+pool.query(`
+  ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_recuperacion TEXT;
+  ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_recuperacion_expira TIMESTAMP WITH TIME ZONE;
+`).catch((err) => {
+  console.warn('[DB Init] Columnas de recuperación:', err.message);
 });
 
 // ==========================================

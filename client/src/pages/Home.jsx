@@ -4,6 +4,7 @@ import CarruselViendo from '../components/home/CarruselViendo';
 import HeaderHistorial from '../components/home/HeaderHistorial';
 import GrillaHistorial from '../components/home/GrillaHistorial';
 import BarraAccionLote from '../components/home/BarraAccionLote';
+import OnboardingBienvenida from '../components/home/OnboardingBienvenida';
 
 // Modales modulares
 import ModalRegistrar from '../components/modal/ModalRegistrar';
@@ -11,6 +12,8 @@ import ModalConfirmar from '../components/modal/ModalConfirmar';
 import ModalDetalleTimeline from '../components/modal/ModalDetalleTimeline';
 import ModalDetalleEpisodioViendo from '../components/modal/ModalDetalleEpisodioViendo';
 import ModalAuth from '../components/auth/ModalAuth';
+import ModalImportarNetflix from '../components/modal/ModalImportarNetflix';
+import ModalAmigos from '../components/modal/ModalAmigos';
 
 import { useAuth } from '../context/AuthContext';
 
@@ -39,6 +42,7 @@ export default function Home({ actualizarTrigger }) {
   // 1. Datos del backend
   const [seriesActivas, setSeriesActivas] = useState([]);
   const [timeline, setTimeline] = useState([]);
+  const [cargandoInicial, setCargandoInicial] = useState(true);
 
   // 2. Filtros y Búsqueda
   const [filtroTipo, setFiltroTipo] = useState('');
@@ -57,6 +61,8 @@ export default function Home({ actualizarTrigger }) {
   const [itemDetalle, setItemDetalle] = useState(null);
   const [serieParaDetalleXRay, setSerieParaDetalleXRay] = useState(null);
   const [modalAuthLandingAbierto, setModalAuthLandingAbierto] = useState(false);
+  const [modalNetflixAbierto, setModalNetflixAbierto] = useState(false);
+  const [modalAmigosAbierto, setModalAmigosAbierto] = useState(false);
 
   // 5. Borrado masivo
   const [modoSeleccion, setModoSeleccion] = useState(false);
@@ -85,6 +91,7 @@ export default function Home({ actualizarTrigger }) {
     if (!usuario?.id) {
       setSeriesActivas([]);
       setTimeline([]);
+      setCargandoInicial(false);
       return;
     }
 
@@ -94,17 +101,19 @@ export default function Home({ actualizarTrigger }) {
         obtenerTimelineAPI(usuario.id, filtroTipo)
       ]);
       
+      const nuevoHistorial = Array.isArray(historial) ? historial : [];
       setSeriesActivas(Array.isArray(series) ? series : []);
-      
-      setTimeline((prev) => {
-        const nuevoHistorial = Array.isArray(historial) ? historial : [];
-        if (nuevoHistorial.length === 0 && prev.length > 0 && !filtroTipo) {
-          return prev;
-        }
-        return nuevoHistorial;
-      });
+      setTimeline(nuevoHistorial);
+
+      if (nuevoHistorial.length === 0) {
+        setAnioSeleccionado(null);
+        setMesSeleccionado(null);
+        setSerieSeleccionadaTotal(null);
+      }
     } catch (err) {
       console.error('Error al cargar datos:', err);
+    } finally {
+      setCargandoInicial(false);
     }
   }, [usuario, filtroTipo]);
 
@@ -451,77 +460,101 @@ export default function Home({ actualizarTrigger }) {
   // -------------------------------------------------------------
   // VISTA PRINCIPAL CUANDO EL USUARIO TIENE SESIÓN INICIADA
   // -------------------------------------------------------------
+  if (cargandoInicial) {
+    return (
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-20 flex items-center justify-center min-h-[50vh]">
+        <div className="flex flex-col items-center gap-3 text-neutral-400">
+          <div className="w-8 h-8 rounded-full border-2 border-rose-500 border-t-transparent animate-spin" />
+          <span className="text-xs font-mono">Cargando tu catálogo...</span>
+        </div>
+      </main>
+    );
+  }
+
+  const esCuentaVacia = !filtroTipo && !busquedaHistorial && timeline.length === 0 && seriesActivas.length === 0;
+
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-8 py-8 sm:py-10 space-y-10 sm:space-y-12">
-      {/* 1. Carrusel de Series Activas */}
-      <CarruselViendo 
-        seriesActivas={seriesActivas}
-        onAvanzar={handleAvanzar}
-        onDescartar={solicitarDescartarViendo}
-        onVerInfoEpisodio={(item) => setSerieParaDetalleXRay(item)}
-        onAbrirDetalle={(item) => {
-          setSerieParaEditar({
-            tmdb_id: item.tmdb_id,
-            titulo: item.titulo,
-            poster_path: item.poster_path,
-            tipo: 'serie',
-          });
-        }}
-      />
-
-      {/* 2. Mi Diario Cinemático y Total Histórico */}
-      <section className="!mt-[45px] sm:!mt-[65px] space-y-3">
-        <HeaderHistorial 
-          vistaTotal={vistaTotal}
-          setVistaTotal={setVistaTotal}
-          serieSeleccionadaTotal={serieSeleccionadaTotal}
-          setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
-          anioSeleccionado={anioSeleccionado}
-          mesSeleccionado={mesSeleccionado}
-          onVolverAnios={() => { 
-            setAnioSeleccionado(null); 
-            setMesSeleccionado(null); 
-            setSerieSeleccionadaTotal(null);
-          }}
-          onVolverMeses={() => {
-            setMesSeleccionado(null);
-            setSerieSeleccionadaTotal(null);
-          }}
-          modoSeleccion={modoSeleccion}
-          setModoSeleccion={setModoSeleccion}
-          setSeleccionadosParaBorrar={setSeleccionadosParaBorrar}
-          filtroTipo={filtroTipo}
-          setFiltroTipo={setFiltroTipo}
-          busquedaHistorial={busquedaHistorial}
-          setBusquedaHistorial={setBusquedaHistorial}
-          soloConAmigos={soloConAmigos}
-          setSoloConAmigos={setSoloConAmigos}
-          amigosFiltro={amigosFiltro}
-          setAmigosFiltro={setAmigosFiltro}
-          timelineCompleto={timeline}
+      {esCuentaVacia ? (
+        <OnboardingBienvenida 
+          usuario={usuario}
+          onSeleccionarObra={(obra) => setSerieParaEditar(obra)}
+          onAbrirImportarNetflix={() => setModalNetflixAbierto(true)}
+          onAbrirModalAmigos={() => setModalAmigosAbierto(true)}
         />
+      ) : (
+        <>
+          {/* 1. Carrusel de Series Activas */}
+          <CarruselViendo 
+            seriesActivas={seriesActivas}
+            onAvanzar={handleAvanzar}
+            onDescartar={solicitarDescartarViendo}
+            onVerInfoEpisodio={(item) => setSerieParaDetalleXRay(item)}
+            onAbrirDetalle={(item) => {
+              setSerieParaEditar({
+                tmdb_id: item.tmdb_id,
+                titulo: item.titulo,
+                poster_path: item.poster_path,
+                tipo: 'serie',
+              });
+            }}
+          />
 
-        <GrillaHistorial 
-          vistaTotal={vistaTotal}
-          serieSeleccionadaTotal={serieSeleccionadaTotal}
-          setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
-          anioSeleccionado={anioSeleccionado}
-          mesSeleccionado={mesSeleccionado}
-          arbolHistorial={arbolHistorial}
-          listaAnios={listaAnios}
-          timelineCompleto={timeline}
-          onSeleccionarAnio={(anio) => setAnioSeleccionado(anio)}
-          onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
-          modoSeleccion={modoSeleccion}
-          seleccionadosParaBorrar={seleccionadosParaBorrar}
-          onToggleItem={toggleSeleccionItem}
-          onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
-          busquedaHistorial={busquedaHistorial}
-          filtroTipo={filtroTipo}
-          soloConAmigos={soloConAmigos}
-          amigosFiltro={amigosFiltro}
-        />
-      </section>
+          {/* 2. Mi Diario Cinemático y Total Histórico */}
+          <section className="!mt-[45px] sm:!mt-[65px] space-y-3">
+            <HeaderHistorial 
+              vistaTotal={vistaTotal}
+              setVistaTotal={setVistaTotal}
+              serieSeleccionadaTotal={serieSeleccionadaTotal}
+              setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
+              anioSeleccionado={anioSeleccionado}
+              mesSeleccionado={mesSeleccionado}
+              onVolverAnios={() => { 
+                setAnioSeleccionado(null); 
+                setMesSeleccionado(null); 
+                setSerieSeleccionadaTotal(null);
+              }}
+              onVolverMeses={() => {
+                setMesSeleccionado(null);
+                setSerieSeleccionadaTotal(null);
+              }}
+              modoSeleccion={modoSeleccion}
+              setModoSeleccion={setModoSeleccion}
+              setSeleccionadosParaBorrar={setSeleccionadosParaBorrar}
+              filtroTipo={filtroTipo}
+              setFiltroTipo={setFiltroTipo}
+              busquedaHistorial={busquedaHistorial}
+              setBusquedaHistorial={setBusquedaHistorial}
+              soloConAmigos={soloConAmigos}
+              setSoloConAmigos={setSoloConAmigos}
+              amigosFiltro={amigosFiltro}
+              setAmigosFiltro={setAmigosFiltro}
+              timelineCompleto={timeline}
+            />
+
+            <GrillaHistorial 
+              vistaTotal={vistaTotal}
+              serieSeleccionadaTotal={serieSeleccionadaTotal}
+              setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
+              anioSeleccionado={anioSeleccionado}
+              mesSeleccionado={mesSeleccionado}
+              arbolHistorial={arbolHistorial}
+              listaAnios={listaAnios}
+              timelineCompleto={timeline}
+              onSeleccionarAnio={(anio) => setAnioSeleccionado(anio)}
+              onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
+              modoSeleccion={modoSeleccion}
+              seleccionadosParaBorrar={seleccionadosParaBorrar}
+              onToggleItem={toggleSeleccionItem}
+              onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
+              busquedaHistorial={busquedaHistorial}
+              filtroTipo={filtroTipo}
+              soloConAmigos={soloConAmigos}
+              amigosFiltro={amigosFiltro}
+            />
+          </section>
+        </>
+      )}
 
       {/* 3. Barra Flotante de Borrado Masivo */}
       {modoSeleccion && (
@@ -565,6 +598,24 @@ export default function Home({ actualizarTrigger }) {
           onSeleccionarObra={(obraDelActor) => {
             setItemDetalle(null);
             setSerieParaEditar(obraDelActor);
+          }}
+        />
+      )}
+
+      <ModalImportarNetflix 
+        abierto={modalNetflixAbierto}
+        alCerrar={() => setModalNetflixAbierto(false)}
+        alCompletar={() => {
+          cargarDatos();
+          setModalNetflixAbierto(false);
+        }}
+      />
+
+      {modalAmigosAbierto && (
+        <ModalAmigos 
+          onClose={() => setModalAmigosAbierto(false)}
+          onActualizado={() => {
+            cargarDatos();
           }}
         />
       )}

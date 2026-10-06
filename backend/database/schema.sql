@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
     biografia TEXT,
     banner_url TEXT,
     rol VARCHAR(20) DEFAULT 'usuario' CHECK (rol IN ('usuario', 'admin')),
+    token_recuperacion TEXT,
+    token_recuperacion_expira TIMESTAMP WITH TIME ZONE,
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

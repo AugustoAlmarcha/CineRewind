@@ -15,6 +15,18 @@ export const obtenerFechaHoyLocal = () => {
 };
 
 /**
+ * Retorna la fecha de ayer en formato local YYYY-MM-DD para inputs de tipo date
+ */
+export const obtenerFechaAyerLocal = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const anio = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+};
+
+/**
  * Formatea una fecha ISO o string (YYYY-MM-DD) a DD/MM/YYYY sin desfasajes de zona horaria UTC
  */
 export const formatearFecha = (fechaStr) => {

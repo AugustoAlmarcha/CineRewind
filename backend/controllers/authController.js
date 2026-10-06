@@ -1,15 +1,16 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
+const { enviarEmailRecuperacion } = require('../services/emailService');
 const clientGoogle = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// 🛡️ Asegurar que JWT_SECRET exista en producción
+// 🛡️ Asegurar que JWT_SECRET exista estrictamente
 const obtenerJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    console.warn('⚠️ ADVERTENCIA DE SEGURIDAD: JWT_SECRET no está definida en las variables de entorno (.env). Usando clave temporal.');
-    return 'cinerewind_super_secreto_2026_key_jwt';
+    throw new Error('FATAL: JWT_SECRET no está definida en las variables de entorno (.env). El servidor no puede operar de forma insegura.');
   }
   return secret;
 };
@@ -466,6 +467,120 @@ const obtenerPerfilPublico = async (req, res) => {
   }
 };
 
+// POST: /api/auth/solicitar-recuperacion
+const solicitarRecuperacionPassword = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email || typeof email !== 'string' || !email.trim()) {
+    return res.status(400).json({ error: 'Debes proporcionar un correo electrónico válido' });
+  }
+
+  const emailLimpio = email.toLowerCase().trim();
+
+  try {
+    const usuarioRes = await pool.query(
+      'SELECT id, nombre, email FROM usuarios WHERE LOWER(email) = $1',
+      [emailLimpio]
+    );
+
+    if (usuarioRes.rows.length === 0) {
+      // Por privacidad, respondemos éxito para evitar escaneo malicioso de emails
+      return res.json({
+        mensaje: 'Si el correo electrónico está registrado, recibirás un enlace para restablecer tu contraseña en unos momentos.'
+      });
+    }
+
+    const usuario = usuarioRes.rows[0];
+
+    // Generar token criptográfico único (64 caracteres)
+    const token = crypto.randomBytes(32).toString('hex');
+    // Válido durante 1 hora
+    const expira = new Date(Date.now() + 60 * 60 * 1000);
+
+    await pool.query(
+      `UPDATE usuarios 
+       SET token_recuperacion = $1, token_recuperacion_expira = $2 
+       WHERE id = $3`,
+      [token, expira, usuario.id]
+    );
+
+    try {
+      const resultadoEnvio = await enviarEmailRecuperacion({
+        destinatario: usuario.email,
+        nombre: usuario.nombre,
+        token
+      });
+
+      res.json({
+        mensaje: 'Enlace de recuperación enviado con éxito. Revisa tu bandeja de entrada o spam.',
+        enlacePrueba: resultadoEnvio.enlacePrueba || null
+      });
+    } catch (errEnvio) {
+      console.warn('[Aviso Envío Email]:', errEnvio.message);
+      const urlPrueba = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/restablecer-password?token=${encodeURIComponent(token)}`;
+      res.json({
+        mensaje: 'Se generó tu enlace de recuperación. Si tu cuenta de Resend está en modo prueba, recuerda que solo envía al correo con el que te registraste en Resend.',
+        enlacePrueba: urlPrueba
+      });
+    }
+  } catch (error) {
+    console.error('Error al solicitar recuperación de contraseña:', error);
+    res.status(500).json({ error: 'No se pudo procesar la solicitud de recuperación' });
+  }
+};
+
+// POST: /api/auth/restablecer-password
+const restablecerPasswordConToken = async (req, res) => {
+  const { token, passwordNueva } = req.body;
+
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ error: 'Token de recuperación no válido o inexistente' });
+  }
+
+  if (!passwordNueva || typeof passwordNueva !== 'string' || passwordNueva.length < 6) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+  }
+
+  try {
+    const usuarioRes = await pool.query(
+      `SELECT id, email, token_recuperacion_expira 
+       FROM usuarios 
+       WHERE token_recuperacion = $1`,
+      [token.trim()]
+    );
+
+    if (usuarioRes.rows.length === 0) {
+      return res.status(400).json({ error: 'El enlace de recuperación es inválido o ya fue utilizado.' });
+    }
+
+    const usuario = usuarioRes.rows[0];
+    const fechaExpira = new Date(usuario.token_recuperacion_expira);
+
+    if (fechaExpira < new Date()) {
+      return res.status(400).json({ error: 'El enlace de recuperación ha expirado. Por favor, solicita uno nuevo.' });
+    }
+
+    // Hashear la nueva contraseña
+    const salt = await bcrypt.genSalt(10);
+    const nuevoHash = await bcrypt.hash(passwordNueva, salt);
+
+    // Actualizar contraseña y limpiar el token
+    await pool.query(
+      `UPDATE usuarios 
+       SET password_hash = $1, token_recuperacion = NULL, token_recuperacion_expira = NULL 
+       WHERE id = $2`,
+      [nuevoHash, usuario.id]
+    );
+
+    res.json({
+      mensaje: '¡Tu contraseña ha sido restablecida con éxito! Ya puedes iniciar sesión con tu nueva clave.'
+    });
+  } catch (error) {
+    console.error('Error al restablecer contraseña con token:', error);
+    res.status(500).json({ error: 'Error del servidor al restablecer la contraseña' });
+  }
+};
+
 module.exports = {
   registrarUsuario,
   iniciarSesion,
@@ -475,4 +590,6 @@ module.exports = {
   obtenerPerfilActual,
   obtenerPerfilPublico,
   cambiarPassword,
+  solicitarRecuperacionPassword,
+  restablecerPasswordConToken
 };

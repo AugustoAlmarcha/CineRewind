@@ -20,7 +20,7 @@ import SelectorTemporadaBarra from './SelectorTemporadaBarra';
 import VistaRegistroPelicula from './VistaRegistroPelicula';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
 import ModalActoresEpisodio from './ModalActoresEpisodio';
-import { Bookmark, Check, X, AlertCircle } from 'lucide-react';
+import { Bookmark, Check, X, AlertCircle, Play } from 'lucide-react';
 
 export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, onCambiarObra }) {
   const { usuario } = useAuth();
@@ -365,6 +365,22 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Botón Trailer Oficial YouTube */}
+            <a
+              href={
+                fichaDetalle?.trailer_youtube_key
+                  ? `https://www.youtube.com/watch?v=${fichaDetalle.trailer_youtube_key}`
+                  : `https://www.youtube.com/results?search_query=${encodeURIComponent(`${obraActual?.titulo} trailer oficial`)}`
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 bg-red-600/10 hover:bg-red-600 text-red-600 hover:text-white border border-red-500/20"
+              title="Ver trailer oficial en YouTube"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span className="hidden sm:inline">Trailer</span>
+            </a>
+
             <button
               type="button"
               disabled={cargandoPendiente}

@@ -3,7 +3,7 @@ import { obtenerTendenciasAPI, obtenerTimelineAPI } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useRuletaSorteo } from '../hooks/useRuletaSorteo';
 import ModalRecomendacionAzar from '../components/modal/ModalRecomendacionAzar';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Play } from 'lucide-react';
 
 const PAISES = [
   { codigo: 'AR', nombre: 'Argentina', banderaUrl: 'https://flagcdn.com/w40/ar.png' },
@@ -364,10 +364,25 @@ export default function Tendencias({ onSeleccionarObra, actualizarTrigger = 0 })
                       )}
                     </div>
 
-                    <div>
-                      <h4 className="text-sm font-black text-white truncate drop-shadow">{obra.titulo}</h4>
-                      <p className="text-[11px] text-neutral-300 font-bold mt-0.5">
-                        {obra.anio ? `${obra.anio} · ` : ''}Clic para ver detalles
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-sm font-black text-white truncate drop-shadow flex-1">{obra.titulo}</h4>
+                        
+                        {/* Botón Trailer YouTube */}
+                        <a
+                          href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${obra.titulo} trailer oficial`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="pointer-events-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold transition shadow-md hover:scale-105 active:scale-95 shrink-0"
+                          title={`Ver trailer de ${obra.titulo} en YouTube`}
+                        >
+                          <Play className="w-2.5 h-2.5 fill-current" />
+                          <span>Trailer</span>
+                        </a>
+                      </div>
+                      <p className="text-[11px] text-neutral-300 font-bold">
+                        {obra.anio ? `${obra.anio} · ` : ''}Clic para registrar
                       </p>
                     </div>
                   </div>

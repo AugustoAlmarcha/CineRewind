@@ -18,7 +18,7 @@ const {
   obtenerEstadisticasUsuario,
   obtenerRecordsUsuario,
   obtenerWrappedPeriodo,
-  proxyImagen // 👈 1. IMPORTADO AQUÍ
+  proxyImagen
 } = require('../controllers/historialController');
 
 // Controlador de Seguimiento de Series (Carrusel)
@@ -28,9 +28,15 @@ const {
   descartarDeViendo,
 } = require('../controllers/seguimientoController');
 
-const { importarLoteCSV } = require('../controllers/importarController');
+const { 
+  importarLoteCSV,
+  analizarLoteCSV,
+  confirmarImportacionCSV 
+} = require('../controllers/importarController');
 
 router.post('/importar-lote-csv', verificarToken, importarLoteCSV);
+router.post('/analizar-lote-csv', verificarToken, analizarLoteCSV);
+router.post('/confirmar-importacion-csv', verificarToken, confirmarImportacionCSV);
 
 /* =========================================================================
    1. RUTAS DE SEGUIMIENTO (Carrusel "Viendo Actualmente")

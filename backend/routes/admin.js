@@ -3,11 +3,30 @@ const express = require('express');
 const router = express.Router();
 const { verificarToken } = require('../middlewares/authMiddleware');
 const { esAdmin } = require('../middlewares/adminMiddleware');
-const { obtenerMetricasGlobales } = require('../controllers/adminController');
+const {
+  obtenerMetricasGlobales,
+  actualizarRolUsuario,
+  eliminarUsuario,
+  obtenerReseniasAdmin,
+  eliminarTextoResenia,
+  eliminarVisualizacionAdmin,
+} = require('../controllers/adminController');
 
-// Ruta protegida con doble candado:
-// 1. verificarToken (que esté logueado)
-// 2. esAdmin (que su rol en PostgreSQL sea 'admin')
-router.get('/metricas', verificarToken, esAdmin, obtenerMetricasGlobales);
+// Todas las rutas están protegidas con doble candado:
+// 1. verificarToken (usuario autenticado)
+// 2. esAdmin (rol === 'admin' en PostgreSQL)
+router.use(verificarToken, esAdmin);
+
+// Métricas y directorio general
+router.get('/metricas', obtenerMetricasGlobales);
+
+// Gestión de usuarios
+router.put('/usuarios/:id/rol', actualizarRolUsuario);
+router.delete('/usuarios/:id', eliminarUsuario);
+
+// Moderación de reseñas y visualizaciones
+router.get('/resenias', obtenerReseniasAdmin);
+router.delete('/resenias/:id', eliminarTextoResenia);
+router.delete('/visualizaciones/:id', eliminarVisualizacionAdmin);
 
 module.exports = router;

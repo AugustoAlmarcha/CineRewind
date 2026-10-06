@@ -1,11 +1,10 @@
 const jwt = require('jsonwebtoken');
 
-// 🛡️ Helper para obtener el JWT_SECRET de forma consistente
+// 🛡️ Helper para obtener el JWT_SECRET de forma consistente y segura
 const obtenerJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    console.warn('⚠️ ADVERTENCIA DE SEGURIDAD: JWT_SECRET no está definida en .env. Usando clave temporal.');
-    return 'cinerewind_super_secreto_2026_key_jwt';
+    throw new Error('FATAL: JWT_SECRET no está definida en .env. El servidor no puede operar de forma insegura.');
   }
   return secret;
 };
