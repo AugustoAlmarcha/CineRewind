@@ -3,9 +3,35 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const chromePath = '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"';
-const svgContent = fs.readFileSync(path.resolve(__dirname, '../client/public/logo.svg'), 'utf8');
 
-function render(outFile, size, bg) {
+// SVG maskable (Full bleed: fondo 100% hasta los bordes, sin márgenes transparentes)
+const maskableSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="crGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F43F5E"/>
+      <stop offset="50%" stop-color="#E11D48"/>
+      <stop offset="100%" stop-color="#FB923C"/>
+    </linearGradient>
+    <linearGradient id="crBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E1E24"/>
+      <stop offset="100%" stop-color="#0E0F14"/>
+    </linearGradient>
+    <filter id="crGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#E11D48" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- Fondo sólido completo 100% para que Android recorte directo sin marco blanco -->
+  <rect width="100" height="100" fill="url(#crBg)"/>
+
+  <!-- Flechas rewind icónicas en la Safe Zone -->
+  <g filter="url(#crGlow)">
+    <path d="M48 30L26 50L48 70V58L39 50L48 42V30Z" fill="url(#crGrad)"/>
+    <path d="M72 30L50 50L72 70V58L63 50L72 42V30Z" fill="url(#crGrad)"/>
+  </g>
+</svg>`;
+
+function renderSvg(svgText, outFile, size, bg = '#0E0F14') {
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -29,34 +55,31 @@ function render(outFile, size, bg) {
 </style>
 </head>
 <body>
-${svgContent}
+${svgText}
 </body>
 </html>`;
 
   const htmlPath = path.resolve(__dirname, `temp_${size}.html`);
   fs.writeFileSync(htmlPath, html, 'utf8');
   
-  const bgFlag = bg === 'transparent' ? '--default-background-color=00000000' : '';
-  const cmd = `${chromePath} --headless --disable-gpu --screenshot="${outFile}" --window-size=${size},${size} ${bgFlag} --hide-scrollbars "file:///${htmlPath.replace(/\\/g, '/')}"`;
+  const cmd = `${chromePath} --headless --disable-gpu --screenshot="${outFile}" --window-size=${size},${size} --hide-scrollbars "file:///${htmlPath.replace(/\\/g, '/')}"`;
   execSync(cmd);
   if (fs.existsSync(htmlPath)) fs.unlinkSync(htmlPath);
-  console.log(`Rendered ${path.basename(outFile)} (${size}x${size}, bg: ${bg})`);
+  console.log(`Rendered ${path.basename(outFile)} (${size}x${size})`);
 }
 
 const publicDir = path.resolve(__dirname, '../client/public');
 
-// 1. Apple Touch Icon: 180x180 px renderizado fiel de logo.svg con fondo #0E0F14 para compatibilidad total iOS
-render(path.resolve(publicDir, 'apple-touch-icon.png'), 180, '#0E0F14');
+// Guardar SVG maskable oficial en public/
+fs.writeFileSync(path.resolve(publicDir, 'logo-maskable.svg'), maskableSvg, 'utf8');
+console.log('Saved logo-maskable.svg');
 
-// 2. Iconos estándar PWA: renderizados 100% idénticos a logo.svg con transparencia original
-render(path.resolve(publicDir, 'icon-192.png'), 192, 'transparent');
-render(path.resolve(publicDir, 'icon-512.png'), 512, 'transparent');
-render(path.resolve(publicDir, 'logo.png'), 512, 'transparent');
+// Renderizar versiones PNG Maskable (Full Bleed - CERO márgenes blancos en Android e iOS)
+renderSvg(maskableSvg, path.resolve(publicDir, 'icon-maskable-512.png'), 512);
+renderSvg(maskableSvg, path.resolve(publicDir, 'icon-maskable-192.png'), 192);
+renderSvg(maskableSvg, path.resolve(publicDir, 'apple-touch-icon.png'), 180);
+renderSvg(maskableSvg, path.resolve(publicDir, 'icon-512.png'), 512);
+renderSvg(maskableSvg, path.resolve(publicDir, 'icon-192.png'), 192);
+renderSvg(maskableSvg, path.resolve(publicDir, 'logo.png'), 512);
 
-// Limpiar archivos de prueba en scripts/
-['test_svg.png', 'test_dark.png', 'generate_app_icons.js'].forEach(f => {
-  const p = path.resolve(__dirname, f);
-  if (fs.existsSync(p)) fs.unlinkSync(p);
-});
-
-console.log('Todos los iconos actualizados con el logo.svg original!');
+console.log('Todos los iconos full-bleed completados exitosamente!');

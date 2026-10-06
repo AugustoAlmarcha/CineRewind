@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="crGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F43F5E"/>
+      <stop offset="50%" stop-color="#E11D48"/>
+      <stop offset="100%" stop-color="#FB923C"/>
+    </linearGradient>
+    <linearGradient id="crBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E1E24"/>
+      <stop offset="100%" stop-color="#0E0F14"/>
+    </linearGradient>
+    <filter id="crGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#E11D48" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- Fondo sólido completo 100% para que Android recorte directo sin marco blanco -->
+  <rect width="100" height="100" fill="url(#crBg)"/>
+
+  <!-- Flechas rewind icónicas en la Safe Zone -->
+  <g filter="url(#crGlow)">
+    <path d="M48 30L26 50L48 70V58L39 50L48 42V30Z" fill="url(#crGrad)"/>
+    <path d="M72 30L50 50L72 70V58L63 50L72 42V30Z" fill="url(#crGrad)"/>
+  </g>
+</svg>
