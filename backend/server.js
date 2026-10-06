@@ -70,6 +70,9 @@ const origenesPermitidos = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:3000',
+  'https://cinerewind.com.ar',
+  'https://www.cinerewind.com.ar',
+  'https://cine-rewind.vercel.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
