@@ -25,7 +25,9 @@ if (hasExternalPostgres) {
     const configConexion = process.env.DATABASE_URL
       ? {
           connectionString: process.env.DATABASE_URL,
-          ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+          ssl: (process.env.NODE_ENV === 'production' || process.env.DATABASE_URL.includes('sslmode') || process.env.DATABASE_URL.includes('neon.tech'))
+            ? { rejectUnauthorized: false }
+            : false,
         }
       : {
           user: process.env.DB_USER,
