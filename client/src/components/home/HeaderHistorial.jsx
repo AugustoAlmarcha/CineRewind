@@ -23,7 +23,7 @@ export default function HeaderHistorial({
   setAmigosFiltro,
   timelineCompleto = [],
 }) {
-  const puedeSeleccionar = (!vistaTotal && mesSeleccionado !== null) || (vistaTotal && serieSeleccionadaTotal !== null);
+  const puedeSeleccionar = !vistaTotal || (vistaTotal && serieSeleccionadaTotal !== null);
   const [amigosDisponibles, setAmigosDisponibles] = useState([]);
   const [menuAmigosAbierto, setMenuAmigosAbierto] = useState(false);
   const menuAmigosRef = useRef(null);
@@ -333,7 +333,7 @@ export default function HeaderHistorial({
           )}
         </div>
 
-        {/* Botón Seleccionar (borrado masivo) */}
+        {/* Botón Seleccionar para eliminar (borrado masivo) */}
         {puedeSeleccionar && (
           <button
             type="button"
@@ -341,13 +341,15 @@ export default function HeaderHistorial({
               setModoSeleccion(!modoSeleccion);
               setSeleccionadosParaBorrar([]);
             }}
-            className={`text-xs font-black px-3 py-2 rounded-xl border transition cursor-pointer ${
+            className={`flex items-center gap-1.5 text-xs font-black px-3 py-2 rounded-xl border transition cursor-pointer select-none ${
               modoSeleccion 
-                ? 'bg-neutral-800 text-white border-neutral-700' 
-                : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300'
+                ? 'bg-rose-600 text-white border-rose-500 shadow-md hover:bg-rose-700' 
+                : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-300 dark:hover:border-rose-500/30'
             }`}
+            title="Seleccionar obras, meses o años para eliminar"
           >
-            {modoSeleccion ? 'Cancelar' : 'Seleccionar'}
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>{modoSeleccion ? 'Cancelar' : 'Eliminar obras'}</span>
           </button>
         )}
 

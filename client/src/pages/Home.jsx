@@ -153,6 +153,48 @@ export default function Home({ actualizarTrigger }) {
     );
   };
 
+  const toggleSeleccionCarpeta = (itemsDeLaCarpeta = []) => {
+    const idsDeLaCarpeta = itemsDeLaCarpeta
+      .map((item) => (item.id !== undefined ? item.id : item.historial_id))
+      .filter((id) => id !== undefined && id !== null);
+
+    if (idsDeLaCarpeta.length === 0) return;
+
+    setSeleccionadosParaBorrar((prev) => {
+      const todosSeleccionados = idsDeLaCarpeta.every((id) => prev.includes(id));
+      if (todosSeleccionados) {
+        return prev.filter((id) => !idsDeLaCarpeta.includes(id));
+      } else {
+        const nuevoSet = new Set([...prev, ...idsDeLaCarpeta]);
+        return Array.from(nuevoSet);
+      }
+    });
+  };
+
+  const solicitarEliminarCarpetaDirecto = (carpeta) => {
+    const idsABorrar = (carpeta.items || [])
+      .map((item) => (item.id !== undefined ? item.id : item.historial_id))
+      .filter((id) => id !== undefined && id !== null);
+
+    if (idsABorrar.length === 0) return;
+
+    setDialogoConfirmar({
+      abierto: true,
+      titulo: `¿Eliminar todo ${carpeta.etiqueta}?`,
+      mensaje: `Se quitarán permanentemente las ${idsABorrar.length} ${idsABorrar.length === 1 ? 'obra' : 'obras'} registradas en este período.`,
+      onConfirm: async () => {
+        setDialogoConfirmar((prev) => ({ ...prev, abierto: false }));
+        try {
+          await eliminarLoteAPI(idsABorrar);
+          await cargarDatos();
+        } catch (err) {
+          console.error('Error al eliminar carpeta en lote:', err);
+          cargarDatos();
+        }
+      },
+    });
+  };
+
   const handleAvanzar = async (serie, amigos = []) => {
     if (!usuario?.id) return;
     try {
@@ -546,6 +588,8 @@ export default function Home({ actualizarTrigger }) {
               modoSeleccion={modoSeleccion}
               seleccionadosParaBorrar={seleccionadosParaBorrar}
               onToggleItem={toggleSeleccionItem}
+              onToggleCarpeta={toggleSeleccionCarpeta}
+              onEliminarCarpetaDirecto={solicitarEliminarCarpetaDirecto}
               onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
               busquedaHistorial={busquedaHistorial}
               filtroTipo={filtroTipo}

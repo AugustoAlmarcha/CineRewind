@@ -81,6 +81,8 @@ export default function GrillaHistorial({
   modoSeleccion,
   seleccionadosParaBorrar = [],
   onToggleItem,
+  onToggleCarpeta,
+  onEliminarCarpetaDirecto,
   onAbrirDetalleTimeline,
   busquedaHistorial = '',
   filtroTipo = '',
@@ -279,6 +281,10 @@ export default function GrillaHistorial({
         carpetas={carpetasAnios}
         tituloVacio={soloConAmigos ? "No tienes registros compartidos con esos amigos." : "No hay registros en tu historial todavía."}
         onSeleccionar={onSeleccionarAnio}
+        modoSeleccion={modoSeleccion}
+        seleccionadosParaBorrar={seleccionadosParaBorrar}
+        onToggleCarpeta={onToggleCarpeta}
+        onEliminarCarpetaDirecto={onEliminarCarpetaDirecto}
       />
     );
   }
@@ -306,6 +312,10 @@ export default function GrillaHistorial({
         carpetas={carpetasMeses}
         tituloVacio={soloConAmigos ? `Sin registros compartidos con esos amigos en ${anioSeleccionado}.` : `No hay registros en ${anioSeleccionado}.`}
         onSeleccionar={onSeleccionarMes}
+        modoSeleccion={modoSeleccion}
+        seleccionadosParaBorrar={seleccionadosParaBorrar}
+        onToggleCarpeta={onToggleCarpeta}
+        onEliminarCarpetaDirecto={onEliminarCarpetaDirecto}
       />
     );
   }

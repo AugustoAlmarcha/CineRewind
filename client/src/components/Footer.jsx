@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Film, Heart, Shield, Sparkles } from 'lucide-react';
+import { Film, Heart, Shield, Sparkles, Coffee } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -68,6 +68,49 @@ export default function Footer() {
             </div>
           </div>
 
+        </div>
+
+        {/* Banner de Apoyo / Donaciones: Cafecito & Buy Me a Coffee */}
+        <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-orange-500/10 border border-amber-500/20 dark:border-rose-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3 text-center sm:text-left">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0 shadow-inner">
+              <Coffee className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-black text-neutral-900 dark:text-white flex items-center justify-center sm:justify-start gap-1.5">
+                ¿Te gusta CineRewind? Apoyá el proyecto <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              </h4>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                Tu aporte nos ayuda a pagar los servidores en la nube y mantener la plataforma 100% libre de anuncios molestos.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap justify-center">
+            {/* Cafecito (Argentina - Mercado Pago) */}
+            <a
+              href="https://cafecito.app/cinerewind"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-[#00C9FF] hover:bg-[#00b2e3] text-black shadow-md hover:scale-105 active:scale-95 transition cursor-pointer"
+              title="Invitá un Cafecito en Pesos Argentinos (Mercado Pago)"
+            >
+              <span>☕</span>
+              <span>Cafecito (Arg)</span>
+            </a>
+
+            {/* Buy Me a Coffee (Internacional - USD) */}
+            <a
+              href="https://buymeacoffee.com/cinerewind"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-[#FFDD00] hover:bg-[#ebd000] text-neutral-950 shadow-md hover:scale-105 active:scale-95 transition cursor-pointer"
+              title="Buy Me a Coffee (Donaciones internacionales)"
+            >
+              <span>💛</span>
+              <span>Buy Me a Coffee</span>
+            </a>
+          </div>
         </div>
 
         {/* Fila Inferior con Copyright y Atribución TMDb */}
