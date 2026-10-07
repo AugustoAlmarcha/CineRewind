@@ -21,7 +21,10 @@ const {
   proxyImagen,
   guardarCalificacionSerieTemporada,
   obtenerCalificacionesSerie,
-  obtenerCalificacionesSeriesUsuario
+  obtenerCalificacionesSeriesUsuario,
+  completarTemporadaSerie,
+  completarSerieTotal,
+  limpiarDuplicadosSerie
 } = require('../controllers/historialController');
 
 
@@ -78,8 +81,12 @@ router.post('/registrar', verificarToken, registrarVisualizacion);
 router.post('/registrar-lote', verificarToken, registrarLoteVisualizaciones);
 
 /* =========================================================================
-   4. RUTAS DE ACTUALIZACIÓN
+   4. RUTAS DE ACTUALIZACIÓN Y GESTIÓN AVANZADA DE SERIES
    ========================================================================= */
+router.post('/series/completar-temporada', verificarToken, completarTemporadaSerie);
+router.post('/series/completar-serie', verificarToken, completarSerieTotal);
+router.post('/series/limpiar-duplicados', verificarToken, limpiarDuplicadosSerie);
+
 router.patch('/actualizar-plataforma-serie', verificarToken, actualizarPlataformaSerie);
 router.patch('/:id/resenia', verificarToken, actualizarReseniaYCalificacion);
 

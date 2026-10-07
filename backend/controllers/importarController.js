@@ -176,7 +176,7 @@ function clasificarFilaNetflix(tituloCompleto) {
   }
 
   const tituloPrincipal = partes[0];
-  let temporada = 1;
+  let temporada = null;
   let temporadaYaEncontrada = false;
   let episodioDirecto = null;
   const nombresEpisodio = [];
@@ -228,17 +228,70 @@ function clasificarFilaNetflix(tituloCompleto) {
   return {
     tipo: 'serie',
     titulo: tituloPrincipal,
-    temporada,
+    temporada: temporadaYaEncontrada ? temporada : null,
+    temporadaDetectada: temporadaYaEncontrada,
     nombresEpisodio,
     episodioDirecto
   };
 }
 
-// Memoria de sesión para deducir secuencias decrecientes (Netflix lee del más nuevo al más viejo)
-const memoriaUltimoEpisodio = new Map();
+// Memoria de sesión inteligente: mapea usuario_obra -> { ultimaTemp, ultimoEp, ultimaFecha }
+const memoriaSecuenciaImportacion = new Map();
 
-// 8. Comparación bilingüe con Fuzzy Matching y fallback secuencial
-function resolverNumeroEpisodio(nombresEpisodio, listaEpisodiosTmdb, claveSecuencia) {
+// Buscar un episodio en TODAS las temporadas de la serie en TMDb (si Netflix no especificó temporada)
+async function buscarEpisodioEnTodasLasTemporadas(tmdbId, nombresEpisodio, cacheTemporadas) {
+  if (!tmdbId || !nombresEpisodio || nombresEpisodio.length === 0) return null;
+
+  try {
+    const TMDB_API_KEY = process.env.TMDB_API_KEY;
+    const urlDetalle = `https://api.themoviedb.org/3/tv/${tmdbId}?api_key=${TMDB_API_KEY}&language=es-MX`;
+    const resDetalle = await fetch(urlDetalle);
+    if (!resDetalle.ok) return null;
+    const datosSerie = await resDetalle.json();
+    const temporadas = (datosSerie.seasons || []).filter((s) => s.season_number > 0);
+
+    for (const t of temporadas) {
+      const tempNum = t.season_number;
+      const claveCache = `${tmdbId}_T${tempNum}`;
+      let episodiosTemp = cacheTemporadas.get(claveCache);
+      if (!episodiosTemp) {
+        episodiosTemp = await obtenerEpisodiosDeTemporada(tmdbId, tempNum);
+        cacheTemporadas.set(claveCache, episodiosTemp);
+      }
+
+      for (const nombre of nombresEpisodio) {
+        const limpio = limpiarTexto(nombre);
+        if (!limpio) continue;
+
+        for (const ep of episodiosTemp) {
+          if (ep.nombreEn === limpio || ep.nombreEs === limpio) {
+            return {
+              temporada: tempNum,
+              episodio: ep.numero,
+              confianza: 'alta',
+              nombreEpisodio: ep.nombreEsOriginal || ep.nombreEnOriginal || nombre
+            };
+          }
+          const sim = Math.max(calcularSimilitud(limpio, ep.nombreEn), calcularSimilitud(limpio, ep.nombreEs));
+          if (sim >= 0.75) {
+            return {
+              temporada: tempNum,
+              episodio: ep.numero,
+              confianza: sim >= 0.85 ? 'alta' : 'media',
+              nombreEpisodio: ep.nombreEsOriginal || ep.nombreEnOriginal || nombre
+            };
+          }
+        }
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+// 8. Comparación bilingüe con Fuzzy Matching y fallback secuencial progresivo
+function resolverNumeroEpisodio(nombresEpisodio, listaEpisodiosTmdb, claveSecuencia, sugerenciaAnterior = null) {
   let mejorMatch = null;
   let maxSimilitud = 0;
 
@@ -248,9 +301,8 @@ function resolverNumeroEpisodio(nombresEpisodio, listaEpisodiosTmdb, claveSecuen
       if (!limpio) continue;
 
       for (const ep of listaEpisodiosTmdb) {
-        // Coincidencia exacta o inclusión directa
         if (ep.nombreEn === limpio || ep.nombreEs === limpio) {
-          memoriaUltimoEpisodio.set(claveSecuencia, ep.numero);
+          memoriaSecuenciaImportacion.set(claveSecuencia, ep.numero);
           return {
             numero: ep.numero,
             confianza: 'alta',
@@ -258,14 +310,12 @@ function resolverNumeroEpisodio(nombresEpisodio, listaEpisodiosTmdb, claveSecuen
           };
         }
 
-        // Fuzzy match en Inglés
         const simEn = calcularSimilitud(limpio, ep.nombreEn);
         if (simEn > maxSimilitud) {
           maxSimilitud = simEn;
           mejorMatch = ep;
         }
 
-        // Fuzzy match en Español
         const simEs = calcularSimilitud(limpio, ep.nombreEs);
         if (simEs > maxSimilitud) {
           maxSimilitud = simEs;
@@ -274,9 +324,8 @@ function resolverNumeroEpisodio(nombresEpisodio, listaEpisodiosTmdb, claveSecuen
       }
     }
 
-    // Umbral de Fuzzy Matching (>= 70% de similitud)
     if (maxSimilitud >= 0.70 && mejorMatch) {
-      memoriaUltimoEpisodio.set(claveSecuencia, mejorMatch.numero);
+      memoriaSecuenciaImportacion.set(claveSecuencia, mejorMatch.numero);
       return {
         numero: mejorMatch.numero,
         confianza: maxSimilitud >= 0.85 ? 'alta' : 'media',
@@ -292,20 +341,30 @@ function resolverNumeroEpisodio(nombresEpisodio, listaEpisodiosTmdb, claveSecuen
   if (total.includes('euphoria') && total.includes('parte 2')) return { numero: 21, confianza: 'media', nombreEpisodio: 'Euphoria: Parte 2' };
   if (total.includes('euphoria') && total.includes('parte 1')) return { numero: 20, confianza: 'alta', nombreEpisodio: 'Euphoria: Parte 1' };
 
-  // Inferencia secuencial decreciente
-  if (memoriaUltimoEpisodio.has(claveSecuencia)) {
-    const ultimoVisto = memoriaUltimoEpisodio.get(claveSecuencia);
-    if (ultimoVisto > 1) {
-      const deducido = ultimoVisto - 1;
-      memoriaUltimoEpisodio.set(claveSecuencia, deducido);
-      return {
-        numero: deducido,
-        confianza: 'media',
-        nombreEpisodio: nombresEpisodio[0] || `Episodio ${deducido}`
-      };
-    }
+  // Inferencia secuencial progresiva (avanza 1, 2, 3... en vez de quedarse clavado en 1)
+  if (memoriaSecuenciaImportacion.has(claveSecuencia)) {
+    const ultimoVisto = memoriaSecuenciaImportacion.get(claveSecuencia);
+    const siguiente = (ultimoVisto || 0) + 1;
+    memoriaSecuenciaImportacion.set(claveSecuencia, siguiente);
+    return {
+      numero: siguiente,
+      confianza: 'media',
+      nombreEpisodio: nombresEpisodio[0] || `Episodio ${siguiente}`
+    };
   }
 
+  // Si hay sugerencia anterior en la misma racha
+  if (sugerenciaAnterior && sugerenciaAnterior > 0) {
+    const siguiente = sugerenciaAnterior + 1;
+    memoriaSecuenciaImportacion.set(claveSecuencia, siguiente);
+    return {
+      numero: siguiente,
+      confianza: 'media',
+      nombreEpisodio: nombresEpisodio[0] || `Episodio ${siguiente}`
+    };
+  }
+
+  memoriaSecuenciaImportacion.set(claveSecuencia, 1);
   return {
     numero: 1,
     confianza: 'baja',
@@ -649,30 +708,57 @@ const importarLoteCSV = async (req, res) => {
         continue;
       }
 
+      let temporadaFinal = obraInfo.temporada;
       let numeroEpisodio = obraInfo.episodioDirecto;
-      const claveSecuencia = `${usuarioId}_${obraId}_T${obraInfo.temporada}`;
 
-      if (tipoFinal === 'serie' && !numeroEpisodio && tmdbId && obraInfo.temporada) {
-        const claveTemporada = `${tmdbId}_T${obraInfo.temporada}`;
-        let listaEpisodios = cacheTemporadas.get(claveTemporada);
+      if (tipoFinal === 'serie') {
+        const claveSerie = `${usuarioId}_${obraId}`;
+        const tracker = memoriaSecuenciaImportacion.get(claveSerie) || { ultimaTemp: 1, ultimoEp: 0 };
 
-        if (!listaEpisodios) {
-          listaEpisodios = await obtenerEpisodiosDeTemporada(tmdbId, obraInfo.temporada);
-          cacheTemporadas.set(claveTemporada, listaEpisodios);
+        // 1. Si Netflix no puso temporada explícita (ej. Good Girls: Egg Rolls), buscar en TODAS las temporadas de TMDb
+        if (!obraInfo.temporadaDetectada && obraInfo.nombresEpisodio?.length > 0 && tmdbId) {
+          const matchGlobal = await buscarEpisodioEnTodasLasTemporadas(tmdbId, obraInfo.nombresEpisodio, cacheTemporadas);
+          if (matchGlobal) {
+            temporadaFinal = matchGlobal.temporada;
+            numeroEpisodio = matchGlobal.episodio;
+          }
         }
 
-        const resEp = resolverNumeroEpisodio(
-          obraInfo.nombresEpisodio,
-          listaEpisodios,
-          claveSecuencia
-        );
-        numeroEpisodio = resEp.numero;
-      } else if (numeroEpisodio) {
-        memoriaUltimoEpisodio.set(claveSecuencia, numeroEpisodio);
-      }
+        // 2. Si aún no tenemos temporada, heredar la temporada de la racha actual o 1
+        if (!temporadaFinal) {
+          temporadaFinal = tracker.ultimaTemp || 1;
+        }
 
-      if (tipoFinal === 'serie' && !numeroEpisodio) {
-        numeroEpisodio = 1;
+        // 3. Si aún no tenemos episodio, buscar en la temporada específica
+        if (!numeroEpisodio && tmdbId && temporadaFinal) {
+          const claveTemporada = `${tmdbId}_T${temporadaFinal}`;
+          let listaEpisodios = cacheTemporadas.get(claveTemporada);
+          if (!listaEpisodios) {
+            listaEpisodios = await obtenerEpisodiosDeTemporada(tmdbId, temporadaFinal);
+            cacheTemporadas.set(claveTemporada, listaEpisodios);
+          }
+
+          const claveSecuencia = `${usuarioId}_${obraId}_T${temporadaFinal}`;
+          const resEp = resolverNumeroEpisodio(
+            obraInfo.nombresEpisodio,
+            listaEpisodios,
+            claveSecuencia,
+            tracker.ultimaTemp === temporadaFinal ? tracker.ultimoEp : 0
+          );
+          numeroEpisodio = resEp.numero;
+        }
+
+        // 4. Fallback secuencial progresivo (1, 2, 3... en vez de quedarse clavado en 1)
+        if (!numeroEpisodio) {
+          numeroEpisodio = (tracker.ultimaTemp === temporadaFinal ? tracker.ultimoEp : 0) + 1;
+        }
+
+        // Actualizar tracker de racha
+        memoriaSecuenciaImportacion.set(claveSerie, {
+          ultimaTemp: temporadaFinal,
+          ultimoEp: numeroEpisodio,
+          fecha: fechaVisto
+        });
       }
 
       let existe = false;
@@ -680,7 +766,7 @@ const importarLoteCSV = async (req, res) => {
         const check = await pool.query(
           `SELECT id FROM historial_visualizaciones 
            WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5 LIMIT 1`,
-          [usuarioId, obraId, obraInfo.temporada, numeroEpisodio, fechaVisto]
+          [usuarioId, obraId, temporadaFinal, numeroEpisodio, fechaVisto]
         );
         existe = check.rows.length > 0;
       } else {
@@ -697,7 +783,7 @@ const importarLoteCSV = async (req, res) => {
         listaOmitidos.push({
           titulo: rawTitulo,
           motivo: tipoFinal === 'serie'
-            ? `Ya registrado (T${obraInfo.temporada}: Ep. ${numeroEpisodio})`
+            ? `Ya registrado (T${temporadaFinal}: Ep. ${numeroEpisodio})`
             : 'Ya registrado previamente',
           tipo: 'ya_visto'
         });
@@ -711,7 +797,7 @@ const importarLoteCSV = async (req, res) => {
         [
           usuarioId,
           obraId,
-          tipoFinal === 'serie' ? obraInfo.temporada : null,
+          tipoFinal === 'serie' ? temporadaFinal : null,
           tipoFinal === 'serie' ? numeroEpisodio : null,
           fechaVisto
         ]

@@ -70,10 +70,12 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
       const texto = await archivo.text();
       const lineas = texto.split(/\r?\n/).filter((l) => l.trim().length > 0);
       const datos = lineas[0].toLowerCase().includes('title') ? lineas.slice(1) : lineas;
+      // Invertir para procesar en orden cronológico real (del más antiguo al más reciente)
+      const datosCronologicos = [...datos].reverse();
 
       const token = localStorage.getItem('cinerewind_token');
-      const tamanoLote = 15;
-      const totalLotes = Math.ceil(datos.length / tamanoLote);
+      const tamanoLote = 25;
+      const totalLotes = Math.ceil(datosCronologicos.length / tamanoLote);
 
       let totalImportados = 0;
       let totalOmitidos = 0;
@@ -81,7 +83,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
       let listaOmitidosTotal = [];
 
       for (let i = 0; i < totalLotes; i++) {
-        const bloque = datos.slice(i * tamanoLote, (i + 1) * tamanoLote);
+        const bloque = datosCronologicos.slice(i * tamanoLote, (i + 1) * tamanoLote);
         const primerTitulo = bloque[0].split(',')[0].replace(/"/g, '');
         setItemActual(primerTitulo);
 

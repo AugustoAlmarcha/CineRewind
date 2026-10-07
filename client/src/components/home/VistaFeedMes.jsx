@@ -1,5 +1,6 @@
 import React from 'react';
 import TimelineScrubber from './TimelineScrubber';
+import { Trash2 } from 'lucide-react';
 
 const MESES_NOMBRES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -12,6 +13,7 @@ export default function VistaFeedMes({
   modoSeleccion,
   seleccionadosParaBorrar,
   onToggleItem,
+  onEliminarItemDirecto,
   onAbrirDetalleTimeline,
   busquedaHistorial,
   nombresMeses = MESES_NOMBRES
@@ -107,7 +109,7 @@ export default function VistaFeedMes({
                         onAbrirDetalleTimeline(item);
                       }
                     }}
-                    className={`aspect-square relative rounded-3xl overflow-hidden cursor-pointer transition-all duration-200 select-none shadow-sm ${
+                    className={`aspect-square relative rounded-3xl overflow-hidden cursor-pointer transition-all duration-200 select-none shadow-sm group ${
                       seleccionado
                         ? 'ring-4 ring-rose-600 border-transparent scale-95'
                         : `bg-neutral-900 hover:scale-[1.02] ${estiloBorde}`
@@ -234,6 +236,21 @@ export default function VistaFeedMes({
                       >
                         <span className="text-xs font-black">✓</span>
                       </div>
+                    )}
+
+                    {/* Botón de borrado directo individual */}
+                    {!modoSeleccion && onEliminarItemDirecto && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEliminarItemDirecto(item);
+                        }}
+                        className="absolute top-2.5 right-2.5 w-7 h-7 rounded-xl bg-black/75 hover:bg-rose-600 text-neutral-300 hover:text-white border border-white/20 hover:border-rose-500 backdrop-blur-md flex items-center justify-center transition-all duration-150 cursor-pointer shadow-lg active:scale-90 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 z-10"
+                        title={esCapitulo ? `Eliminar T${item.temporada} E${item.episodio}` : `Eliminar este registro`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     )}
                   </div>
                 );

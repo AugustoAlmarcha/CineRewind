@@ -204,6 +204,42 @@ export default function Home({ actualizarTrigger }) {
     });
   };
 
+  const solicitarEliminarItemDirecto = (item) => {
+    const idABorrar = item.id !== undefined ? item.id : item.historial_id;
+    if (!idABorrar) return;
+
+    const esCap = Boolean(item.temporada);
+    const titulo = item.titulo || 'este registro';
+    const sub = esCap ? `(T${item.temporada} · E${item.episodio})` : '';
+
+    setDialogoConfirmar({
+      abierto: true,
+      titulo: `¿Eliminar "${titulo}" ${sub}?`,
+      mensaje: `Se quitará este registro de tu cuenta y diario.`,
+      onConfirm: async () => {
+        setDialogoConfirmar((prev) => ({ ...prev, abierto: false }));
+
+        setSerieSeleccionadaTotal((prev) => {
+          if (!prev) return null;
+          const nuevosRegistros = (prev.registros || []).filter((reg) => {
+            const regId = reg.id !== undefined ? reg.id : reg.historial_id;
+            return regId !== idABorrar;
+          });
+          if (nuevosRegistros.length === 0) return null;
+          return { ...prev, registros: nuevosRegistros };
+        });
+
+        try {
+          await eliminarVisualizacionAPI(idABorrar);
+          await cargarDatos();
+        } catch (err) {
+          console.error('Error al eliminar registro:', err);
+          cargarDatos();
+        }
+      },
+    });
+  };
+
   const handleAvanzar = async (serie, amigos = []) => {
     if (!usuario?.id) return;
     try {
@@ -600,6 +636,8 @@ export default function Home({ actualizarTrigger }) {
               onToggleCarpeta={toggleSeleccionCarpeta}
               onEliminarCarpetaDirecto={solicitarEliminarCarpetaDirecto}
               onEliminarSerieDirecto={solicitarEliminarCarpetaDirecto}
+              onEliminarItemDirecto={solicitarEliminarItemDirecto}
+              onRecargarDatos={cargarDatos}
               onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
               busquedaHistorial={busquedaHistorial}
               filtroTipo={filtroTipo}

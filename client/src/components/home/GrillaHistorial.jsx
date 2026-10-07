@@ -84,6 +84,8 @@ export default function GrillaHistorial({
   onToggleCarpeta,
   onEliminarCarpetaDirecto,
   onEliminarSerieDirecto,
+  onEliminarItemDirecto,
+  onRecargarDatos,
   onAbrirDetalleTimeline,
   busquedaHistorial = '',
   filtroTipo = '',
@@ -256,9 +258,15 @@ export default function GrillaHistorial({
 
   // CASO 1: Obra (Serie, Saga o Película) abierta en Total Histórico
   if (vistaTotal && serieSeleccionadaTotal) {
+    const serieActualizada = obrasTotalesUnificadas.find(
+      (o) => o.id_agrupador === serieSeleccionadaTotal.id_agrupador ||
+             (o.obra_id && o.obra_id === serieSeleccionadaTotal.obra_id) ||
+             (o.tmdb_id && o.tmdb_id === serieSeleccionadaTotal.tmdb_id)
+    ) || serieSeleccionadaTotal;
+
     return (
       <VistaSerieTotal
-        serie={serieSeleccionadaTotal}
+        serie={serieActualizada}
         gruposPorDia={gruposSerieTotalPorDia}
         resolverImagen={resolverImagen}
         onAbrirDetalleTimeline={onAbrirDetalleTimeline}
@@ -266,6 +274,8 @@ export default function GrillaHistorial({
         seleccionadosParaBorrar={seleccionadosParaBorrar}
         onToggleItem={onToggleItem}
         onEliminarSerieDirecto={onEliminarSerieDirecto || onEliminarCarpetaDirecto}
+        onEliminarItemDirecto={onEliminarItemDirecto}
+        onRecargarDatos={onRecargarDatos}
       />
     );
   }
@@ -359,6 +369,7 @@ export default function GrillaHistorial({
       modoSeleccion={modoSeleccion}
       seleccionadosParaBorrar={seleccionadosParaBorrar}
       onToggleItem={onToggleItem}
+      onEliminarItemDirecto={onEliminarItemDirecto}
       busquedaHistorial={busquedaHistorial}
       nombresMeses={nombresMesesLista}
     />

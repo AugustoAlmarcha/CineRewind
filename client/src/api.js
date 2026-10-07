@@ -666,3 +666,45 @@ export const eliminarVisualizacionAdminAPI = async (visId) => {
   }
   return data;
 };
+
+// =========================================================================
+// GESTIÓN AVANZADA DE SERIES (Completar y Limpiar)
+// =========================================================================
+export const completarTemporadaSerieAPI = async (obraId, temporada, fechaVisto = null, plataforma = null) => {
+  const res = await fetch('/api/historial/series/completar-temporada', {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ obra_id: obraId, temporada, fecha_visto: fechaVisto, plataforma }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al completar temporada');
+  }
+  return res.json();
+};
+
+export const completarSerieTotalAPI = async (obraId, fechaVisto = null, plataforma = null) => {
+  const res = await fetch('/api/historial/series/completar-serie', {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ obra_id: obraId, fecha_visto: fechaVisto, plataforma }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al completar serie');
+  }
+  return res.json();
+};
+
+export const limpiarDuplicadosSerieAPI = async (obraId, modo = 'eliminar_duplicados') => {
+  const res = await fetch('/api/historial/series/limpiar-duplicados', {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ obra_id: obraId, modo }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al limpiar duplicados');
+  }
+  return res.json();
+};

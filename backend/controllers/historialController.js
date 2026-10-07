@@ -999,6 +999,257 @@ const obtenerCalificacionesSeriesUsuario = async (req, res) => {
   }
 };
 
+// ========================================================
+// COMPLETAR TEMPORADA ESPECÍFICA (Rellena huecos de la temporada)
+// ========================================================
+const completarTemporadaSerie = async (req, res) => {
+  const usuario_id = req.usuario?.id;
+  const { obra_id, temporada, fecha_visto, plataforma } = req.body;
+
+  if (!usuario_id || !obra_id || !temporada) {
+    return res.status(400).json({ error: 'Faltan parámetros requeridos (obra_id, temporada)' });
+  }
+
+  try {
+    const obraRes = await pool.query(
+      'SELECT tmdb_id, titulo, poster_path, seasons_info FROM obras_catalogo WHERE id = $1',
+      [obra_id]
+    );
+    if (obraRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Obra no encontrada' });
+    }
+
+    const { tmdb_id, seasons_info } = obraRes.rows[0];
+    const tempNum = parseInt(temporada, 10);
+
+    let seasonsList = Array.isArray(seasons_info)
+      ? seasons_info
+      : typeof seasons_info === 'string'
+      ? JSON.parse(seasons_info || '[]')
+      : [];
+    let infoTemp = seasonsList.find((s) => Number(s.temporada) === tempNum);
+
+    let totalCaps = infoTemp?.episodios;
+    if (!totalCaps && process.env.TMDB_API_KEY && tmdb_id) {
+      const url = `https://api.themoviedb.org/3/tv/${tmdb_id}/season/${tempNum}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
+      const tmdbRes = await fetch(url);
+      if (tmdbRes.ok) {
+        const data = await tmdbRes.json();
+        totalCaps = (data.episodes || []).length;
+      }
+    }
+
+    if (!totalCaps || totalCaps <= 0) {
+      return res.status(400).json({ error: 'No se pudo determinar el total de episodios de la temporada' });
+    }
+
+    const yaVistosRes = await pool.query(
+      'SELECT DISTINCT episodio FROM historial_visualizaciones WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3',
+      [usuario_id, obra_id, tempNum]
+    );
+    const episodiosExistentes = new Set(yaVistosRes.rows.map((r) => r.episodio));
+
+    const fechaFinal = fecha_visto || new Date().toISOString().split('T')[0];
+    let insertados = 0;
+
+    for (let ep = 1; ep <= totalCaps; ep++) {
+      if (!episodiosExistentes.has(ep)) {
+        const esFinTemp = ep === totalCaps;
+        await pool.query(
+          `INSERT INTO historial_visualizaciones 
+             (usuario_id, obra_id, temporada, episodio, fecha_visto, plataforma, es_final_temporada)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [usuario_id, obra_id, tempNum, ep, fechaFinal, plataforma || 'Netflix', esFinTemp]
+        );
+        insertados++;
+      }
+    }
+
+    res.json({
+      mensaje: `Temporada ${tempNum} completada (${insertados} episodios nuevos registrados).`,
+      insertados,
+      total_episodios: totalCaps
+    });
+  } catch (err) {
+    console.error('Error al completar temporada:', err.message);
+    res.status(500).json({ error: 'Error al completar la temporada' });
+  }
+};
+
+// ========================================================
+// COMPLETAR SERIE COMPLETA (Rellena todas las temporadas faltantes)
+// ========================================================
+const completarSerieTotal = async (req, res) => {
+  const usuario_id = req.usuario?.id;
+  const { obra_id, fecha_visto, plataforma } = req.body;
+
+  if (!usuario_id || !obra_id) {
+    return res.status(400).json({ error: 'Faltan parámetros requeridos (obra_id)' });
+  }
+
+  try {
+    const obraRes = await pool.query(
+      'SELECT tmdb_id, titulo, poster_path, total_temporadas, seasons_info FROM obras_catalogo WHERE id = $1',
+      [obra_id]
+    );
+    if (obraRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Obra no encontrada' });
+    }
+
+    const { tmdb_id, total_temporadas, seasons_info } = obraRes.rows[0];
+
+    let seasonsList = Array.isArray(seasons_info)
+      ? seasons_info
+      : typeof seasons_info === 'string'
+      ? JSON.parse(seasons_info || '[]')
+      : [];
+
+    if (seasonsList.length === 0 && process.env.TMDB_API_KEY && tmdb_id) {
+      const url = `https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${process.env.TMDB_API_KEY}&language=es-MX`;
+      const tmdbRes = await fetch(url);
+      if (tmdbRes.ok) {
+        const d = await tmdbRes.json();
+        seasonsList = (d.seasons || [])
+          .filter((s) => s.season_number > 0)
+          .map((s) => ({
+            temporada: s.season_number,
+            episodios: s.episode_count,
+            nombre: s.name
+          }));
+      }
+    }
+
+    const numTemporadas = total_temporadas || seasonsList.length;
+    if (!numTemporadas || numTemporadas <= 0) {
+      return res.status(400).json({ error: 'No se pudo determinar el total de temporadas de la serie' });
+    }
+
+    const yaVistosRes = await pool.query(
+      'SELECT temporada, episodio FROM historial_visualizaciones WHERE usuario_id = $1 AND obra_id = $2',
+      [usuario_id, obra_id]
+    );
+    const episodiosExistentes = new Set(yaVistosRes.rows.map((r) => `${r.temporada}_${r.episodio}`));
+
+    const fechaFinal = fecha_visto || new Date().toISOString().split('T')[0];
+    let insertados = 0;
+
+    for (const s of seasonsList) {
+      const tempNum = Number(s.temporada);
+      const totalCaps = Number(s.episodios) || 0;
+      if (tempNum <= 0 || totalCaps <= 0) continue;
+
+      for (let ep = 1; ep <= totalCaps; ep++) {
+        if (!episodiosExistentes.has(`${tempNum}_${ep}`)) {
+          const esFinTemp = ep === totalCaps;
+          await pool.query(
+            `INSERT INTO historial_visualizaciones 
+               (usuario_id, obra_id, temporada, episodio, fecha_visto, plataforma, es_final_temporada)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [usuario_id, obra_id, tempNum, ep, fechaFinal, plataforma || 'Netflix', esFinTemp]
+          );
+          insertados++;
+        }
+      }
+    }
+
+    // Marcar seguimiento como finalizado
+    await pool.query(
+      'UPDATE seguimiento_series SET activo = false, actualizado_en = CURRENT_TIMESTAMP WHERE usuario_id = $1 AND obra_id = $2',
+      [usuario_id, obra_id]
+    );
+
+    res.json({
+      mensaje: `¡Serie completada! Se registraron ${insertados} episodios faltantes.`,
+      insertados,
+      total_temporadas: numTemporadas
+    });
+  } catch (err) {
+    console.error('Error al completar serie total:', err.message);
+    res.status(500).json({ error: 'Error al completar la serie' });
+  }
+};
+
+// ========================================================
+// LIMPIAR DUPLICADOS O RESECUENCIAR EPISODIOS DE UNA SERIE
+// ========================================================
+const limpiarDuplicadosSerie = async (req, res) => {
+  const usuario_id = req.usuario?.id;
+  const { obra_id, modo } = req.body;
+
+  if (!usuario_id || !obra_id) {
+    return res.status(400).json({ error: 'Faltan parámetros requeridos (obra_id)' });
+  }
+
+  try {
+    if (modo === 'reordenar_secuencia') {
+      const rowsRes = await pool.query(
+        `SELECT id, temporada, episodio, fecha_visto 
+         FROM historial_visualizaciones 
+         WHERE usuario_id = $1 AND obra_id = $2 
+         ORDER BY COALESCE(temporada, 1) ASC, fecha_visto ASC, id ASC`,
+        [usuario_id, obra_id]
+      );
+
+      const rows = rowsRes.rows;
+      const porTemp = {};
+      rows.forEach((r) => {
+        const t = r.temporada || 1;
+        if (!porTemp[t]) porTemp[t] = [];
+        porTemp[t].push(r);
+      });
+
+      let actualizados = 0;
+      for (const tempStr of Object.keys(porTemp)) {
+        const itemsTemp = porTemp[tempStr];
+        for (let idx = 0; idx < itemsTemp.length; idx++) {
+          const item = itemsTemp[idx];
+          const nuevoEp = idx + 1;
+          if (item.episodio !== nuevoEp) {
+            await pool.query(
+              'UPDATE historial_visualizaciones SET episodio = $1 WHERE id = $2',
+              [nuevoEp, item.id]
+            );
+            actualizados++;
+          }
+        }
+      }
+
+      return res.json({
+        mensaje: `Secuencia reordenada exitosamente (${actualizados} capítulos reordenados).`,
+        actualizados
+      });
+    }
+
+    // Modo por defecto: eliminar_duplicados
+    const dupsRes = await pool.query(
+      `DELETE FROM historial_visualizaciones 
+       WHERE id IN (
+         SELECT id FROM (
+           SELECT id, 
+                  ROW_NUMBER() OVER (
+                    PARTITION BY usuario_id, obra_id, temporada, episodio 
+                    ORDER BY fecha_visto ASC, id ASC
+                  ) as rnum
+           FROM historial_visualizaciones
+           WHERE usuario_id = $1 AND obra_id = $2 AND temporada IS NOT NULL AND episodio IS NOT NULL
+         ) t
+         WHERE t.rnum > 1
+       )
+       RETURNING id;`,
+      [usuario_id, obra_id]
+    );
+
+    const eliminados = dupsRes.rows.length;
+    res.json({
+      mensaje: `Se eliminaron ${eliminados} registros duplicados de la serie.`,
+      eliminados
+    });
+  } catch (err) {
+    console.error('Error al limpiar duplicados:', err.message);
+    res.status(500).json({ error: 'Error al limpiar duplicados' });
+  }
+};
+
 module.exports = {
   registrarVisualizacion,
   obtenerTimeline,
@@ -1015,5 +1266,8 @@ module.exports = {
   proxyImagen,
   guardarCalificacionSerieTemporada,
   obtenerCalificacionesSerie,
-  obtenerCalificacionesSeriesUsuario
+  obtenerCalificacionesSeriesUsuario,
+  completarTemporadaSerie,
+  completarSerieTotal,
+  limpiarDuplicadosSerie
 };
