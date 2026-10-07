@@ -1,6 +1,20 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { obtenerAmigosAPI } from '../../api';
-import { Calendar, Layers, Film, Tv, Users, Trash2, X, Search, ArrowUpDown, ArrowLeft } from 'lucide-react';
+import { 
+  Calendar, Layers, Film, Tv, Users, Trash2, X, Search, ArrowUpDown, ArrowLeft,
+  Flame, TrendingDown, Clock, History, CheckCircle2, Hourglass, ArrowDownAZ, ArrowUpZA, ChevronDown, Check
+} from 'lucide-react';
+
+const OPCIONES_ORDEN = [
+  { id: 'mas_vistos', label: 'Más vistos', icon: Flame, iconColor: 'text-rose-500' },
+  { id: 'menos_vistos', label: 'Menos vistos', icon: TrendingDown, iconColor: 'text-cyan-500' },
+  { id: 'recientes', label: 'Más recientes', icon: Clock, iconColor: 'text-amber-500' },
+  { id: 'antiguos', label: 'Más antiguas', icon: History, iconColor: 'text-neutral-400' },
+  { id: 'finalizadas', label: 'Finalizadas primero', icon: CheckCircle2, iconColor: 'text-emerald-500' },
+  { id: 'no_finalizadas', label: 'No finalizadas (En curso)', icon: Hourglass, iconColor: 'text-amber-500' },
+  { id: 'az', label: 'A - Z (Alfabético)', icon: ArrowDownAZ, iconColor: 'text-indigo-400' },
+  { id: 'za', label: 'Z - A (Alfabético)', icon: ArrowUpZA, iconColor: 'text-indigo-400' },
+];
 export default function HeaderHistorial({
   vistaTotal,
   setVistaTotal,
@@ -29,6 +43,8 @@ export default function HeaderHistorial({
   const [amigosDisponibles, setAmigosDisponibles] = useState([]);
   const [menuAmigosAbierto, setMenuAmigosAbierto] = useState(false);
   const menuAmigosRef = useRef(null);
+  const [menuOrdenAbierto, setMenuOrdenAbierto] = useState(false);
+  const menuOrdenRef = useRef(null);
 
   // Cargar lista de amigos confirmados
   useEffect(() => {
@@ -39,11 +55,14 @@ export default function HeaderHistorial({
       .catch(() => {});
   }, []);
 
-  // Cierra el menú al hacer clic en cualquier parte afuera
+  // Cierra los menús al hacer clic en cualquier parte afuera
   useEffect(() => {
     const handleClickAfuera = (e) => {
       if (menuAmigosRef.current && !menuAmigosRef.current.contains(e.target)) {
         setMenuAmigosAbierto(false);
+      }
+      if (menuOrdenRef.current && !menuOrdenRef.current.contains(e.target)) {
+        setMenuOrdenAbierto(false);
       }
     };
     document.addEventListener('mousedown', handleClickAfuera);
@@ -403,25 +422,62 @@ export default function HeaderHistorial({
           </div>
         )}
 
-        {/* Selector de ordenamiento en Total Histórico */}
+        {/* Selector estilizado de ordenamiento en Total Histórico con iconos Lucide */}
         {vistaTotal && !serieSeleccionadaTotal && (
-          <div className="flex items-center gap-1.5 bg-neutral-200 dark:bg-[#16161c] px-3 py-2 rounded-xl border border-neutral-300 dark:border-white/10 text-xs">
-            <ArrowUpDown className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400 shrink-0" />
-            <select
-              value={ordenTotal}
-              onChange={(e) => setOrdenTotal && setOrdenTotal(e.target.value)}
-              className="bg-transparent text-neutral-800 dark:text-neutral-200 font-bold focus:outline-none cursor-pointer text-xs pr-1"
+          <div className="relative" ref={menuOrdenRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOrdenAbierto(!menuOrdenAbierto)}
+              className="flex items-center gap-2 bg-neutral-200 dark:bg-[#16161c] hover:bg-neutral-300/70 dark:hover:bg-[#1f1f27] px-3 py-2 rounded-xl border border-neutral-300 dark:border-white/10 text-xs font-bold text-neutral-800 dark:text-neutral-200 transition cursor-pointer shadow-xs active:scale-95"
               title="Ordenar obras del catálogo"
             >
-              <option value="mas_vistos" className="bg-white dark:bg-[#181820]">🔥 Más vistos</option>
-              <option value="menos_vistos" className="bg-white dark:bg-[#181820]">📉 Menos vistos</option>
-              <option value="recientes" className="bg-white dark:bg-[#181820]">🕒 Más recientes</option>
-              <option value="antiguos" className="bg-white dark:bg-[#181820]">⏳ Más antiguas</option>
-              <option value="finalizadas" className="bg-white dark:bg-[#181820]">✅ Finalizadas primero</option>
-              <option value="no_finalizadas" className="bg-white dark:bg-[#181820]">⏳ No finalizadas (En curso)</option>
-              <option value="az" className="bg-white dark:bg-[#181820]">🔤 A - Z (Alfabético)</option>
-              <option value="za" className="bg-white dark:bg-[#181820]">🔡 Z - A (Alfabético)</option>
-            </select>
+              {(() => {
+                const actual = OPCIONES_ORDEN.find((o) => o.id === ordenTotal) || OPCIONES_ORDEN[0];
+                const IconActual = actual.icon;
+                return (
+                  <>
+                    <IconActual className={`w-3.5 h-3.5 ${actual.iconColor} shrink-0`} />
+                    <span>{actual.label}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${menuOrdenAbierto ? 'rotate-180' : ''}`} />
+                  </>
+                );
+              })()}
+            </button>
+
+            {menuOrdenAbierto && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-[#181820] border border-neutral-200 dark:border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 animate-fadeIn backdrop-blur-md">
+                <p className="text-[10px] font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500 px-2.5 py-1.5">
+                  Ordenar por
+                </p>
+                <div className="space-y-0.5">
+                  {OPCIONES_ORDEN.map((opcion) => {
+                    const esSeleccionado = ordenTotal === opcion.id;
+                    const Icono = opcion.icon;
+                    return (
+                      <button
+                        key={opcion.id}
+                        type="button"
+                        onClick={() => {
+                          if (setOrdenTotal) setOrdenTotal(opcion.id);
+                          setMenuOrdenAbierto(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                          esSeleccionado
+                            ? 'bg-rose-600 text-white shadow-sm'
+                            : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 truncate">
+                          <Icono className={`w-4 h-4 shrink-0 ${esSeleccionado ? 'text-white' : opcion.iconColor}`} />
+                          <span className="truncate">{opcion.label}</span>
+                        </div>
+                        {esSeleccionado && <Check className="w-3.5 h-3.5 stroke-[3] shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
