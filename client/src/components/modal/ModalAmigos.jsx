@@ -22,9 +22,9 @@ import {
   obtenerSolicitudesPendientesAPI,
   responderSolicitudAmistadAPI,
   obtenerAmigosAPI,
-  eliminarAmigoAPI,
   obtenerInvitacionesCovisionAPI,
-  responderInvitacionCovisionAPI
+  responderInvitacionCovisionAPI,
+  responderTodasInvitacionesCovisionAPI,
 } from '../../api';
 
 // Pestañas modulares
@@ -42,6 +42,7 @@ export default function ModalAmigos({ onClose, onActualizado }) {
   const [amigos, setAmigos] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [invitaciones, setInvitaciones] = useState([]);
+  const [cargandoTodasCovisiones, setCargandoTodasCovisiones] = useState(false);
 
   // Toast flotante estilizado
   const [notificacion, setNotificacion] = useState(null);
@@ -137,6 +138,22 @@ export default function ModalAmigos({ onClose, onActualizado }) {
       );
     } catch (err) {
       mostrarMensaje(err.message || 'Error al responder', 'error');
+    }
+  };
+
+  const handleResponderTodasCovisiones = async (accion = 'aceptar') => {
+    setCargandoTodasCovisiones(true);
+    try {
+      const res = await responderTodasInvitacionesCovisionAPI(accion);
+      await cargarListas();
+      if (accion === 'aceptar' && onActualizado) {
+        onActualizado();
+      }
+      mostrarMensaje(res.mensaje || '¡Co-visiones procesadas con éxito!', 'exito');
+    } catch (err) {
+      mostrarMensaje(err.message || 'Error al procesar co-visiones', 'error');
+    } finally {
+      setCargandoTodasCovisiones(false);
     }
   };
 
@@ -364,6 +381,8 @@ export default function ModalAmigos({ onClose, onActualizado }) {
             <TabCovisionesAmigos
               invitaciones={invitaciones}
               handleResponderCovision={handleResponderCovision}
+              handleResponderTodasCovisiones={handleResponderTodasCovisiones}
+              cargandoTodas={cargandoTodasCovisiones}
             />
           )}
 

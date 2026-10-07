@@ -5,7 +5,7 @@ import { obtenerEpisodiosTemporadaAPI, registrarLoteAPI } from '../../api';
 import { formatearFecha } from '../../utils/fechas';
 import { 
   Zap, Calendar, Check, X, Star, AlertCircle, Loader2, 
-  Sparkles, CheckCircle2, Tv, Edit3, ArrowRight
+  Sparkles, CheckCircle2, Tv, Edit3, ArrowRight, Users
 } from 'lucide-react';
 
 /**
@@ -86,6 +86,7 @@ export default function ModalGestionTemporada({
   onClose,
   onAbrirRegistrar,
   onAbrirCalificar,
+  onAbrirAsignarAcompanante,
   onCompletado,
 }) {
   const { usuario } = useAuth();
@@ -366,6 +367,18 @@ export default function ModalGestionTemporada({
                   type="button"
                   onClick={() => {
                     onClose();
+                    if (onAbrirAsignarAcompanante) onAbrirAsignarAcompanante(temporadaActiva);
+                  }}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold text-neutral-600 dark:text-neutral-300 bg-neutral-200/80 dark:bg-white/5 hover:bg-neutral-300 dark:hover:bg-white/10 transition cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Users className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Visto con...</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
                     if (onAbrirRegistrar) onAbrirRegistrar(temporadaActiva);
                   }}
                   className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold text-neutral-600 dark:text-neutral-300 bg-neutral-200/80 dark:bg-white/5 hover:bg-neutral-300 dark:hover:bg-white/10 transition cursor-pointer flex items-center justify-center gap-1.5"
@@ -516,18 +529,33 @@ export default function ModalGestionTemporada({
 
         {/* ACCIONES INFERIORES */}
         <div className="p-4 sm:p-5 border-t border-neutral-200 dark:border-white/10 bg-neutral-100/50 dark:bg-white/[0.02] flex items-center justify-between gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              if (onAbrirCalificar) onAbrirCalificar(temporadaActiva);
-            }}
-            className="p-2.5 rounded-xl text-neutral-600 dark:text-neutral-300 hover:text-amber-500 hover:bg-amber-500/10 transition cursor-pointer flex items-center gap-1.5 text-xs font-bold"
-            title="Calificar esta temporada con estrellas y reseña"
-          >
-            <Star className="w-3.5 h-3.5" />
-            <span>Calificar T{temporadaActiva}</span>
-          </button>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                if (onAbrirCalificar) onAbrirCalificar(temporadaActiva);
+              }}
+              className="p-2 rounded-xl text-neutral-600 dark:text-neutral-300 hover:text-amber-500 hover:bg-amber-500/10 transition cursor-pointer flex items-center gap-1 text-xs font-bold"
+              title="Calificar esta temporada con estrellas y reseña"
+            >
+              <Star className="w-3.5 h-3.5" />
+              <span>Calificar T{temporadaActiva}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                if (onAbrirAsignarAcompanante) onAbrirAsignarAcompanante(temporadaActiva);
+              }}
+              className="p-2 rounded-xl text-neutral-600 dark:text-neutral-300 hover:text-rose-500 hover:bg-rose-500/10 transition cursor-pointer flex items-center gap-1 text-xs font-bold"
+              title="Asignar con quién viste esta temporada"
+            >
+              <Users className="w-3.5 h-3.5 text-rose-500" />
+              <span>Visto con...</span>
+            </button>
+          </div>
 
           <div className="flex items-center gap-2">
             {!estaCompletada && (

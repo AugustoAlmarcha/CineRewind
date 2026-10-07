@@ -427,18 +427,14 @@ export default function Perfil() {
   const bannerVisual = perfilMostrado.banner_url || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1600&q=80';
   const fechaAlta = perfilMostrado.creado_en ? new Date(perfilMostrado.creado_en).toLocaleDateString('es-ES', { year: 'numeric' }) : '2024';
 
-  // Detección de perfil privado y reseñas privadas para no-amigos
-  const esPerfilPrivadoBloqueado = useMemo(() => {
-    if (esMiPerfil) return false;
-    const priv = perfilMostrado?.privacidad_perfil || 'publico';
-    return priv === 'amigos' && perfilMostrado?.estado_relacion !== 'amigos';
-  }, [esMiPerfil, perfilMostrado?.privacidad_perfil, perfilMostrado?.estado_relacion]);
+  // Detección de perfil privado y reseñas privadas para no-amigos (sin hooks posteriores a retornos)
+  const esPerfilPrivadoBloqueado = !esMiPerfil && 
+    (perfilMostrado?.privacidad_perfil || 'publico') === 'amigos' && 
+    perfilMostrado?.estado_relacion !== 'amigos';
 
-  const esReseniasPrivadasBloqueadas = useMemo(() => {
-    if (esMiPerfil) return false;
-    const priv = perfilMostrado?.privacidad_resenias || 'publico';
-    return priv === 'amigos' && perfilMostrado?.estado_relacion !== 'amigos';
-  }, [esMiPerfil, perfilMostrado?.privacidad_resenias, perfilMostrado?.estado_relacion]);
+  const esReseniasPrivadasBloqueadas = !esMiPerfil && 
+    (perfilMostrado?.privacidad_resenias || 'publico') === 'amigos' && 
+    perfilMostrado?.estado_relacion !== 'amigos';
 
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-8 animate-fadeIn text-neutral-200 relative">

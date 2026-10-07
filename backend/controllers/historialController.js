@@ -1250,6 +1250,106 @@ const limpiarDuplicadosSerie = async (req, res) => {
   }
 };
 
+// ========================================================
+// ASIGNAR ACOMPAÑANTE / CO-VISIÓN EN LOTE A UNA SERIE
+// Soporta alcance: 'serie', 'temporada' o 'episodios'
+// ========================================================
+const asignarAcompananteLoteSerie = async (req, res) => {
+  const usuario_id = req.usuario?.id;
+  const { 
+    obra_id, 
+    alcance = 'serie', // 'serie' | 'temporada' | 'episodios'
+    temporada = null, 
+    historial_ids = [], 
+    amigos_etiquetados = [], 
+    visto_con_texto = '' 
+  } = req.body;
+
+  if (!usuario_id) {
+    return res.status(401).json({ error: 'Sesión no autorizada' });
+  }
+
+  if (!obra_id && (!Array.isArray(historial_ids) || historial_ids.length === 0)) {
+    return res.status(400).json({ error: 'Faltan parámetros de la obra o capítulos a actualizar' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    let queryRegistros = '';
+    let paramsRegistros = [];
+
+    if (alcance === 'temporada') {
+      const tempNum = parseInt(temporada, 10);
+      queryRegistros = `SELECT id FROM historial_visualizaciones WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3`;
+      paramsRegistros = [usuario_id, obra_id, tempNum];
+    } else if (alcance === 'episodios') {
+      const idsInt = (historial_ids || []).map((id) => parseInt(id, 10)).filter(Boolean);
+      if (idsInt.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'No se enviaron episodios válidos' });
+      }
+      queryRegistros = `SELECT id FROM historial_visualizaciones WHERE usuario_id = $1 AND id = ANY($2::int[])`;
+      paramsRegistros = [usuario_id, idsInt];
+    } else {
+      // Alcance 'serie' (todos los capítulos registrados de la obra)
+      queryRegistros = `SELECT id FROM historial_visualizaciones WHERE usuario_id = $1 AND obra_id = $2`;
+      paramsRegistros = [usuario_id, obra_id];
+    }
+
+    const regsRes = await client.query(queryRegistros, paramsRegistros);
+    const targetIds = regsRes.rows.map((r) => r.id);
+
+    if (targetIds.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'No se encontraron registros para los criterios seleccionados' });
+    }
+
+    // 1. Actualizar texto de acompañante manual
+    const textoFinal = typeof visto_con_texto === 'string' ? visto_con_texto.trim() : null;
+    if (textoFinal !== null) {
+      await client.query(
+        `UPDATE historial_visualizaciones 
+         SET visto_con_texto = $1 
+         WHERE id = ANY($2::int[])`,
+        [textoFinal || null, targetIds]
+      );
+    }
+
+    // 2. Vincular amigos etiquetados en la app (tabla covisualizaciones)
+    const amigosIds = (Array.isArray(amigos_etiquetados) ? amigos_etiquetados : [])
+      .map((id) => parseInt(id, 10))
+      .filter((id) => id && id !== usuario_id);
+
+    if (amigosIds.length > 0) {
+      for (const visId of targetIds) {
+        for (const amigoId of amigosIds) {
+          await client.query(
+            `INSERT INTO covisualizaciones (visualizacion_id, amigo_id, estado)
+             VALUES ($1, $2, 'pendiente')
+             ON CONFLICT (visualizacion_id, amigo_id) DO NOTHING`,
+            [visId, amigoId]
+          );
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      mensaje: `¡Acompañante asignado con éxito a ${targetIds.length} ${targetIds.length === 1 ? 'capítulo' : 'capítulos'}!`,
+      total_actualizados: targetIds.length,
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error al asignar acompañante en lote a serie:', err);
+    res.status(500).json({ error: 'Error al asignar acompañante' });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   registrarVisualizacion,
   obtenerTimeline,
@@ -1269,5 +1369,6 @@ module.exports = {
   obtenerCalificacionesSeriesUsuario,
   completarTemporadaSerie,
   completarSerieTotal,
-  limpiarDuplicadosSerie
+  limpiarDuplicadosSerie,
+  asignarAcompananteLoteSerie
 };

@@ -24,7 +24,8 @@ const {
   obtenerCalificacionesSeriesUsuario,
   completarTemporadaSerie,
   completarSerieTotal,
-  limpiarDuplicadosSerie
+  limpiarDuplicadosSerie,
+  asignarAcompananteLoteSerie,
 } = require('../controllers/historialController');
 
 
@@ -86,6 +87,7 @@ router.post('/registrar-lote', verificarToken, registrarLoteVisualizaciones);
 router.post('/series/completar-temporada', verificarToken, completarTemporadaSerie);
 router.post('/series/completar-serie', verificarToken, completarSerieTotal);
 router.post('/series/limpiar-duplicados', verificarToken, limpiarDuplicadosSerie);
+router.post('/series/asignar-acompanante-lote', verificarToken, asignarAcompananteLoteSerie);
 
 router.patch('/actualizar-plataforma-serie', verificarToken, actualizarPlataformaSerie);
 router.patch('/:id/resenia', verificarToken, actualizarReseniaYCalificacion);

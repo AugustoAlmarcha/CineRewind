@@ -1,7 +1,12 @@
 import React from 'react';
-import { Clapperboard, Calendar, Check, X } from 'lucide-react';
+import { Clapperboard, Calendar, Check, X, Sparkles, Loader2 } from 'lucide-react';
 
-export default function TabCovisionesAmigos({ invitaciones, handleResponderCovision }) {
+export default function TabCovisionesAmigos({ 
+  invitaciones, 
+  handleResponderCovision,
+  handleResponderTodasCovisiones,
+  cargandoTodas = false,
+}) {
   if (invitaciones.length === 0) {
     return (
       <div className="py-14 text-center space-y-2">
@@ -20,6 +25,38 @@ export default function TabCovisionesAmigos({ invitaciones, handleResponderCovis
 
   return (
     <div className="space-y-4">
+      {/* Botón destacado para Aceptar Todas en Lote */}
+      {invitaciones.length > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-rose-600/15 via-rose-500/10 to-amber-500/15 border border-rose-500/30 shadow-sm animate-fadeIn">
+          <div className="flex items-center gap-2.5 text-center sm:text-left">
+            <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-md">
+              <Sparkles className="w-4 h-4 fill-white" />
+            </div>
+            <div>
+              <p className="text-xs font-black text-neutral-900 dark:text-white">
+                {invitaciones.length} co-visiones pendientes
+              </p>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                Sumalas todas a tu historial al mismo tiempo
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleResponderTodasCovisiones && handleResponderTodasCovisiones('aceptar')}
+            disabled={cargandoTodas}
+            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {cargandoTodas ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Check className="w-3.5 h-3.5 stroke-[3]" />
+            )}
+            <span>{cargandoTodas ? 'Aceptando...' : `Aceptar todas (${invitaciones.length})`}</span>
+          </button>
+        </div>
+      )}
       {invitaciones.map((inv) => (
         <div
           key={inv.covisualizacion_id}

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import TimelineScrubber from './TimelineScrubber';
-import { Award, Star, Trash2, CheckCircle2, AlertTriangle, RotateCcw, Loader2, Plus, ArrowLeft } from 'lucide-react';
+import { Award, Star, Trash2, CheckCircle2, AlertTriangle, RotateCcw, Loader2, Plus, ArrowLeft, Users } from 'lucide-react';
 import ModalCalificarSerie from '../modal/ModalCalificarSerie';
 import ModalGestionTemporada from '../modal/ModalGestionTemporada';
+import ModalAsignarAcompananteSerie from '../modal/ModalAsignarAcompananteSerie';
 import { 
   obtenerCalificacionesSerieAPI, 
   obtenerDetallePeliculaAPI, 
@@ -34,6 +35,8 @@ export default function VistaSerieTotal({
   const [temporadaSeleccionadaModal, setTemporadaSeleccionadaModal] = useState(null);
   const [modalGestionTemporadaAbierto, setModalGestionTemporadaAbierto] = useState(false);
   const [temporadaGestionSeleccionada, setTemporadaGestionSeleccionada] = useState(1);
+  const [modalAsignarAcompananteAbierto, setModalAsignarAcompananteAbierto] = useState(false);
+  const [temporadaAcompananteModal, setTemporadaAcompananteModal] = useState(null);
   const [metadatosExtra, setMetadatosExtra] = useState(null);
 
   // Cargar metadatos TMDb si faltan en la obra
@@ -264,6 +267,22 @@ export default function VistaSerieTotal({
                 <span>{calificacionesSerie.serie?.calificacion ? `★ ${Number(calificacionesSerie.serie.calificacion).toFixed(1)}` : 'Calificar'}</span>
               </button>
             )}
+
+            {/* Botón rápido para asignar visto con / co-visión a la serie */}
+            {esSerie && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTemporadaAcompananteModal(null);
+                  setModalAsignarAcompananteAbierto(true);
+                }}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer active:scale-95 bg-white dark:bg-white/5 border border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/40 shadow-xs"
+                title="Asignar acompañante o co-visión a la serie o temporada"
+              >
+                <Users className="w-3.5 h-3.5 text-rose-500" />
+                <span>Visto con...</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -460,6 +479,11 @@ export default function VistaSerieTotal({
             setTemporadaSeleccionadaModal(temp);
             setModalCalificarAbierto(true);
           }}
+          onAbrirAsignarAcompanante={(temp) => {
+            setModalGestionTemporadaAbierto(false);
+            setTemporadaAcompananteModal(temp);
+            setModalAsignarAcompananteAbierto(true);
+          }}
           onCompletado={async (cant) => {
             if (onRecargarDatos) await onRecargarDatos();
             setMensajeExitoSerie(
@@ -479,6 +503,23 @@ export default function VistaSerieTotal({
           temporadasDisponibles={progreso?.totalTemporadas || temporadasVistas}
           onClose={() => setModalCalificarAbierto(false)}
           onActualizado={cargarCalificaciones}
+        />
+      )}
+
+      {modalAsignarAcompananteAbierto && (
+        <ModalAsignarAcompananteSerie
+          obra={serie}
+          temporadaPreseleccionada={temporadaAcompananteModal}
+          onClose={() => setModalAsignarAcompananteAbierto(false)}
+          onAsignado={async (cant) => {
+            if (onRecargarDatos) await onRecargarDatos();
+            setMensajeExitoSerie(
+              cant && cant > 1
+                ? `¡Acompañante asignado con éxito a ${cant} capítulos!`
+                : '¡Acompañante asignado con éxito a los capítulos!'
+            );
+            setTimeout(() => setMensajeExitoSerie(null), 4500);
+          }}
         />
       )}
 

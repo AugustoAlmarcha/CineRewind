@@ -515,6 +515,23 @@ export const responderInvitacionCovisionAPI = async (covisualizacionId, accion) 
   return await res.json();
 };
 
+export const responderTodasInvitacionesCovisionAPI = async (accion = 'aceptar') => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/covisualizaciones/responder-todas', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ accion }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al responder invitaciones');
+  }
+  return await res.json();
+};
+
 // Cambiar contraseña de la cuenta activa
 export const cambiarPasswordAPI = async ({ passwordActual, passwordNueva }) => {
   const token = localStorage.getItem('cinerewind_token');
@@ -728,3 +745,30 @@ export const limpiarDuplicadosSerieAPI = async (obraId, modo = 'eliminar_duplica
   }
   return res.json();
 };
+
+export const asignarAcompananteLoteSerieAPI = async ({
+  obraId,
+  alcance = 'serie',
+  temporada = null,
+  historialIds = [],
+  amigosEtiquetados = [],
+  vistoConTexto = '',
+}) => {
+  const res = await fetch('/api/historial/series/asignar-acompanante-lote', {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({
+      obra_id: obraId,
+      alcance,
+      temporada,
+      historial_ids: historialIds,
+      amigos_etiquetados: amigosEtiquetados,
+      visto_con_texto: vistoConTexto,
+    }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al asignar acompañante');
+  }
+  return res.json();
+};
