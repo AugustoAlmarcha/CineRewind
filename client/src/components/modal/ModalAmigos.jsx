@@ -35,7 +35,7 @@ import TabCovisionesAmigos from './amigos/TabCovisionesAmigos';
 
 export default function ModalAmigos({ onClose, onActualizado }) {
   const navigate = useNavigate();
-  const [pestana, setPestana] = useState('buscar'); // 'buscar' | 'pendientes' | 'amigos' | 'covisiones'
+  const [pestana, setPestana] = useState('amigos'); // 'amigos' | 'pendientes' | 'covisiones' | 'buscar'
   const [query, setQuery] = useState('');
   const [resultados, setResultados] = useState([]);
   const [pendientes, setPendientes] = useState([]);
@@ -221,95 +221,105 @@ export default function ModalAmigos({ onClose, onActualizado }) {
           </div>
         )}
 
-        {/* Cabecera elegante */}
+        {/* Cabecera elegante con botón Buscar integrado */}
         <div className="p-4 sm:p-5 border-b border-neutral-200 dark:border-white/10 flex justify-between items-center bg-[#f2eee3]/70 dark:bg-[#181820]/90 backdrop-blur-md flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-rose-600/10 dark:bg-rose-500/15 border border-rose-500/25 flex items-center justify-center text-rose-600 dark:text-rose-400 shadow-sm">
-              <Users className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-rose-600/10 dark:bg-rose-500/15 border border-rose-500/25 flex items-center justify-center text-rose-600 dark:text-rose-400 shadow-sm shrink-0">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.2]" />
             </div>
-            <div>
-              <span className="text-[10px] font-mono text-rose-600 dark:text-rose-500 uppercase font-black tracking-widest block">
+            <div className="min-w-0">
+              <span className="text-[9px] sm:text-[10px] font-mono text-rose-600 dark:text-rose-500 uppercase font-black tracking-widest block truncate">
                 Comunidad Cinéfila
               </span>
-              <h3 className="text-base sm:text-lg font-black tracking-tight text-neutral-900 dark:text-white">
+              <h3 className="text-sm sm:text-lg font-black tracking-tight text-neutral-900 dark:text-white truncate">
                 Conexiones & Amigos
               </h3>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white flex items-center justify-center text-neutral-600 dark:text-neutral-300 transition cursor-pointer shadow-xs"
-            title="Cerrar"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
 
-        {/* Pestañas Segmentadas Tipo Píldora (Moderna UI estilo Apple/Letterboxd) */}
-        <div className="px-3 sm:px-5 pt-3 pb-2.5 bg-[#f7f4ed] dark:bg-[#16161c] border-b border-neutral-200 dark:border-white/10 flex-shrink-0">
-          <div className="flex bg-neutral-200/70 dark:bg-black/30 p-1 rounded-2xl gap-1 overflow-x-auto scrollbar-thin flex-nowrap">
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Botón BUSCAR en la cabecera (visible siempre tanto en PC como en celular) */}
             <button
               type="button"
-              onClick={() => setPestana('buscar')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+              onClick={() => setPestana(pestana === 'buscar' ? 'amigos' : 'buscar')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl text-xs font-black transition-all cursor-pointer border ${
                 pestana === 'buscar'
-                  ? 'bg-white dark:bg-[#22222d] text-rose-600 dark:text-rose-400 shadow-sm'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  ? 'bg-rose-600 border-rose-500 text-white shadow-md shadow-rose-600/30 ring-2 ring-rose-500/30'
+                  : 'bg-neutral-200/80 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/15 text-neutral-800 dark:text-neutral-200 border-neutral-300/60 dark:border-white/10'
               }`}
+              title="Buscar cinéfilos por @username o nombre"
             >
-              <Search className="w-3.5 h-3.5" />
+              <Search className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>Buscar</span>
             </button>
-            
+
             <button
-              type="button"
-              onClick={() => setPestana('pendientes')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                pestana === 'pendientes'
-                  ? 'bg-white dark:bg-[#22222d] text-rose-600 dark:text-rose-400 shadow-sm'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-              }`}
+              onClick={onClose}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white flex items-center justify-center text-neutral-600 dark:text-neutral-300 transition cursor-pointer shadow-xs"
+              title="Cerrar"
             >
-              <Mail className="w-3.5 h-3.5" />
-              <span>Solicitudes</span>
-              {pendientes.length > 0 && (
-                <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[10px] font-black">
-                  {pendientes.length}
-                </span>
-              )}
+              <X className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+
+        {/* Pestañas Segmentadas: 1º Amigos, 2º Solicitudes, 3º Co-visiones (todas visibles al 100% en celular) */}
+        <div className="px-3 sm:px-5 pt-3 pb-2.5 bg-[#f7f4ed] dark:bg-[#16161c] border-b border-neutral-200 dark:border-white/10 flex-shrink-0">
+          <div className="grid grid-cols-3 bg-neutral-200/70 dark:bg-black/30 p-1 rounded-2xl gap-1">
             
+            {/* 1. AMIGOS (Primero) */}
             <button
               type="button"
               onClick={() => setPestana('amigos')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+              className={`py-2 px-1 sm:px-3 rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 truncate ${
                 pestana === 'amigos'
                   ? 'bg-white dark:bg-[#22222d] text-rose-600 dark:text-rose-400 shadow-sm'
                   : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
               }`}
             >
-              <Users className="w-3.5 h-3.5" />
-              <span>Amigos</span>
-              <span className="text-[10px] font-mono opacity-70 font-semibold">({amigos.length})</span>
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Amigos</span>
+              <span className="text-[10px] font-mono opacity-70 font-semibold shrink-0">({amigos.length})</span>
             </button>
-            
+
+            {/* 2. SOLICITUDES (Segundo) */}
+            <button
+              type="button"
+              onClick={() => setPestana('pendientes')}
+              className={`py-2 px-1 sm:px-3 rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 truncate ${
+                pestana === 'pendientes'
+                  ? 'bg-white dark:bg-[#22222d] text-rose-600 dark:text-rose-400 shadow-sm'
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+              }`}
+            >
+              <Mail className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Solicitudes</span>
+              {pendientes.length > 0 && (
+                <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[10px] font-black shrink-0">
+                  {pendientes.length}
+                </span>
+              )}
+            </button>
+
+            {/* 3. CO-VISIONES (Tercero) */}
             <button
               type="button"
               onClick={() => setPestana('covisiones')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+              className={`py-2 px-1 sm:px-3 rounded-xl text-xs font-black tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 truncate ${
                 pestana === 'covisiones'
                   ? 'bg-white dark:bg-[#22222d] text-rose-600 dark:text-rose-400 shadow-sm'
                   : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
               }`}
             >
-              <Clapperboard className="w-3.5 h-3.5 text-amber-500" />
-              <span>Co-visiones</span>
+              <Clapperboard className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span className="truncate">Co-visiones</span>
               {invitaciones.length > 0 && (
-                <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[10px] font-black animate-pulse">
+                <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[10px] font-black shrink-0 animate-pulse">
                   {invitaciones.length}
                 </span>
               )}
             </button>
+
           </div>
         </div>
 
@@ -345,6 +355,7 @@ export default function ModalAmigos({ onClose, onActualizado }) {
               onClose={onClose}
               navigate={navigate}
               setAmigoAEliminar={setAmigoAEliminar}
+              setPestana={setPestana}
             />
           )}
 

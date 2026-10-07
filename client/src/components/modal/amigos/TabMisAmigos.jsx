@@ -1,10 +1,10 @@
 import React from 'react';
-import { Users, ArrowRight, Trash2 } from 'lucide-react';
+import { Users, ArrowRight, Trash2, Search, UserPlus } from 'lucide-react';
 
-export default function TabMisAmigos({ amigos, onClose, navigate, setAmigoAEliminar }) {
+export default function TabMisAmigos({ amigos, onClose, navigate, setAmigoAEliminar, setPestana }) {
   if (amigos.length === 0) {
     return (
-      <div className="py-14 text-center space-y-2">
+      <div className="py-14 text-center space-y-3">
         <div className="w-12 h-12 rounded-2xl bg-neutral-200/80 dark:bg-white/5 flex items-center justify-center mx-auto text-neutral-400">
           <Users className="w-6 h-6 stroke-[1.8]" />
         </div>
@@ -12,14 +12,39 @@ export default function TabMisAmigos({ amigos, onClose, navigate, setAmigoAElimi
           Aún no tienes amigos conectados
         </h4>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-xs mx-auto">
-          Busca a tus amistades en la pestaña «Buscar» para agregarlas y compartir qué están viendo.
+          Busca a tus amistades con el botón «Buscar» de la cabecera para agregarlas y compartir qué están viendo.
         </p>
+        {setPestana && (
+          <button
+            type="button"
+            onClick={() => setPestana('buscar')}
+            className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-black shadow-md transition cursor-pointer"
+          >
+            <Search className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Buscar cinéfilos</span>
+          </button>
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
+      <div className="flex justify-between items-center px-1 pb-1">
+        <p className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">
+          {amigos.length} {amigos.length === 1 ? 'amigo conectado' : 'amigos conectados'}
+        </p>
+        {setPestana && (
+          <button
+            type="button"
+            onClick={() => setPestana('buscar')}
+            className="text-[11px] font-black text-rose-600 dark:text-rose-400 hover:text-rose-500 flex items-center gap-1 cursor-pointer transition"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Buscar más</span>
+          </button>
+        )}
+      </div>
       {amigos.map((amigo) => (
         <div
           key={amigo.id}

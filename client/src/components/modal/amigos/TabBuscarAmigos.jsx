@@ -29,6 +29,7 @@ export default function TabBuscarAmigos({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar cinéfilos por @username, nombre..."
+          autoFocus
           className="w-full pl-10 pr-9 py-2.5 sm:py-3 rounded-2xl bg-white dark:bg-[#1e1e27] border border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 text-xs sm:text-sm font-medium transition"
         />
         {query && (
