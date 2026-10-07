@@ -651,7 +651,6 @@ export default function Home({ actualizarTrigger }) {
         alCerrar={() => setModalNetflixAbierto(false)}
         alCompletar={() => {
           cargarDatos();
-          setModalNetflixAbierto(false);
         }}
       />
 
