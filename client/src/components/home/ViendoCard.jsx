@@ -175,9 +175,9 @@ export default function ViendoCard({
             if (onAbrirDetalle) onAbrirDetalle(serie);
           }}
           onMouseLeave={() => setMenuAmigosAbierto(false)}
-          className={`hidden sm:flex absolute top-0 ${alineacionHorizontal} w-96 rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] z-50 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 transition-all duration-300 ease-out flex-col`}
+          className={`hidden sm:flex absolute top-0 ${alineacionHorizontal} w-96 rounded-3xl shadow-2xl border border-white/20 bg-[#16161c] z-50 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 transition-all duration-300 ease-out flex-col`}
         >
-          <div className="w-full aspect-video bg-neutral-900 relative overflow-hidden flex-shrink-0">
+          <div className="w-full aspect-video bg-neutral-900 relative overflow-hidden flex-shrink-0 rounded-t-3xl">
             {fotoCapituloUrl ? (
               <img
                 src={fotoCapituloUrl}
@@ -203,7 +203,7 @@ export default function ViendoCard({
             </div>
           </div>
 
-          <div className="p-3 space-y-2 bg-[#16161c]">
+          <div className="p-3 space-y-2 bg-[#16161c] rounded-b-3xl">
             <div>
               <h3 className="text-sm font-black text-white leading-tight truncate">{serie.titulo}</h3>
               <p className="text-[11px] font-bold text-rose-500 mt-0.5">
@@ -267,7 +267,7 @@ export default function ViendoCard({
               {menuAmigosAbierto && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute top-8 left-0 bg-[#1c1c24] border border-white/15 rounded-2xl p-2.5 shadow-2xl w-56 z-50 animate-fadeIn"
+                  className="absolute bottom-full mb-2 left-0 bg-[#1c1c24] border border-white/20 rounded-2xl p-2.5 shadow-2xl w-64 z-50 animate-fadeIn"
                 >
                   <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-white/10">
                     <p className="text-[10px] font-black uppercase tracking-wider text-neutral-400">
@@ -288,7 +288,7 @@ export default function ViendoCard({
                   {amigosDisponibles.length === 0 ? (
                     <p className="text-[11px] text-neutral-500 italic p-1">No tienes amigos agregados aún</p>
                   ) : (
-                    <div className="max-h-40 overflow-y-auto space-y-1 scrollbar-thin">
+                    <div className="max-h-56 overflow-y-auto space-y-1 scrollbar-thin">
                       {amigosDisponibles.map((amigo) => {
                         const seleccionado = amigosSeleccionados.includes(amigo.id);
                         return (
@@ -296,23 +296,26 @@ export default function ViendoCard({
                             key={amigo.id}
                             type="button"
                             onClick={(e) => alternarAmigo(amigo.id, e)}
-                            className={`w-full flex items-center justify-between p-1.5 rounded-xl text-xs transition cursor-pointer ${
+                            className={`w-full flex items-center justify-between p-2 rounded-xl text-xs transition cursor-pointer ${
                               seleccionado
-                                ? 'bg-rose-600 text-white font-bold'
+                                ? 'bg-rose-600 text-white font-bold shadow-xs'
                                 : 'hover:bg-white/10 text-neutral-300'
                             }`}
                           >
                             <div className="flex items-center gap-2 truncate">
                               {amigo.avatar_url ? (
-                                <img src={amigo.avatar_url} alt="" className="w-4 h-4 rounded-full object-cover shrink-0" />
+                                <img src={amigo.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
                               ) : (
-                                <div className="w-4 h-4 rounded-full bg-rose-500/20 text-rose-500 text-[9px] font-black flex items-center justify-center shrink-0">
+                                <div className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-500 text-[10px] font-black flex items-center justify-center shrink-0">
                                   {(amigo.nombre || amigo.username || '?').charAt(0).toUpperCase()}
                                 </div>
                               )}
-                              <span className="truncate">@{amigo.username}</span>
+                              <div className="text-left truncate">
+                                <span className="block truncate font-bold text-xs leading-none">{amigo.nombre || amigo.username}</span>
+                                <span className="block text-[10px] text-neutral-400 font-mono truncate leading-none mt-0.5">@{amigo.username}</span>
+                              </div>
                             </div>
-                            {seleccionado && <span className="text-[11px]">✓</span>}
+                            {seleccionado && <span className="text-xs font-black shrink-0 ml-1">✓</span>}
                           </button>
                         );
                       })}
@@ -481,15 +484,27 @@ export default function ViendoCard({
                 {menuAmigosAbierto && (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute top-12 left-0 bg-[#1c1c24] border border-white/15 rounded-2xl p-2.5 shadow-2xl w-56 z-50 animate-fadeIn"
+                    className="absolute bottom-full mb-2 left-0 bg-[#1c1c24] border border-white/20 rounded-2xl p-2.5 shadow-2xl w-64 z-50 animate-fadeIn"
                   >
-                    <p className="text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-2 px-1">
-                      ¿Con quién lo viste?
-                    </p>
+                    <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-white/10">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-neutral-400">
+                        ¿Con quién lo viste?
+                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuAmigosAbierto(false);
+                        }}
+                        className="text-[10px] text-neutral-400 hover:text-white px-1 cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
                     {amigosDisponibles.length === 0 ? (
                       <p className="text-[11px] text-neutral-500 italic p-1">No tienes amigos agregados aún</p>
                     ) : (
-                      <div className="max-h-40 overflow-y-auto space-y-1">
+                      <div className="max-h-56 overflow-y-auto space-y-1 scrollbar-thin">
                         {amigosDisponibles.map((amigo) => {
                           const seleccionado = amigosSeleccionados.includes(amigo.id);
                           return (
@@ -497,14 +512,26 @@ export default function ViendoCard({
                               key={amigo.id}
                               type="button"
                               onClick={(e) => alternarAmigo(amigo.id, e)}
-                              className={`w-full flex items-center justify-between p-1.5 rounded-xl text-xs transition cursor-pointer ${
+                              className={`w-full flex items-center justify-between p-2 rounded-xl text-xs transition cursor-pointer ${
                                 seleccionado
-                                  ? 'bg-rose-600 text-white font-bold'
+                                  ? 'bg-rose-600 text-white font-bold shadow-xs'
                                   : 'hover:bg-white/10 text-neutral-300'
                               }`}
                             >
-                              <span className="truncate">@{amigo.username}</span>
-                              {seleccionado && <span className="text-[11px]">✓</span>}
+                              <div className="flex items-center gap-2 truncate">
+                                {amigo.avatar_url ? (
+                                  <img src={amigo.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                                ) : (
+                                  <div className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-500 text-[10px] font-black flex items-center justify-center shrink-0">
+                                    {(amigo.nombre || amigo.username || '?').charAt(0).toUpperCase()}
+                                  </div>
+                                )}
+                                <div className="text-left truncate">
+                                  <span className="block truncate font-bold text-xs leading-none">{amigo.nombre || amigo.username}</span>
+                                  <span className="block text-[10px] text-neutral-400 font-mono truncate leading-none mt-0.5">@{amigo.username}</span>
+                                </div>
+                              </div>
+                              {seleccionado && <span className="text-xs font-black shrink-0 ml-1">✓</span>}
                             </button>
                           );
                         })}

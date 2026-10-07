@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { BookOpen, Tv, Bookmark, Users, FileSpreadsheet, ChevronRight, ChevronLeft, Lock } from 'lucide-react';
+import { BookOpen, Tv, Bookmark, Users, FileSpreadsheet, ChevronRight, ChevronLeft, Lock, Trash2 } from 'lucide-react';
 
 // Componentes modulares
 import HeroPerfil from '../components/perfil/HeroPerfil';
@@ -91,6 +91,7 @@ export default function Perfil() {
   const [datosWrapped, setDatosWrapped] = useState(null);
   const [cargandoWrapped, setCargandoWrapped] = useState(false);
   const [toastNotificacion, setToastNotificacion] = useState(null);
+  const [mostrarConfirmarEliminarAmigo, setMostrarConfirmarEliminarAmigo] = useState(false);
 
   // Detección de scroll horizontal en pestañas para móviles
   const tabsContainerRef = useRef(null);
@@ -222,17 +223,23 @@ export default function Perfil() {
     }
   };
 
-  const handleEliminarAmigo = async () => {
+  const handleEliminarAmigo = () => {
+    if (!perfilVisitado) return;
+    setMostrarConfirmarEliminarAmigo(true);
+  };
+
+  const ejecutarEliminarAmigo = async () => {
     if (!perfilVisitado) return;
     const nombre = perfilVisitado.nombre || perfilVisitado.username;
-    if (!window.confirm(`¿Seguro que deseas eliminar a ${nombre} de tus amigos?`)) return;
     try {
       const idParaEliminar = perfilVisitado.amistad_id || perfilVisitado.id;
       const res = await eliminarAmigoAPI(idParaEliminar);
       setPerfilVisitado((prev) => ({ ...prev, estado_relacion: 'ninguno' }));
       dispararToast(res.mensaje || `Has eliminado a ${nombre} de tus amigos`, 'exito');
+      setMostrarConfirmarEliminarAmigo(false);
     } catch (err) {
       dispararToast(err.message || 'No se pudo eliminar al amigo', 'error');
+      setMostrarConfirmarEliminarAmigo(false);
     }
   };
 
@@ -774,6 +781,50 @@ export default function Perfil() {
             setObraParaRegistrar(obra);
           }}
         />
+      )}
+
+      {/* Modal de confirmación para eliminar amigo desde el perfil (sin alertas nativas) */}
+      {mostrarConfirmarEliminarAmigo && perfilVisitado && (
+        <div 
+          onClick={() => setMostrarConfirmarEliminarAmigo(false)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-6 animate-fadeIn"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#181822] border border-white/15 p-6 rounded-3xl max-w-sm w-full text-center space-y-4 shadow-2xl animate-scaleUp"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/30 flex items-center justify-center mx-auto shadow-sm">
+              <Trash2 className="w-6 h-6 stroke-[2]" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h4 className="font-black text-base text-white">
+                ¿Eliminar a {perfilVisitado.nombre || perfilVisitado.username}?
+              </h4>
+              <p className="text-xs text-neutral-400">
+                Ya no verás su actividad ni podrán etiquetarse en co-visiones conjuntas.
+              </p>
+            </div>
+
+            <div className="flex gap-2 justify-center pt-2">
+              <button
+                type="button"
+                onClick={() => setMostrarConfirmarEliminarAmigo(false)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold border border-white/15 hover:bg-white/10 transition cursor-pointer text-neutral-300"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={ejecutarEliminarAmigo}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 active:scale-95 text-white transition cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Sí, eliminar</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

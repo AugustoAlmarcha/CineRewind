@@ -64,6 +64,7 @@ export default function ModalAsignarAcompananteSerie({
   const [cargandoAmigos, setCargandoAmigos] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
+  const [mostrarConfirmarQuitar, setMostrarConfirmarQuitar] = useState(false);
 
   // Cargar lista de amigos confirmados del usuario
   useEffect(() => {
@@ -161,14 +162,15 @@ export default function ModalAsignarAcompananteSerie({
     }
   };
 
-  // Quitar acompañantes y co-visiones en lote
-  const handleQuitarAcompanantes = async () => {
+  // Abrir confirmación estilizada para quitar acompañantes
+  const handleQuitarAcompanantes = () => {
     if (!obraId || capsAfectados.length === 0) return;
-    const mensajeConfirm = amigosSeleccionados.length > 0
-      ? `¿Quitar a los amigos seleccionados de los ${capsAfectados.length} capítulos?\n(Tus registros y los de tus amigos permanecerán guardados en sus historiales)`
-      : `¿Quitar todos los acompañantes y co-visiones de los ${capsAfectados.length} capítulos seleccionados?\n(Tus registros y los de tus amigos permanecerán guardados en sus historiales)`;
-    if (!window.confirm(mensajeConfirm)) return;
+    setMostrarConfirmarQuitar(true);
+  };
 
+  // Ejecutar eliminación sin alertas nativas
+  const ejecutarQuitarAcompanantes = async () => {
+    if (!obraId || capsAfectados.length === 0) return;
     setGuardando(true);
     setError(null);
     try {
@@ -184,10 +186,12 @@ export default function ModalAsignarAcompananteSerie({
       if (onAsignado) {
         await onAsignado(res.total_actualizados || capsAfectados.length);
       }
+      setMostrarConfirmarQuitar(false);
       onClose();
     } catch (err) {
       console.error('Error al quitar acompañantes:', err);
       setError(err.message || 'No se pudieron quitar los acompañantes.');
+      setMostrarConfirmarQuitar(false);
     } finally {
       setGuardando(false);
     }
@@ -499,6 +503,73 @@ export default function ModalAsignarAcompananteSerie({
             </button>
           </div>
         </form>
+
+        {/* Modal de confirmación estilizado para quitar acompañantes (sin cartel nativo) */}
+        {mostrarConfirmarQuitar && (
+          <div 
+            onClick={() => !guardando && setMostrarConfirmarQuitar(false)}
+            className="absolute inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-6 animate-fadeIn"
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#181822] border border-white/15 p-6 rounded-3xl max-w-sm w-full text-center space-y-4 shadow-2xl animate-scaleUp"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/30 flex items-center justify-center mx-auto shadow-sm">
+                <UserX className="w-6 h-6 stroke-[2]" />
+              </div>
+
+              <div className="space-y-1.5 text-left">
+                <h4 className="font-black text-base text-white text-center">
+                  {amigosSeleccionados.length > 0
+                    ? `¿Quitar amigos seleccionados de estos ${capsAfectados.length} caps?`
+                    : `¿Quitar acompañantes de estos ${capsAfectados.length} caps?`}
+                </h4>
+                <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-xs space-y-2 text-neutral-300">
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 font-bold shrink-0">✓</span>
+                    <span><strong>Tus registros quedan guardados:</strong> Tus {capsAfectados.length} capítulos seguirán en tu historial sin eliminarse.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 font-bold shrink-0">✓</span>
+                    <span><strong>Las cuentas de tus amigos quedan intactas:</strong> Todo lo que ya hayan aceptado seguirá en sus perfiles sin borrarse.</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-400 pt-1 border-t border-white/10">
+                    Solo se desvinculará la etiqueta de "visto juntos" en los capítulos seleccionados.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-center pt-1">
+                <button
+                  type="button"
+                  disabled={guardando}
+                  onClick={() => setMostrarConfirmarQuitar(false)}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold border border-white/15 hover:bg-white/10 transition cursor-pointer text-neutral-300 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={guardando}
+                  onClick={ejecutarQuitarAcompanantes}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 active:scale-95 text-white transition cursor-pointer shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {guardando ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Quitando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserX className="w-3.5 h-3.5" />
+                      <span>Sí, quitar</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>,
     document.body

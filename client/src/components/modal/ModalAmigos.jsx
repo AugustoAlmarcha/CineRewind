@@ -22,6 +22,7 @@ import {
   obtenerSolicitudesPendientesAPI,
   responderSolicitudAmistadAPI,
   obtenerAmigosAPI,
+  eliminarAmigoAPI,
   obtenerInvitacionesCovisionAPI,
   responderInvitacionCovisionAPI,
   responderTodasInvitacionesCovisionAPI,
