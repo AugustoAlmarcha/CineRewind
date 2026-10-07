@@ -3,6 +3,7 @@ import VistaSerieTotal from './VistaSerieTotal';
 import VistaCatalogoTotal from './VistaCatalogoTotal';
 import VistaSelectorCarpetas from './VistaSelectorCarpetas';
 import VistaFeedMes from './VistaFeedMes';
+import { calcularProgresoSerie } from '../../utils/seriesProgreso';
 
 // Helper para detectar y agrupar sagas y franquicias de películas
 const obtenerInfoSaga = (titulo) => {
@@ -211,6 +212,9 @@ export default function GrillaHistorial({
       if (obra.esSaga) {
         obra.peliculasDistintas = Array.from(new Set(obra.registros.map((r) => r.titulo)));
       }
+      obra.estaCompletada = obra.tipo === 'serie'
+        ? Boolean(calcularProgresoSerie(obra)?.estaCompletada)
+        : true;
     });
 
     return Object.values(mapaObras).sort((a, b) => {
@@ -232,6 +236,22 @@ export default function GrillaHistorial({
         const fA = a.registros[a.registros.length - 1]?.fecha_visto ? new Date(a.registros[a.registros.length - 1].fecha_visto).getTime() : 0;
         const fB = b.registros[b.registros.length - 1]?.fecha_visto ? new Date(b.registros[b.registros.length - 1].fecha_visto).getTime() : 0;
         return fA - fB;
+      }
+      if (ordenTotal === 'finalizadas') {
+        if (a.estaCompletada !== b.estaCompletada) {
+          return a.estaCompletada ? -1 : 1;
+        }
+        const fA = a.registros[0]?.fecha_visto ? new Date(a.registros[0].fecha_visto).getTime() : 0;
+        const fB = b.registros[0]?.fecha_visto ? new Date(b.registros[0].fecha_visto).getTime() : 0;
+        return fB - fA;
+      }
+      if (ordenTotal === 'no_finalizadas') {
+        if (a.estaCompletada !== b.estaCompletada) {
+          return !a.estaCompletada ? -1 : 1;
+        }
+        const fA = a.registros[0]?.fecha_visto ? new Date(a.registros[0].fecha_visto).getTime() : 0;
+        const fB = b.registros[0]?.fecha_visto ? new Date(b.registros[0].fecha_visto).getTime() : 0;
+        return fB - fA;
       }
       // 'mas_vistos' por defecto
       return b.registros.length - a.registros.length;

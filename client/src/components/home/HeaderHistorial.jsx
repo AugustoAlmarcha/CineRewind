@@ -417,6 +417,8 @@ export default function HeaderHistorial({
               <option value="menos_vistos" className="bg-white dark:bg-[#181820]">📉 Menos vistos</option>
               <option value="recientes" className="bg-white dark:bg-[#181820]">🕒 Más recientes</option>
               <option value="antiguos" className="bg-white dark:bg-[#181820]">⏳ Más antiguas</option>
+              <option value="finalizadas" className="bg-white dark:bg-[#181820]">✅ Finalizadas primero</option>
+              <option value="no_finalizadas" className="bg-white dark:bg-[#181820]">⏳ No finalizadas (En curso)</option>
               <option value="az" className="bg-white dark:bg-[#181820]">🔤 A - Z (Alfabético)</option>
               <option value="za" className="bg-white dark:bg-[#181820]">🔡 Z - A (Alfabético)</option>
             </select>
