@@ -37,6 +37,7 @@ import {
   obtenerPerfilPublicoAPI,
   enviarSolicitudAmistadAPI,
   responderSolicitudAmistadAPI,
+  eliminarAmigoAPI,
   obtenerCalificacionesSeriesUsuarioAPI
 } from '../api';
 
@@ -218,6 +219,20 @@ export default function Perfil() {
       dispararToast('¡Solicitud aceptada! Ahora son amigos.', 'exito');
     } catch (err) {
       dispararToast(err.message || 'Error al aceptar la solicitud', 'error');
+    }
+  };
+
+  const handleEliminarAmigo = async () => {
+    if (!perfilVisitado) return;
+    const nombre = perfilVisitado.nombre || perfilVisitado.username;
+    if (!window.confirm(`¿Seguro que deseas eliminar a ${nombre} de tus amigos?`)) return;
+    try {
+      const idParaEliminar = perfilVisitado.amistad_id || perfilVisitado.id;
+      const res = await eliminarAmigoAPI(idParaEliminar);
+      setPerfilVisitado((prev) => ({ ...prev, estado_relacion: 'ninguno' }));
+      dispararToast(res.mensaje || `Has eliminado a ${nombre} de tus amigos`, 'exito');
+    } catch (err) {
+      dispararToast(err.message || 'No se pudo eliminar al amigo', 'error');
     }
   };
 
@@ -469,6 +484,7 @@ export default function Perfil() {
         estadoRelacion={perfilMostrado.estado_relacion || 'ninguno'}
         onEnviarSolicitud={handleEnviarSolicitudAmigo}
         onAceptarSolicitud={handleAceptarSolicitudAmigo}
+        onEliminarAmigo={handleEliminarAmigo}
         onVolverMiPerfil={usuario ? () => navigate(`/perfil/${usuario.username}`) : null}
         onAbrirEditar={(sub) => { setSubpestanaEditar(sub); setModalEditarAbierto(true); }}
         onAbrirAmigos={() => setModalAmigosAbierto(true)}

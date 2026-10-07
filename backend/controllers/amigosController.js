@@ -223,7 +223,7 @@ const obtenerAmigos = async (req, res) => {
   }
 };
 // 6. DELETE: /api/amigos/:amistad_id
-// Eliminar un amigo confirmado
+// Eliminar un amigo confirmado (admite tanto ID de amistad como ID de usuario amigo)
 const eliminarAmigo = async (req, res) => {
   const usuarioId = req.usuario?.id;
   const { amistad_id } = req.params;
@@ -232,17 +232,50 @@ const eliminarAmigo = async (req, res) => {
     return res.status(401).json({ error: 'Sesión no autorizada' });
   }
 
+  const idNum = parseInt(amistad_id, 10);
+  if (!idNum || isNaN(idNum)) {
+    return res.status(400).json({ error: 'ID de amigo o amistad inválido' });
+  }
+
   try {
-    // Solo puede eliminarla si es remitente o destinatario de esa amistad
+    // Permite eliminar la relación buscando por:
+    // a) ID de la fila en la tabla 'amistades'
+    // b) O ID del usuario amigo (remitente o destinatario)
     const resultado = await pool.query(
       `DELETE FROM amistades 
-       WHERE id = $1 AND (remitente_id = $2 OR destinatario_id = $2)
-       RETURNING id`,
-      [amistad_id, usuarioId]
+       WHERE (
+         id = $1 
+         OR (remitente_id = $1 AND destinatario_id = $2)
+         OR (destinatario_id = $1 AND remitente_id = $2)
+       )
+       AND (remitente_id = $2 OR destinatario_id = $2)
+       RETURNING id, remitente_id, destinatario_id`,
+      [idNum, usuarioId]
     );
 
     if (resultado.rows.length === 0) {
-      return res.status(404).json({ error: 'Amistad no encontrada o no tienes permiso' });
+      return res.status(404).json({ error: 'Amistad no encontrada o no tienes permiso para eliminarla' });
+    }
+
+    const filaEliminada = resultado.rows[0];
+    const otroUsuarioId = filaEliminada.remitente_id === usuarioId 
+      ? filaEliminada.destinatario_id 
+      : filaEliminada.remitente_id;
+
+    // Limpiar invitaciones pendientes de co-visión entre ambos si las hubiera
+    if (otroUsuarioId) {
+      await pool.query(
+        `DELETE FROM covisualizaciones 
+         WHERE estado = 'pendiente' 
+           AND (
+             (amigo_id = $1 AND visualizacion_id IN (SELECT id FROM historial_visualizaciones WHERE usuario_id = $2))
+             OR
+             (amigo_id = $2 AND visualizacion_id IN (SELECT id FROM historial_visualizaciones WHERE usuario_id = $1))
+           )`,
+        [otroUsuarioId, usuarioId]
+      ).catch((errLimpieza) => {
+        console.warn('Advertencia al limpiar covisiones pendientes:', errLimpieza.message);
+      });
     }
 
     res.json({ mensaje: 'Amigo eliminado correctamente' });
@@ -251,6 +284,7 @@ const eliminarAmigo = async (req, res) => {
     res.status(500).json({ error: 'Error del servidor al eliminar amigo' });
   }
 };
+
 
 module.exports = {
   buscarUsuarios,

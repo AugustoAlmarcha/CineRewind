@@ -1262,7 +1262,9 @@ const asignarAcompananteLoteSerie = async (req, res) => {
     temporada = null, 
     historial_ids = [], 
     amigos_etiquetados = [], 
-    visto_con_texto = '' 
+    visto_con_texto = '',
+    accion = 'asignar', // 'asignar' | 'quitar'
+    quitar_acompanantes = false
   } = req.body;
 
   if (!usuario_id) {
@@ -1304,6 +1306,28 @@ const asignarAcompananteLoteSerie = async (req, res) => {
     if (targetIds.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'No se encontraron registros para los criterios seleccionados' });
+    }
+
+    // Si la acción es quitar acompañantes
+    if (accion === 'quitar' || quitar_acompanantes === true) {
+      await client.query(
+        `UPDATE historial_visualizaciones 
+         SET visto_con_texto = NULL 
+         WHERE id = ANY($1::int[])`,
+        [targetIds]
+      );
+
+      await client.query(
+        `DELETE FROM covisualizaciones 
+         WHERE visualizacion_id = ANY($1::int[])`,
+        [targetIds]
+      );
+
+      await client.query('COMMIT');
+      return res.json({
+        mensaje: `Se quitaron los acompañantes de ${targetIds.length} ${targetIds.length === 1 ? 'capítulo' : 'capítulos'} correctamente.`,
+        total_actualizados: targetIds.length,
+      });
     }
 
     // 1. Actualizar texto de acompañante manual

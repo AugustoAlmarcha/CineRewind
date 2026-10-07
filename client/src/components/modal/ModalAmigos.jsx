@@ -160,14 +160,20 @@ export default function ModalAmigos({ onClose, onActualizado }) {
   const confirmarEliminarAmigo = async () => {
     if (!amigoAEliminar) return;
     try {
-      await eliminarAmigoAPI(amigoAEliminar.amistad_id);
-      setAmigos((prev) => prev.filter((a) => a.amistad_id !== amigoAEliminar.amistad_id));
+      const idParaEliminar = amigoAEliminar.amistad_id || amigoAEliminar.id;
+      const res = await eliminarAmigoAPI(idParaEliminar);
+      setAmigos((prev) => prev.filter((a) => {
+        if (amigoAEliminar.amistad_id && a.amistad_id === amigoAEliminar.amistad_id) return false;
+        if (amigoAEliminar.id && a.id === amigoAEliminar.id) return false;
+        return true;
+      }));
+      await cargarListas();
       if (onActualizado) {
         onActualizado();
       }
-      mostrarMensaje(`Has eliminado a ${amigoAEliminar.nombre}`, 'exito');
-    } catch {
-      mostrarMensaje('No se pudo eliminar al amigo', 'error');
+      mostrarMensaje(res.mensaje || `Has eliminado a ${amigoAEliminar.nombre}`, 'exito');
+    } catch (err) {
+      mostrarMensaje(err.message || 'No se pudo eliminar al amigo', 'error');
     } finally {
       setAmigoAEliminar(null);
     }

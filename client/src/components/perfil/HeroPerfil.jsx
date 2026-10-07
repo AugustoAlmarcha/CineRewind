@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, Users, Sparkles, Tv, Film, Clock, Play, BookOpen } from 'lucide-react';
+import { Camera, Users, Sparkles, Tv, Film, Clock, Play, BookOpen, Trash2 } from 'lucide-react';
 
 export default function HeroPerfil({
   usuario,
@@ -14,10 +14,12 @@ export default function HeroPerfil({
   estadoRelacion = 'ninguno',
   onEnviarSolicitud,
   onAceptarSolicitud,
+  onEliminarAmigo,
   onVolverMiPerfil,
   onAbrirEditar,
   onAbrirAmigos,
   onAbrirWrapped
+
 }) {
   return (
     <section className="w-full rounded-3xl overflow-hidden relative border border-zinc-800 bg-[#0d0d12] shadow-2xl group">
@@ -124,9 +126,21 @@ export default function HeroPerfil({
           ) : (
             <>
               {estadoRelacion === 'amigos' && (
-                <span className="px-4 py-2.5 rounded-xl font-bold text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-2">
-                  <span>✓</span> Amigos
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="px-4 py-2.5 rounded-xl font-bold text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-2">
+                    <span>✓</span> Amigos
+                  </span>
+                  {onEliminarAmigo && (
+                    <button
+                      type="button"
+                      onClick={onEliminarAmigo}
+                      className="p-2.5 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 border border-zinc-700 hover:border-rose-500/40 transition cursor-pointer"
+                      title="Dejar de ser amigos"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               )}
 
               {estadoRelacion === 'solicitud_enviada' && (

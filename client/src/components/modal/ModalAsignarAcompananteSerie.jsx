@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Users, Check, X, Sparkles, Loader2, Calendar, Tv, Layers, 
-  UserCheck, AlertCircle, CheckSquare, Square
+  UserCheck, AlertCircle, CheckSquare, Square, UserX
 } from 'lucide-react';
 import { obtenerAmigosAPI, asignarAcompananteLoteSerieAPI } from '../../api';
 
@@ -161,7 +161,36 @@ export default function ModalAsignarAcompananteSerie({
     }
   };
 
+  // Quitar acompañantes y co-visiones en lote
+  const handleQuitarAcompanantes = async () => {
+    if (!obraId || capsAfectados.length === 0) return;
+    if (!window.confirm(`¿Quitar acompañantes y co-visiones de los ${capsAfectados.length} capítulos seleccionados?`)) return;
+
+    setGuardando(true);
+    setError(null);
+    try {
+      const targetIds = capsAfectados.map((r) => r.id || r.historial_id).filter(Boolean);
+      const res = await asignarAcompananteLoteSerieAPI({
+        obraId,
+        alcance,
+        temporada: alcance === 'temporada' ? temporadaSeleccionada : null,
+        historialIds: alcance === 'episodios' ? targetIds : [],
+        accion: 'quitar',
+      });
+      if (onAsignado) {
+        await onAsignado(res.total_actualizados || capsAfectados.length);
+      }
+      onClose();
+    } catch (err) {
+      console.error('Error al quitar acompañantes:', err);
+      setError(err.message || 'No se pudieron quitar los acompañantes.');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   if (typeof document === 'undefined') return null;
+
 
   return createPortal(
     <div 
@@ -430,7 +459,7 @@ export default function ModalAsignarAcompananteSerie({
           </div>
 
           {/* BOTÓN SUBMIT FINAL */}
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
             <button
               type="submit"
               disabled={guardando || capsAfectados.length === 0}
@@ -439,7 +468,7 @@ export default function ModalAsignarAcompananteSerie({
               {guardando ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Asignando acompañante...</span>
+                  <span>Guardando...</span>
                 </>
               ) : (
                 <>
@@ -449,6 +478,16 @@ export default function ModalAsignarAcompananteSerie({
                   </span>
                 </>
               )}
+            </button>
+
+            <button
+              type="button"
+              disabled={guardando || capsAfectados.length === 0}
+              onClick={handleQuitarAcompanantes}
+              className="w-full py-2.5 rounded-2xl bg-transparent hover:bg-rose-500/10 text-neutral-500 hover:text-rose-600 dark:hover:text-rose-400 font-bold text-xs transition border border-transparent hover:border-rose-500/20 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <UserX className="w-3.5 h-3.5" />
+              <span>Quitar acompañantes de estos {capsAfectados.length} caps</span>
             </button>
           </div>
         </form>

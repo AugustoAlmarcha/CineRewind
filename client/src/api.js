@@ -479,11 +479,18 @@ export const eliminarAmigoAPI = async (amistadId) => {
   const token = localStorage.getItem('cinerewind_token');
   const res = await fetch(`/api/amigos/${amistadId}`, {
     method: 'DELETE',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
   });
-  if (!res.ok) throw new Error('Error al eliminar amigo');
-  return await res.json();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Error al eliminar amigo');
+  }
+  return data;
 };
+
 
 // ==========================================
 // CO-VISUALIZACIONES (HU-11)
@@ -753,6 +760,7 @@ export const asignarAcompananteLoteSerieAPI = async ({
   historialIds = [],
   amigosEtiquetados = [],
   vistoConTexto = '',
+  accion = 'asignar',
 }) => {
   const res = await fetch('/api/historial/series/asignar-acompanante-lote', {
     method: 'POST',
@@ -764,11 +772,13 @@ export const asignarAcompananteLoteSerieAPI = async ({
       historial_ids: historialIds,
       amigos_etiquetados: amigosEtiquetados,
       visto_con_texto: vistoConTexto,
+      accion,
     }),
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Error al asignar acompañante');
+    throw new Error(errorData.error || 'Error al procesar acompañantes de la serie');
   }
   return res.json();
-};
+};
+
