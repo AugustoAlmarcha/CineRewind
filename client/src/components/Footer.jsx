@@ -81,7 +81,7 @@ export default function Footer() {
                 ¿Te gusta CineRewind? Apoyá el proyecto <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               </h4>
               <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                Tu aporte nos ayuda a pagar los servidores en la nube y mantener la plataforma 100% libre de anuncios molestos.
+                Tu aporte nos ayuda a cubrir los costos de los servidores y a seguir sumando nuevas funciones para la comunidad.
               </p>
             </div>
           </div>
