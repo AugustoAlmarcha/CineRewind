@@ -149,8 +149,9 @@ export default function HeaderHistorial({
                 type="button"
                 onClick={onVolverMeses}
                 className="text-neutral-500 hover:text-neutral-900 dark:hover:text-white cursor-pointer"
+                title="Volver a los meses de este año"
               >
-                / Volver a Meses
+                / {mesSeleccionado === 'todos' ? `Todo ${anioSeleccionado} (← Volver)` : 'Volver a Meses'}
               </button>
             )}
           </div>

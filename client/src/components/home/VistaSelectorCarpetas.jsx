@@ -1,6 +1,6 @@
 import React from 'react';
 import CollagePortadas from './CollagePortadas';
-import { Trash2, Check } from 'lucide-react';
+import { Check, Sparkles } from 'lucide-react';
 
 export default function VistaSelectorCarpetas({
   carpetas = [],
@@ -48,6 +48,8 @@ export default function VistaSelectorCarpetas({
                 ? 'border-rose-500 ring-4 ring-rose-500/30 scale-[1.02]'
                 : modoSeleccion && parcialSeleccionados
                 ? 'border-rose-400 ring-2 ring-rose-400/20'
+                : c.esTodoElAnio
+                ? 'border-amber-500/40 hover:border-amber-400 hover:scale-[1.02]'
                 : 'border-neutral-300 dark:border-white/10 hover:border-rose-500/50 hover:scale-[1.02]'
             } bg-neutral-950`}
           >
@@ -57,11 +59,19 @@ export default function VistaSelectorCarpetas({
             </div>
 
             {/* 2. Capa oscura elegante para resaltar el año/mes y las obras */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 group-hover:bg-black/25 transition duration-300 p-4">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/45 group-hover:bg-black/30 transition duration-300 p-4">
+              {c.esTodoElAnio && (
+                <div className="mb-2 flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-sm">
+                  <Sparkles className="w-3 h-3 text-amber-300" />
+                  <span>Año completo</span>
+                </div>
+              )}
               <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] group-hover:scale-105 transition-transform duration-300 text-center">
                 {c.etiqueta}
               </h3>
-              <span className="mt-2 text-xs font-black px-3 py-1 bg-rose-600 text-white rounded-full shadow-md drop-shadow">
+              <span className={`mt-2 text-xs font-black px-3 py-1 text-white rounded-full shadow-md drop-shadow ${
+                c.esTodoElAnio ? 'bg-gradient-to-r from-amber-600 to-rose-600' : 'bg-rose-600'
+              }`}>
                 {c.subtexto}
               </span>
 
@@ -93,21 +103,6 @@ export default function VistaSelectorCarpetas({
                   {parcialSeleccionados && <span className="text-xs font-bold leading-none">-</span>}
                 </div>
               </div>
-            )}
-
-            {/* 4. Botón directo de eliminar carpeta completa (cuando modoSeleccion no está activo) */}
-            {!modoSeleccion && onEliminarCarpetaDirecto && totalIds > 0 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEliminarCarpetaDirecto(c);
-                }}
-                className="absolute top-3.5 right-3.5 z-20 w-8 h-8 rounded-full bg-black/70 hover:bg-rose-600 text-neutral-300 hover:text-white flex items-center justify-center backdrop-blur-md border border-white/15 hover:border-rose-500 shadow-xl transition-all cursor-pointer opacity-90 sm:opacity-0 sm:group-hover:opacity-100"
-                title={`Eliminar todo ${c.etiqueta} (${totalIds} ${totalIds === 1 ? 'obra' : 'obras'})`}
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
             )}
           </div>
         );

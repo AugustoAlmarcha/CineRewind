@@ -52,6 +52,11 @@ export default function VistaSerieTotal({
       .catch(() => {});
   }, [esSerie, tmdbId, serie?.total_temporadas, serie?.seasons_info, onRecargarDatos]);
 
+  // Scroll al tope garantizado al abrir la serie
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [serie?.id_agrupador, serie?.titulo]);
+
   const serieConMetadatos = useMemo(() => {
     return {
       ...serie,

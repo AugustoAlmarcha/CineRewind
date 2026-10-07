@@ -228,10 +228,17 @@ export default function GrillaHistorial({
     return Object.entries(mapa).sort((a, b) => new Date(b[0]) - new Date(a[0]));
   }, [serieSeleccionadaTotal, soloConAmigos, amigosFiltro]);
 
-  // 3. Items filtrados del mes en Diario por Fechas
+  // 3. Items filtrados del mes o de todo el año en Diario por Fechas
   const itemsDelMes = useMemo(() => {
     if (anioSeleccionado === null || mesSeleccionado === null) return [];
-    return (arbolHistorial[anioSeleccionado]?.[mesSeleccionado] || []).filter((item) => {
+    let items = [];
+    if (mesSeleccionado === 'todos') {
+      const mesesObj = arbolHistorial[anioSeleccionado] || {};
+      items = Object.values(mesesObj).flat();
+    } else {
+      items = arbolHistorial[anioSeleccionado]?.[mesSeleccionado] || [];
+    }
+    return items.filter((item) => {
       if (busquedaHistorial.trim() && !item.titulo?.toLowerCase().includes(busquedaHistorial.trim().toLowerCase())) {
         return false;
       }
@@ -328,6 +335,8 @@ export default function GrillaHistorial({
   // CASO 4: Selector de Meses
   if (mesSeleccionado === null) {
     const mesesObj = arbolHistorial[anioSeleccionado] || {};
+    const todosItemsAnio = Object.values(mesesObj).flat().filter(pasaFiltroAmigos);
+
     const carpetasMeses = Array.from({ length: 12 }, (_, index) => {
       const items = (mesesObj[index] || []).filter(pasaFiltroAmigos);
       const nombreMes = new Date(2024, index, 1).toLocaleDateString('es-ES', { month: 'long' });
@@ -343,9 +352,23 @@ export default function GrillaHistorial({
       .filter((c) => c.items.length > 0)
       .sort((a, b) => b.valor - a.valor);
 
+    // Carpeta especial para ver TODO el año completo sin abrir mes a mes
+    const carpetasConTodoElAnio = [];
+    if (todosItemsAnio.length > 0) {
+      carpetasConTodoElAnio.push({
+        id: 'todos',
+        valor: 'todos',
+        etiqueta: `Todo ${anioSeleccionado}`,
+        subtexto: `${todosItemsAnio.length} ${todosItemsAnio.length === 1 ? 'obra' : 'obras'}`,
+        items: todosItemsAnio,
+        esTodoElAnio: true,
+      });
+    }
+    carpetasConTodoElAnio.push(...carpetasMeses);
+
     return (
       <VistaSelectorCarpetas 
-        carpetas={carpetasMeses}
+        carpetas={carpetasConTodoElAnio}
         tituloVacio={soloConAmigos ? `Sin registros compartidos con esos amigos en ${anioSeleccionado}.` : `No hay registros en ${anioSeleccionado}.`}
         onSeleccionar={onSeleccionarMes}
         modoSeleccion={modoSeleccion}

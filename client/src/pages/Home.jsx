@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CarruselViendo from '../components/home/CarruselViendo';
 import HeaderHistorial from '../components/home/HeaderHistorial';
@@ -86,6 +86,11 @@ export default function Home({ actualizarTrigger }) {
       setFiltroTipo(location.state.filtroTipo);
     }
   }, [location.state]);
+
+  // 🔝 Asegurar que la pantalla suba al inicio al cambiar de vistas o abrir series/carpetas
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [serieSeleccionadaTotal, anioSeleccionado, mesSeleccionado, vistaTotal]);
 
   // -------------------------------------------------------------
   // 📱 NAVEGACIÓN CON BOTÓN FÍSICO "ATRÁS" DE ANDROID / MÓVIL

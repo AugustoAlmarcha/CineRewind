@@ -22,8 +22,8 @@ export default function VistaFeedMes({
     return (
       <div className="py-24 text-center text-neutral-500 italic">
         {busquedaHistorial 
-          ? `No hay obras con "${busquedaHistorial}" en este mes.` 
-          : 'No hay registros en este mes.'}
+          ? `No hay obras con "${busquedaHistorial}" en este período.` 
+          : 'No hay registros en este período.'}
       </div>
     );
   }
