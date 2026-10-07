@@ -5,6 +5,7 @@ import HeaderHistorial from '../components/home/HeaderHistorial';
 import GrillaHistorial from '../components/home/GrillaHistorial';
 import BarraAccionLote from '../components/home/BarraAccionLote';
 import OnboardingBienvenida from '../components/home/OnboardingBienvenida';
+import { obtenerInfoSaga } from '../utils/seriesProgreso';
 
 // Modales modulares
 import ModalRegistrar from '../components/modal/ModalRegistrar';
@@ -395,6 +396,43 @@ export default function Home({ actualizarTrigger }) {
         setAnioSeleccionado(null);
         setMesSeleccionado(null);
         setSerieSeleccionadaTotal(null);
+      } else {
+        setSerieSeleccionadaTotal((prev) => {
+          if (!prev) return null;
+          const regsActualizados = nuevoHistorial.filter((item) => {
+            if (prev.esSaga) {
+              const info = obtenerInfoSaga(item.titulo);
+              return info && `saga_${info.clave}` === prev.id_agrupador;
+            }
+            const esSerieItem = item.tipo?.toLowerCase() === 'serie';
+            const esSeriePrev = prev.tipo?.toLowerCase() === 'serie';
+            if (esSeriePrev || esSerieItem) {
+              const mismoTmdb = prev.tmdb_id && item.tmdb_id && Number(prev.tmdb_id) === Number(item.tmdb_id);
+              const mismoObraId = prev.obra_id && item.obra_id && Number(prev.obra_id) === Number(item.obra_id);
+              const mismoTitulo = prev.titulo && item.titulo && prev.titulo.toLowerCase().trim() === item.titulo.toLowerCase().trim();
+              return Boolean(mismoTmdb || mismoObraId || mismoTitulo);
+            }
+            const mismoTmdb = prev.tmdb_id && item.tmdb_id && Number(prev.tmdb_id) === Number(item.tmdb_id);
+            const mismoObraId = prev.obra_id && item.obra_id && Number(prev.obra_id) === Number(item.obra_id);
+            const mismoTitulo = prev.titulo && item.titulo && prev.titulo.toLowerCase().trim() === item.titulo.toLowerCase().trim();
+            return Boolean(mismoTmdb || mismoObraId || mismoTitulo);
+          });
+
+          if (regsActualizados.length > 0) {
+            regsActualizados.sort((a, b) => new Date(b.fecha_visto) - new Date(a.fecha_visto));
+            const primer = regsActualizados[0];
+            return {
+              ...prev,
+              poster_path: primer.poster_serie || primer.obra_poster || primer.poster_path || prev.poster_path,
+              total_temporadas: primer.total_temporadas || prev.total_temporadas,
+              total_episodios: primer.total_episodios || prev.total_episodios,
+              estado_serie: primer.estado_serie || prev.estado_serie,
+              seasons_info: primer.seasons_info || prev.seasons_info,
+              registros: regsActualizados,
+            };
+          }
+          return prev;
+        });
       }
     } catch (err) {
       console.error('Error al cargar datos:', err);

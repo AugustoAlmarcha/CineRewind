@@ -243,7 +243,7 @@ export default function ModalGestionTemporada({
         });
       }
 
-      if (onCompletado) await onCompletado();
+      if (onCompletado) await onCompletado(episodiosFaltantes.length);
       onClose();
     } catch (err) {
       console.error('Error al autocompletar temporada:', err);

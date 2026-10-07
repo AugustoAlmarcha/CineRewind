@@ -460,8 +460,14 @@ export default function VistaSerieTotal({
             setTemporadaSeleccionadaModal(temp);
             setModalCalificarAbierto(true);
           }}
-          onCompletado={async () => {
+          onCompletado={async (cant) => {
             if (onRecargarDatos) await onRecargarDatos();
+            setMensajeExitoSerie(
+              cant && cant > 1
+                ? `¡${cant} capítulos completados y guardados en su fecha con éxito!`
+                : '¡Capítulos completados y sincronizados con éxito en su fecha!'
+            );
+            setTimeout(() => setMensajeExitoSerie(null), 4500);
           }}
         />
       )}

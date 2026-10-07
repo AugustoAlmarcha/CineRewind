@@ -166,3 +166,65 @@ export function calcularProgresoSerie(serie) {
     resumenTexto,
   };
 }
+
+/**
+ * Helper para detectar franquicias y sagas populares reconocidas de películas
+ */
+export function obtenerInfoSaga(titulo) {
+  if (!titulo) return null;
+  const t = titulo.trim();
+
+  // Solo sagas populares y franquicias ampliamente conocidas
+  const patrones = [
+    { regex: /^(harry\s+potter|animales\s+fant[aá]sticos|fantastic\s+beasts).*$/i, saga: 'Harry Potter', nombre: 'Saga Harry Potter' },
+    { regex: /^(los\s+)?juegos\s+del\s+hambre|hunger\s+games.*$/i, saga: 'Los Juegos del Hambre', nombre: 'Saga Los Juegos del Hambre' },
+    { regex: /^(shrek|el\s+gato\s+con\s+botas|puss\s+in\s+boots).*$/i, saga: 'Shrek', nombre: 'Saga Shrek' },
+    { regex: /^toy\s+story.*$/i, saga: 'Toy Story', nombre: 'Saga Toy Story' },
+    { regex: /^(r[aá]pidos\s+y\s+furiosos|fast\s+&?\s+furious).*$/i, saga: 'Rápidos y Furiosos', nombre: 'Saga Rápidos y Furiosos' },
+    { regex: /^star\s+wars.*$/i, saga: 'Star Wars', nombre: 'Saga Star Wars' },
+    { regex: /^(el\s+se[ñn]or\s+de\s+los\s+anillos|the\s+lord\s+of\s+the\s+rings|el\s+hobbit|the\s+hobbit).*$/i, saga: 'El Señor de los Anillos', nombre: 'Saga El Señor de los Anillos' },
+    { regex: /^(los\s+)?(avengers|vengadores).*$/i, saga: 'Avengers', nombre: 'Saga Avengers' },
+    { regex: /^spider-?man.*$/i, saga: 'Spider-Man', nombre: 'Saga Spider-Man' },
+    { regex: /^(batman|the\s+batman|the\s+dark\s+knight|el\s+caballero\s+de\s+la\s+noche).*$/i, saga: 'Batman', nombre: 'Saga Batman' },
+    { regex: /^piratas\s+del\s+caribe|pirates\s+of\s+the\s+caribbean.*$/i, saga: 'Piratas del Caribe', nombre: 'Saga Piratas del Caribe' },
+    { regex: /^misi[oó]n\s+imposible|mission\s*:\s*impossible.*$/i, saga: 'Misión Imposible', nombre: 'Saga Misión Imposible' },
+    { regex: /^john\s+wick.*$/i, saga: 'John Wick', nombre: 'Saga John Wick' },
+    { regex: /^jurassic\s+(park|world).*$/i, saga: 'Jurassic Park', nombre: 'Saga Jurassic Park' },
+    { regex: /^(la\s+saga\s+)?crep[uú]sculo|twilight.*$/i, saga: 'Crepúsculo', nombre: 'Saga Crepúsculo' },
+    { regex: /^(el\s+)?padrino|the\s+godfather.*$/i, saga: 'El Padrino', nombre: 'Saga El Padrino' },
+    { regex: /^indiana\s+jones.*$/i, saga: 'Indiana Jones', nombre: 'Saga Indiana Jones' },
+    { regex: /^(mi\s+villano\s+favorito|minions|despicable\s+me).*$/i, saga: 'Mi Villano Favorito', nombre: 'Saga Mi Villano Favorito' },
+    { regex: /^kung\s+fu\s+panda.*$/i, saga: 'Kung Fu Panda', nombre: 'Saga Kung Fu Panda' },
+    { regex: /^madagascar.*$/i, saga: 'Madagascar', nombre: 'Saga Madagascar' },
+    { regex: /^cars(\s+.*)?$/i, saga: 'Cars', nombre: 'Saga Cars' },
+    { regex: /^(volver\s+al\s+futuro|back\s+to\s+the\s+future).*$/i, saga: 'Volver al Futuro', nombre: 'Saga Volver al Futuro' },
+    { regex: /^matrix.*$/i, saga: 'Matrix', nombre: 'Saga Matrix' },
+    { regex: /^terminator.*$/i, saga: 'Terminator', nombre: 'Saga Terminator' },
+    { regex: /^(alien|depredador|predator).*$/i, saga: 'Alien', nombre: 'Saga Alien' },
+    { regex: /^(el\s+conjuro|the\s+conjuring|annabelle|la\s+monja|the\s+nun).*$/i, saga: 'El Conjuro', nombre: 'Saga El Conjuro' },
+    { regex: /^(destino\s+final|final\s+destination).*$/i, saga: 'Destino Final', nombre: 'Saga Destino Final' },
+    { regex: /^scream(\s+.*)?$/i, saga: 'Scream', nombre: 'Saga Scream' },
+    { regex: /^(los\s+)?incre[ií]bles|the\s+incredibles.*$/i, saga: 'Los Increíbles', nombre: 'Saga Los Increíbles' },
+    { regex: /^monsters(\s*,\s*inc|\s+university).*$/i, saga: 'Monsters Inc', nombre: 'Saga Monsters Inc' },
+    { regex: /^(buscando\s+a\s+(nemo|dory)|finding\s+(nemo|dory)).*$/i, saga: 'Buscando a Nemo', nombre: 'Saga Buscando a Nemo' },
+    { regex: /^(rocky|creed).*$/i, saga: 'Rocky', nombre: 'Saga Rocky' },
+    { regex: /^(james\s+bond|007).*$/i, saga: 'James Bond', nombre: 'Saga James Bond' },
+    { regex: /^transformers.*$/i, saga: 'Transformers', nombre: 'Saga Transformers' },
+    { regex: /^(x-men|wolverine|logan).*$/i, saga: 'X-Men', nombre: 'Saga X-Men' },
+    { regex: /^(la\s+era\s+de\s+hielo|ice\s+age).*$/i, saga: 'La Era de Hielo', nombre: 'Saga La Era de Hielo' },
+    { regex: /^(cazafantasmas|ghostbusters).*$/i, saga: 'Cazafantasmas', nombre: 'Saga Cazafantasmas' },
+    { regex: /^guardianes\s+de\s+la\s+galaxia|guardians\s+of\s+the\s+galaxy.*$/i, saga: 'Guardianes de la Galaxia', nombre: 'Saga Guardianes de la Galaxia' },
+    { regex: /^deadpool.*$/i, saga: 'Deadpool', nombre: 'Saga Deadpool' },
+    { regex: /^dune(\s+.*)?$/i, saga: 'Dune', nombre: 'Saga Dune' },
+    { regex: /^gladiad?or.*$/i, saga: 'Gladiador', nombre: 'Saga Gladiador' },
+    { regex: /^joker(\s+.*)?$/i, saga: 'Joker', nombre: 'Saga Joker' },
+  ];
+
+  for (const p of patrones) {
+    if (p.regex.test(t)) {
+      return { clave: p.saga.toLowerCase().replace(/\s+/g, '_'), nombre: p.nombre };
+    }
+  }
+
+  return null;
+}
