@@ -102,6 +102,11 @@ app.use('/api', limiterGeneral);
 app.use('/api/auth/login', limiterAutenticacion);
 app.use('/api/auth/registro', limiterAutenticacion);
 
+// Ruta de salud / keep-alive ultra liviana para monitoreo y pings periódicos
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: Math.floor(process.uptime()), timestamp: Date.now() });
+});
+
 // ==========================================
 // 3. MONTAJE DE RUTAS DE LA APLICACIÓN
 // ==========================================

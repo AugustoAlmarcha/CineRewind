@@ -3,12 +3,24 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [usuario, setUsuario] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('cinerewind_token') || null);
-  const [cargandoAuth, setCargandoAuth] = useState(true);
+  const [token, setToken] = useState(() => localStorage.getItem('cinerewind_token') || null);
+  const [usuario, setUsuario] = useState(() => {
+    try {
+      const guardado = localStorage.getItem('cinerewind_usuario');
+      return guardado ? JSON.parse(guardado) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Si ya tenemos token y usuario cacheados localmente, no bloqueamos la interfaz con pantalla de carga
+  const [cargandoAuth, setCargandoAuth] = useState(
+    () => !localStorage.getItem('cinerewind_usuario') && !!localStorage.getItem('cinerewind_token')
+  );
 
   const cerrarSesion = useCallback(() => {
     localStorage.removeItem('cinerewind_token');
+    localStorage.removeItem('cinerewind_usuario');
     localStorage.removeItem('cinerewind_banner');
     setToken(null);
     setUsuario(null);
@@ -17,20 +29,32 @@ export const AuthProvider = ({ children }) => {
   const iniciarSesion = useCallback((tokenRecibido, usuarioRecibido) => {
     localStorage.removeItem('cinerewind_banner');
     localStorage.setItem('cinerewind_token', tokenRecibido);
+    if (usuarioRecibido) {
+      try {
+        localStorage.setItem('cinerewind_usuario', JSON.stringify(usuarioRecibido));
+      } catch {}
+    }
     setToken(tokenRecibido);
-    setUsuario(usuarioRecibido);
+    setUsuario(usuarioRecibido || null);
   }, []);
 
-  // Actualiza el perfil activo en memoria al guardar cambios
+  // Actualiza el perfil activo en memoria y en localStorage al guardar cambios
   const actualizarUsuario = useCallback((nuevosDatos) => {
-    setUsuario((prev) => (prev ? { ...prev, ...nuevosDatos } : nuevosDatos));
+    setUsuario((prev) => {
+      const actualizado = prev ? { ...prev, ...nuevosDatos } : nuevosDatos;
+      try {
+        localStorage.setItem('cinerewind_usuario', JSON.stringify(actualizado));
+      } catch {}
+      return actualizado;
+    });
   }, []);
 
   // Al montar o cambiar el token, validamos la sesión con el backend
   useEffect(() => {
     let cancelado = false;
+    let timerReintento = null;
 
-    const verificarSesion = async () => {
+    const verificarSesion = async (intento = 1) => {
       if (!token) {
         setCargandoAuth(false);
         return;
@@ -47,17 +71,30 @@ export const AuthProvider = ({ children }) => {
           const datosUsuario = await res.json();
           if (!cancelado) {
             setUsuario(datosUsuario);
+            try {
+              localStorage.setItem('cinerewind_usuario', JSON.stringify(datosUsuario));
+            } catch {}
+          }
+        } else if (res.status === 401 || res.status === 403) {
+          // Token genuinamente expirado o revocado por el backend
+          if (!cancelado) {
+            console.warn('Sesión expirada o token inválido:', res.status);
+            cerrarSesion();
           }
         } else {
-          // Token expirado o inválido en el servidor
-          if (!cancelado) {
-            cerrarSesion();
+          // 500, 502, 503, 504: El backend en Render está arrancando (cold start).
+          // ¡NO cerramos la sesión! Mantenemos los datos locales intactos.
+          console.warn(`Servidor temporalmente no disponible (status ${res.status}). Manteniendo sesión.`);
+          if (!cancelado && intento < 3) {
+            timerReintento = setTimeout(() => verificarSesion(intento + 1), 6000);
           }
         }
       } catch (err) {
-        console.error('Error al validar sesión:', err);
-        if (!cancelado) {
-          cerrarSesion();
+        // Error de red (Failed to fetch, conexión caída o servidor iniciando)
+        // ¡NO cerramos la sesión!
+        console.warn('Error de red al conectar con el backend (servidor iniciando):', err.message);
+        if (!cancelado && intento < 3) {
+          timerReintento = setTimeout(() => verificarSesion(intento + 1), 6000);
         }
       } finally {
         if (!cancelado) {
@@ -67,8 +104,20 @@ export const AuthProvider = ({ children }) => {
     };
 
     verificarSesion();
-    return () => { cancelado = true; };
+    return () => {
+      cancelado = true;
+      if (timerReintento) clearTimeout(timerReintento);
+    };
   }, [token, cerrarSesion]);
+
+  // Keep-alive silencioso cada 10 minutos para evitar que el servidor gratuito de Render se apague por inactividad
+  useEffect(() => {
+    const pingKeepAlive = () => {
+      fetch('/api/health').catch(() => {});
+    };
+    const intervalo = setInterval(pingKeepAlive, 10 * 60 * 1000);
+    return () => clearInterval(intervalo);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ usuario, token, cargandoAuth, iniciarSesion, cerrarSesion, actualizarUsuario }}>

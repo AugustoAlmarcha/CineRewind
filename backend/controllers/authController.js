@@ -23,7 +23,7 @@ const generarToken = (usuario) => {
       username: usuario.username 
     },
     obtenerJwtSecret(),
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
   );
 };
 
