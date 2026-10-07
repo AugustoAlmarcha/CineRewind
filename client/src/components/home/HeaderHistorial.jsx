@@ -6,14 +6,14 @@ import {
 } from 'lucide-react';
 
 const OPCIONES_ORDEN = [
-  { id: 'mas_vistos', label: 'Más vistos', icon: Flame, iconColor: 'text-rose-500' },
-  { id: 'menos_vistos', label: 'Menos vistos', icon: TrendingDown, iconColor: 'text-cyan-500' },
-  { id: 'recientes', label: 'Más recientes', icon: Clock, iconColor: 'text-amber-500' },
-  { id: 'antiguos', label: 'Más antiguas', icon: History, iconColor: 'text-neutral-400' },
-  { id: 'finalizadas', label: 'Finalizadas primero', icon: CheckCircle2, iconColor: 'text-emerald-500' },
-  { id: 'no_finalizadas', label: 'No finalizadas (En curso)', icon: Hourglass, iconColor: 'text-amber-500' },
-  { id: 'az', label: 'A - Z (Alfabético)', icon: ArrowDownAZ, iconColor: 'text-indigo-400' },
-  { id: 'za', label: 'Z - A (Alfabético)', icon: ArrowUpZA, iconColor: 'text-indigo-400' },
+  { id: 'mas_vistos', label: 'Más vistos', labelBoton: 'Más vistos', icon: Flame, iconColor: 'text-rose-500' },
+  { id: 'menos_vistos', label: 'Menos vistos', labelBoton: 'Menos vistos', icon: TrendingDown, iconColor: 'text-cyan-500' },
+  { id: 'recientes', label: 'Más recientes', labelBoton: 'Más recientes', icon: Clock, iconColor: 'text-amber-500' },
+  { id: 'antiguos', label: 'Más antiguas', labelBoton: 'Más antiguas', icon: History, iconColor: 'text-neutral-400' },
+  { id: 'finalizadas', label: 'Finalizadas primero', labelBoton: 'Finalizadas', icon: CheckCircle2, iconColor: 'text-emerald-500' },
+  { id: 'no_finalizadas', label: 'No finalizadas (En curso)', labelBoton: 'No finalizadas', icon: Hourglass, iconColor: 'text-amber-500' },
+  { id: 'az', label: 'A - Z (Alfabético)', labelBoton: 'A - Z', icon: ArrowDownAZ, iconColor: 'text-indigo-400' },
+  { id: 'za', label: 'Z - A (Alfabético)', labelBoton: 'Z - A', icon: ArrowUpZA, iconColor: 'text-indigo-400' },
 ];
 export default function HeaderHistorial({
   vistaTotal,
@@ -184,9 +184,9 @@ export default function HeaderHistorial({
       </div>
 
       {/* Derecha: Buscador + Botón Con Amigos + Selección masiva + Filtro tipo */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
         
-{/* Buscador de título */}
+        {/* Buscador de título */}
         <div className="relative flex items-center">
           <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 pointer-events-none" />
           <input
@@ -194,7 +194,7 @@ export default function HeaderHistorial({
             value={busquedaHistorial}
             onChange={(e) => setBusquedaHistorial(e.target.value)}
             placeholder="Buscar título..."
-            className="bg-neutral-100 dark:bg-[#18181e] border border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white text-xs rounded-xl pl-8 pr-7 py-2 w-44 sm:w-52 focus:outline-none focus:border-rose-500 transition"
+            className="bg-neutral-100 dark:bg-[#18181e] border border-neutral-300 dark:border-white/10 text-neutral-900 dark:text-white text-xs rounded-xl pl-8 pr-7 py-2 w-36 sm:w-44 focus:outline-none focus:border-rose-500 transition"
           />
           {busquedaHistorial && (
             <button
@@ -437,7 +437,7 @@ export default function HeaderHistorial({
                 return (
                   <>
                     <IconActual className={`w-3.5 h-3.5 ${actual.iconColor} shrink-0`} />
-                    <span>{actual.label}</span>
+                    <span>{actual.labelBoton || actual.label}</span>
                     <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-200 ${menuOrdenAbierto ? 'rotate-180' : ''}`} />
                   </>
                 );
@@ -445,7 +445,7 @@ export default function HeaderHistorial({
             </button>
 
             {menuOrdenAbierto && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-[#181820] border border-neutral-200 dark:border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 animate-fadeIn backdrop-blur-md">
+              <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white dark:bg-[#181820] border border-neutral-200 dark:border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 animate-fadeIn backdrop-blur-md">
                 <p className="text-[10px] font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500 px-2.5 py-1.5">
                   Ordenar por
                 </p>

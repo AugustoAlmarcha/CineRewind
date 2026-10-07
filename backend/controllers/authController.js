@@ -239,7 +239,10 @@ const obtenerPerfilActual = async (req, res) => {
 
   try {
     const consulta = `
-      SELECT id, nombre, username, email, rol, avatar_url, biografia, banner_url, creado_en, (password_hash IS NOT NULL) AS tiene_password
+      SELECT id, nombre, username, email, rol, avatar_url, biografia, banner_url, creado_en, 
+             COALESCE(privacidad_perfil, 'publico') AS privacidad_perfil,
+             COALESCE(privacidad_resenias, 'publico') AS privacidad_resenias,
+             (password_hash IS NOT NULL) AS tiene_password
       FROM usuarios 
       WHERE id = $1;
     `;
@@ -259,7 +262,7 @@ const obtenerPerfilActual = async (req, res) => {
 // PUT: /api/auth/perfil
 const actualizarPerfil = async (req, res) => {
   const usuarioId = req.usuario?.id;
-  const { nombre, username, biografia, avatar_url, banner_url } = req.body;
+  const { nombre, username, biografia, avatar_url, banner_url, privacidad_perfil, privacidad_resenias } = req.body;
 
   if (!usuarioId) {
     return res.status(401).json({ error: 'Sesión no autorizada' });
@@ -298,9 +301,13 @@ const actualizarPerfil = async (req, res) => {
         username = COALESCE($2, username),
         biografia = $3,
         avatar_url = $4,
-        banner_url = CASE WHEN $5::boolean THEN $6 ELSE banner_url END
-      WHERE id = $7
-      RETURNING id, nombre, username, email, rol, avatar_url, biografia, banner_url, creado_en;
+        banner_url = CASE WHEN $5::boolean THEN $6 ELSE banner_url END,
+        privacidad_perfil = CASE WHEN $7::text IS NOT NULL THEN $7 ELSE COALESCE(privacidad_perfil, 'publico') END,
+        privacidad_resenias = CASE WHEN $8::text IS NOT NULL THEN $8 ELSE COALESCE(privacidad_resenias, 'publico') END
+      WHERE id = $9
+      RETURNING id, nombre, username, email, rol, avatar_url, biografia, banner_url, creado_en,
+                COALESCE(privacidad_perfil, 'publico') AS privacidad_perfil,
+                COALESCE(privacidad_resenias, 'publico') AS privacidad_resenias;
     `;
 
     const resultado = await pool.query(query, [
@@ -310,6 +317,8 @@ const actualizarPerfil = async (req, res) => {
       avatar_url || null,
       banner_url !== undefined,
       banner_url || null,
+      privacidad_perfil !== undefined ? privacidad_perfil : null,
+      privacidad_resenias !== undefined ? privacidad_resenias : null,
       usuarioId
     ]);
 
@@ -470,6 +479,8 @@ const obtenerPerfilPublico = async (req, res) => {
         u.banner_url,
         u.rol,
         u.creado_en,
+        COALESCE(u.privacidad_perfil, 'publico') AS privacidad_perfil,
+        COALESCE(u.privacidad_resenias, 'publico') AS privacidad_resenias,
         CASE
           WHEN $1::int IS NULL THEN 'ninguno'
           WHEN u.id = $1 THEN 'propio'

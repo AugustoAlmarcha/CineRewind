@@ -10,6 +10,7 @@ export default function HeroPerfil({
   fechaAlta,
   cargandoWrapped,
   esMiPerfil = true,
+  esPerfilPrivado = false,
   estadoRelacion = 'ninguno',
   onEnviarSolicitud,
   onAceptarSolicitud,
@@ -92,6 +93,19 @@ export default function HeroPerfil({
 
               <button
                 type="button"
+                onClick={() => onAbrirEditar('privacidad')}
+                className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl font-bold text-xs transition border cursor-pointer ${
+                  usuario?.privacidad_perfil === 'amigos'
+                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                    : 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800'
+                }`}
+                title="Configuración de Privacidad de tu perfil"
+              >
+                <span>{usuario?.privacidad_perfil === 'amigos' ? '🔒 Solo Amigos' : '🌐 Perfil Público'}</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => onAbrirEditar('info')}
                 className="px-4 py-2.5 rounded-xl font-bold text-xs text-white bg-zinc-800 hover:bg-zinc-700 transition-colors border border-zinc-700 cursor-pointer"
               >
@@ -157,28 +171,34 @@ export default function HeroPerfil({
       </div>
 
       {/* Franja de Estadísticas (Series primero) */}
-      <div className="border-t border-zinc-800/80 bg-zinc-900/40 px-6 sm:px-10 py-3.5 grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
-        <div className="flex items-center justify-center gap-2 text-xs text-zinc-300">
-          <Tv className="w-4 h-4 text-rose-400" />
-          <span><strong className="text-white font-bold">{stats.total_series || 0}</strong> Series</span>
+      {!esPerfilPrivado ? (
+        <div className="border-t border-zinc-800/80 bg-zinc-900/40 px-6 sm:px-10 py-3.5 grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
+          <div className="flex items-center justify-center gap-2 text-xs text-zinc-300">
+            <Tv className="w-4 h-4 text-rose-400" />
+            <span><strong className="text-white font-bold">{stats.total_series || 0}</strong> Series</span>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs text-zinc-300">
+            <Film className="w-4 h-4 text-amber-400" />
+            <span><strong className="text-white font-bold">{stats.total_peliculas || 0}</strong> Películas</span>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs text-zinc-300">
+            <Clock className="w-4 h-4 text-indigo-400" />
+            <span><strong className="text-white font-bold">{stats.horas_totales || 0}h</strong> en pantalla</span>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs text-zinc-300">
+            <Play className="w-4 h-4 text-emerald-400" />
+            <span><strong className="text-white font-bold">{stats.total_episodios || 0}</strong> Capítulos</span>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs text-zinc-300 col-span-2 sm:col-span-1">
+            <BookOpen className="w-4 h-4 text-amber-300" />
+            <span><strong className="text-white font-bold">{totalResenias}</strong> Reseñas</span>
+          </div>
         </div>
-        <div className="flex items-center justify-center gap-2 text-xs text-zinc-300">
-          <Film className="w-4 h-4 text-amber-400" />
-          <span><strong className="text-white font-bold">{stats.total_peliculas || 0}</strong> Películas</span>
+      ) : (
+        <div className="border-t border-zinc-800/80 bg-zinc-900/40 px-6 py-3 text-center text-xs text-zinc-400 flex items-center justify-center gap-2">
+          <span>🔒 Actividad y estadísticas reservadas para amigos</span>
         </div>
-        <div className="flex items-center justify-center gap-2 text-xs text-zinc-300">
-          <Clock className="w-4 h-4 text-indigo-400" />
-          <span><strong className="text-white font-bold">{stats.horas_totales || 0}h</strong> en pantalla</span>
-        </div>
-        <div className="flex items-center justify-center gap-2 text-xs text-zinc-300">
-          <Play className="w-4 h-4 text-emerald-400" />
-          <span><strong className="text-white font-bold">{stats.total_episodios || 0}</strong> Capítulos</span>
-        </div>
-        <div className="flex items-center justify-center gap-2 text-xs text-zinc-300 col-span-2 sm:col-span-1">
-          <BookOpen className="w-4 h-4 text-amber-300" />
-          <span><strong className="text-white font-bold">{totalResenias}</strong> Reseñas</span>
-        </div>
-      </div>
+      )}
     </section>
   );
 }

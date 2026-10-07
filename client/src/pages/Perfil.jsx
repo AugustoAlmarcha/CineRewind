@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { BookOpen, Tv, Bookmark, Users, FileSpreadsheet, ChevronRight, ChevronLeft } from 'lucide-react';
+import { BookOpen, Tv, Bookmark, Users, FileSpreadsheet, ChevronRight, ChevronLeft, Lock } from 'lucide-react';
 
 // Componentes modulares
 import HeroPerfil from '../components/perfil/HeroPerfil';
@@ -427,6 +427,19 @@ export default function Perfil() {
   const bannerVisual = perfilMostrado.banner_url || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1600&q=80';
   const fechaAlta = perfilMostrado.creado_en ? new Date(perfilMostrado.creado_en).toLocaleDateString('es-ES', { year: 'numeric' }) : '2024';
 
+  // Detección de perfil privado y reseñas privadas para no-amigos
+  const esPerfilPrivadoBloqueado = useMemo(() => {
+    if (esMiPerfil) return false;
+    const priv = perfilMostrado?.privacidad_perfil || 'publico';
+    return priv === 'amigos' && perfilMostrado?.estado_relacion !== 'amigos';
+  }, [esMiPerfil, perfilMostrado?.privacidad_perfil, perfilMostrado?.estado_relacion]);
+
+  const esReseniasPrivadasBloqueadas = useMemo(() => {
+    if (esMiPerfil) return false;
+    const priv = perfilMostrado?.privacidad_resenias || 'publico';
+    return priv === 'amigos' && perfilMostrado?.estado_relacion !== 'amigos';
+  }, [esMiPerfil, perfilMostrado?.privacidad_resenias, perfilMostrado?.estado_relacion]);
+
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-8 animate-fadeIn text-neutral-200 relative">
       
@@ -456,6 +469,7 @@ export default function Perfil() {
         fechaAlta={fechaAlta}
         cargandoWrapped={cargandoWrapped}
         esMiPerfil={esMiPerfil}
+        esPerfilPrivado={esPerfilPrivadoBloqueado}
         estadoRelacion={perfilMostrado.estado_relacion || 'ninguno'}
         onEnviarSolicitud={handleEnviarSolicitudAmigo}
         onAceptarSolicitud={handleAceptarSolicitudAmigo}
@@ -465,145 +479,200 @@ export default function Perfil() {
         onAbrirWrapped={() => setSelectorWrappedAbierto(true)}
       />
 
-      {/* 2. VITRINA TOP 4 */}
-      <VitrinaTop4
-        favoritos={favoritos}
-        top4Mode={top4Mode}
-        setTop4Mode={setTop4Mode}
-        arrastrandoSlot={arrastrandoSlot}
-        setArrastrandoSlot={setArrastrandoSlot}
-        handleDropIntercambio={handleDropIntercambio}
-        handleEliminarFavorito={handleEliminarFavorito}
-        onSeleccionarSlot={(slot, tipo) => {
-          setRanuraSeleccionada(slot);
-          setTipoFavorito(tipo);
-          setModalFavoritoAbierto(true);
-        }}
-        esMiPerfil={esMiPerfil}
-      />
-
-      {/* 3. PESTAÑAS DE CONTENIDO */}
-      <section className="w-full bg-[#12121a]/95 border border-zinc-800/90 rounded-3xl p-6 sm:p-7 shadow-xl space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
-          <div className="relative w-full sm:w-auto">
-            {/* Indicador izquierdo (si ya scrolleó hacia la derecha) */}
-            {puedeScrollearIzquierda && (
+      {/* 2. CONTENIDO PRINCIPAL (O BLOQUEO SI EL PERFIL ES PRIVADO) */}
+      {esPerfilPrivadoBloqueado ? (
+        <div className="bg-[#12121a]/95 border border-zinc-800/90 rounded-3xl p-10 sm:p-14 text-center space-y-4 shadow-xl animate-fadeIn">
+          <div className="w-16 h-16 mx-auto rounded-3xl bg-zinc-800/80 border border-zinc-700 flex items-center justify-center text-zinc-300 shadow-inner">
+            <Lock className="w-8 h-8 text-rose-500" />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h3 className="text-lg sm:text-xl font-black text-white">
+              Este perfil es privado
+            </h3>
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              Solo los amigos confirmados de @{perfilMostrado.username} pueden ver su actividad cinéfila, favoritos y listas de seguimiento.
+            </p>
+          </div>
+          <div className="pt-2 flex justify-center">
+            {perfilMostrado.estado_relacion === 'solicitud_enviada' ? (
+              <span className="px-5 py-2.5 rounded-xl font-bold text-xs bg-zinc-800 text-zinc-400 border border-zinc-700 flex items-center gap-2">
+                <span>⏳</span> Solicitud de amistad enviada
+              </span>
+            ) : perfilMostrado.estado_relacion === 'solicitud_recibida' ? (
               <button
                 type="button"
-                onClick={scrollearTabsIzquierda}
-                className="absolute left-0 top-0 bottom-0 z-20 w-8 bg-gradient-to-r from-[#12121a] via-[#12121a]/95 to-transparent flex items-center justify-start sm:hidden cursor-pointer"
-                title="Ver pestañas anteriores"
+                onClick={handleAceptarSolicitudAmigo}
+                className="px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-rose-600 hover:bg-rose-500 transition shadow-lg active:scale-95 cursor-pointer"
               >
-                <div className="w-5 h-5 rounded-full bg-zinc-800/90 border border-white/10 flex items-center justify-center shadow">
-                  <ChevronLeft className="w-3 h-3 text-white" />
-                </div>
+                Aceptar Solicitud de Amistad
               </button>
-            )}
-
-            {/* Contenedor scrolleable con soporte touch */}
-            <div 
-              ref={tabsContainerRef}
-              onScroll={verificarScrollTabs}
-              className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none scroll-smooth pr-10 sm:pr-0"
-            >
+            ) : (
               <button
                 type="button"
-                onClick={() => setActiveTab('resenias')}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeTab === 'resenias' ? 'bg-rose-600 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
-                }`}
+                onClick={handleEnviarSolicitudAmigo}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-rose-600 hover:bg-rose-500 transition shadow-lg active:scale-95 cursor-pointer"
               >
-                <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-                <span>Reseñas ({listaSoloResenias.length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('viendo')}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeTab === 'viendo' ? 'bg-rose-600 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
-                }`}
-              >
-                <Tv className="w-3.5 h-3.5 text-rose-400" />
-                <span>Viendo Actualmente ({obrasViendo.length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('pendientes')}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeTab === 'pendientes' ? 'bg-rose-600 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
-                }`}
-              >
-                <Bookmark className="w-3.5 h-3.5 text-indigo-400" />
-                <span>{esMiPerfil ? 'Watchlist Pendientes' : 'Lista Pendientes'} ({pendientes.length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('amigos')}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeTab === 'amigos' ? 'bg-rose-600 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{esMiPerfil ? 'Red & Co-visiones' : 'Co-visiones'} ({listaCovisionesCombinadas.length})</span>
-              </button>
-            </div>
-
-            {/* Indicador derecho con flecha animada y degradado */}
-            {puedeScrollearDerecha && (
-              <button
-                type="button"
-                onClick={scrollearTabsDerecha}
-                className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-[#12121a] via-[#12121a]/95 to-transparent flex items-center justify-end sm:hidden cursor-pointer"
-                title="Deslizar para ver más pestañas"
-              >
-                <div className="w-6 h-6 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-lg animate-pulse border border-rose-400/30 mr-0.5">
-                  <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
-                </div>
+                <Users className="w-4 h-4" />
+                <span>+ Conectar como Amigos</span>
               </button>
             )}
           </div>
-
-          {esMiPerfil && (
-            <button
-              type="button"
-              onClick={() => setModalNetflixAbierto(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition cursor-pointer"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-rose-500" />
-              <span>Importar Netflix</span>
-            </button>
-          )}
         </div>
-
-        {activeTab === 'resenias' && (
-          <PestanaResenias 
-            resenias={listaSoloResenias} 
+      ) : (
+        <>
+          {/* 2. VITRINA TOP 4 */}
+          <VitrinaTop4
+            favoritos={favoritos}
+            top4Mode={top4Mode}
+            setTop4Mode={setTop4Mode}
+            arrastrandoSlot={arrastrandoSlot}
+            setArrastrandoSlot={setArrastrandoSlot}
+            handleDropIntercambio={handleDropIntercambio}
+            handleEliminarFavorito={handleEliminarFavorito}
+            onSeleccionarSlot={(slot, tipo) => {
+              setRanuraSeleccionada(slot);
+              setTipoFavorito(tipo);
+              setModalFavoritoAbierto(true);
+            }}
             esMiPerfil={esMiPerfil}
-            onAbrirDetalle={(item) => esMiPerfil && setItemDetalle(item)}
-            onActualizado={cargarDatosPerfil}
           />
-        )}
 
-        {activeTab === 'viendo' && <PestanaViendo obrasViendo={obrasViendo} onAvanzarCapitulo={handleAvanzarCapitulo} esMiPerfil={esMiPerfil} />}
-        {activeTab === 'pendientes' && (
-          <PestanaPendientes
-            pendientes={pendientes}
-            cargandoPendientes={cargandoPendientes}
-            onQuitarPendiente={handleQuitarPendiente}
-            onRegistrarObra={setObraParaRegistrar}
-            esMiPerfil={esMiPerfil}
-          />
-        )}
-        {activeTab === 'amigos' && (
-          <PestanaCovisiones 
-            covisiones={listaCovisionesCombinadas} 
-            onAbrirModalAmigos={() => setModalAmigosAbierto(true)} 
-          />
-        )}
-      </section>
+          {/* 3. PESTAÑAS DE CONTENIDO */}
+          <section className="w-full bg-[#12121a]/95 border border-zinc-800/90 rounded-3xl p-6 sm:p-7 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+              <div className="relative w-full sm:w-auto">
+                {/* Indicador izquierdo (si ya scrolleó hacia la derecha) */}
+                {puedeScrollearIzquierda && (
+                  <button
+                    type="button"
+                    onClick={scrollearTabsIzquierda}
+                    className="absolute left-0 top-0 bottom-0 z-20 w-8 bg-gradient-to-r from-[#12121a] via-[#12121a]/95 to-transparent flex items-center justify-start sm:hidden cursor-pointer"
+                    title="Ver pestañas anteriores"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-zinc-800/90 border border-white/10 flex items-center justify-center shadow">
+                      <ChevronLeft className="w-3 h-3 text-white" />
+                    </div>
+                  </button>
+                )}
+
+                {/* Contenedor scrolleable con soporte touch */}
+                <div 
+                  ref={tabsContainerRef}
+                  onScroll={verificarScrollTabs}
+                  className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none scroll-smooth pr-10 sm:pr-0"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('resenias')}
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeTab === 'resenias' ? 'bg-rose-600 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Reseñas ({listaSoloResenias.length})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('viendo')}
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeTab === 'viendo' ? 'bg-rose-600 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <Tv className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Viendo Actualmente ({obrasViendo.length})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('pendientes')}
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeTab === 'pendientes' ? 'bg-rose-600 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <Bookmark className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>{esMiPerfil ? 'Watchlist Pendientes' : 'Lista Pendientes'} ({pendientes.length})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('amigos')}
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeTab === 'amigos' ? 'bg-rose-600 text-white shadow-md' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{esMiPerfil ? 'Red & Co-visiones' : 'Co-visiones'} ({listaCovisionesCombinadas.length})</span>
+                  </button>
+                </div>
+
+                {/* Indicador derecho con flecha animada y degradado */}
+                {puedeScrollearDerecha && (
+                  <button
+                    type="button"
+                    onClick={scrollearTabsDerecha}
+                    className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-[#12121a] via-[#12121a]/95 to-transparent flex items-center justify-end sm:hidden cursor-pointer"
+                    title="Deslizar para ver más pestañas"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-lg animate-pulse border border-rose-400/30 mr-0.5">
+                      <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </div>
+                  </button>
+                )}
+              </div>
+
+              {esMiPerfil && (
+                <button
+                  type="button"
+                  onClick={() => setModalNetflixAbierto(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Importar Netflix</span>
+                </button>
+              )}
+            </div>
+
+            {activeTab === 'resenias' && (
+              esReseniasPrivadasBloqueadas ? (
+                <div className="py-16 text-center space-y-3 animate-fadeIn">
+                  <div className="w-14 h-14 mx-auto rounded-2xl bg-zinc-800/80 border border-zinc-700 flex items-center justify-center text-rose-500">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-base font-black text-white">Reseñas y opiniones privadas</h4>
+                  <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+                    Las opiniones y textos de @{perfilMostrado.username} son visibles únicamente para sus amigos confirmados.
+                  </p>
+                </div>
+              ) : (
+                <PestanaResenias 
+                  resenias={listaSoloResenias} 
+                  esMiPerfil={esMiPerfil}
+                  onAbrirDetalle={(item) => esMiPerfil && setItemDetalle(item)}
+                  onActualizado={cargarDatosPerfil}
+                />
+              )
+            )}
+
+            {activeTab === 'viendo' && <PestanaViendo obrasViendo={obrasViendo} onAvanzarCapitulo={handleAvanzarCapitulo} esMiPerfil={esMiPerfil} />}
+            {activeTab === 'pendientes' && (
+              <PestanaPendientes
+                pendientes={pendientes}
+                cargandoPendientes={cargandoPendientes}
+                onQuitarPendiente={handleQuitarPendiente}
+                onRegistrarObra={setObraParaRegistrar}
+                esMiPerfil={esMiPerfil}
+              />
+            )}
+            {activeTab === 'amigos' && (
+              <PestanaCovisiones 
+                covisiones={listaCovisionesCombinadas} 
+                onAbrirModalAmigos={() => setModalAmigosAbierto(true)} 
+              />
+            )}
+          </section>
+        </>
+      )}
 
       {/* 4. MODALES (Solo disponibles cuando estás en tu perfil propio) */}
       {esMiPerfil && modalEditarAbierto && (

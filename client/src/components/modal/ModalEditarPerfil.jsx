@@ -150,6 +150,13 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
     usuario?.banner_url || PORTADAS_PREDETERMINADAS[0].url
   );
 
+  const [privacidadPerfil, setPrivacidadPerfil] = useState(
+    usuario?.privacidad_perfil || 'publico'
+  );
+  const [privacidadResenias, setPrivacidadResenias] = useState(
+    usuario?.privacidad_resenias || 'publico'
+  );
+
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
@@ -240,6 +247,8 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
         biografia: biografia.trim(),
         avatar_url: avatarSeleccionado,
         banner_url: bannerSeleccionado,
+        privacidad_perfil: privacidadPerfil,
+        privacidad_resenias: privacidadResenias,
       });
     } catch (err) {
       setError(err.message || 'Error al actualizar el perfil');
@@ -435,6 +444,19 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
           >
             <Lock className="w-3.5 h-3.5" />
             <span>Seguridad</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSeccionModal('privacidad')}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+              seccionModal === 'privacidad'
+                ? 'bg-rose-600 text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Privacidad</span>
           </button>
         </div>
 
@@ -843,6 +865,125 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* 5. SECCIÓN: PRIVACIDAD */}
+          {seccionModal === 'privacidad' && (
+            <div className="space-y-4 animate-fadeIn">
+              
+              {/* Opción 1: Visibilidad del Perfil General */}
+              <div className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4 space-y-3">
+                <div>
+                  <h4 className="text-sm font-black text-white flex items-center gap-2">
+                    <span>Visibilidad de tu Perfil</span>
+                  </h4>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Define quién puede explorar tu perfil, tus estadísticas, tus favoritos y lo que estás mirando.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setPrivacidadPerfil('publico')}
+                    className={`p-3.5 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between gap-2.5 ${
+                      privacidadPerfil === 'publico'
+                        ? 'bg-rose-600/15 border-rose-500 text-white ring-1 ring-rose-500/50'
+                        : 'bg-black/30 border-white/10 text-neutral-300 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-base">🌐</span>
+                      {privacidadPerfil === 'publico' && <Check className="w-4 h-4 text-rose-500 stroke-[3]" />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-black">Público</p>
+                      <p className="text-[11px] text-neutral-400 leading-tight mt-0.5">
+                        Cualquier persona con tu link puede ver tu perfil, favoritos y series que miras.
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPrivacidadPerfil('amigos')}
+                    className={`p-3.5 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between gap-2.5 ${
+                      privacidadPerfil === 'amigos'
+                        ? 'bg-rose-600/15 border-rose-500 text-white ring-1 ring-rose-500/50'
+                        : 'bg-black/30 border-white/10 text-neutral-300 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-base">🔒</span>
+                      {privacidadPerfil === 'amigos' && <Check className="w-4 h-4 text-rose-500 stroke-[3]" />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-black">Solo Amigos (Privado)</p>
+                      <p className="text-[11px] text-neutral-400 leading-tight mt-0.5">
+                        Los no-amigos verán un candado de perfil privado y deberán solicitar tu amistad.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Opción 2: Visibilidad de Reseñas y Opiniones */}
+              <div className="bg-neutral-900/60 border border-white/10 rounded-2xl p-4 space-y-3">
+                <div>
+                  <h4 className="text-sm font-black text-white flex items-center gap-2">
+                    <span>Visibilidad de tus Reseñas y Opiniones</span>
+                  </h4>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    ¿Quién tiene permiso para leer los veredictos y notas escritas que dejas en tus obras?
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setPrivacidadResenias('publico')}
+                    className={`p-3.5 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between gap-2.5 ${
+                      privacidadResenias === 'publico'
+                        ? 'bg-rose-600/15 border-rose-500 text-white ring-1 ring-rose-500/50'
+                        : 'bg-black/30 border-white/10 text-neutral-300 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-base">💬</span>
+                      {privacidadResenias === 'publico' && <Check className="w-4 h-4 text-rose-500 stroke-[3]" />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-black">Reseñas Públicas</p>
+                      <p className="text-[11px] text-neutral-400 leading-tight mt-0.5">
+                        Cualquier cinéfilo puede leer tus críticas y opiniones de películas y series.
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPrivacidadResenias('amigos')}
+                    className={`p-3.5 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between gap-2.5 ${
+                      privacidadResenias === 'amigos'
+                        ? 'bg-rose-600/15 border-rose-500 text-white ring-1 ring-rose-500/50'
+                        : 'bg-black/30 border-white/10 text-neutral-300 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-base">👥</span>
+                      {privacidadResenias === 'amigos' && <Check className="w-4 h-4 text-rose-500 stroke-[3]" />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-black">Solo Mis Amigos</p>
+                      <p className="text-[11px] text-neutral-400 leading-tight mt-0.5">
+                        Tus opiniones solo las podrán leer tus amigos; a otros les saldrá aviso de privacidad.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
             </div>
           )}
 

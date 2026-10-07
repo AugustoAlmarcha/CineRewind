@@ -180,12 +180,14 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-// Asegurar columnas de recuperación de contraseña en PostgreSQL
+// Asegurar columnas de recuperación de contraseña y privacidad en PostgreSQL
 pool.query(`
   ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_recuperacion TEXT;
   ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_recuperacion_expira TIMESTAMP WITH TIME ZONE;
+  ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS privacidad_perfil VARCHAR(20) DEFAULT 'publico';
+  ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS privacidad_resenias VARCHAR(20) DEFAULT 'publico';
 `).catch((err) => {
-  console.warn('[DB Init] Columnas de recuperación:', err.message);
+  console.warn('[DB Init] Columnas de usuarios:', err.message);
 });
 
 // ==========================================
