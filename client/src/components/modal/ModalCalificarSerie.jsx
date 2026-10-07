@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Star, Check, X, Trash2, Award, Calendar } from 'lucide-react';
 import CalificadorEstrellas from '../common/CalificadorEstrellas';
 import { 
@@ -179,9 +180,17 @@ export default function ModalCalificarSerie({
     ? Boolean(calificacionesCargadas.serie?.calificacion)
     : Boolean(calificacionesCargadas.temporadas[tabActivo]?.calificacion);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
-      <div className="bg-[#fcfaf7] dark:bg-[#181820] border border-neutral-300 dark:border-white/10 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col text-neutral-900 dark:text-white">
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div 
+      onClick={onClose}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn"
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#fcfaf7] dark:bg-[#181820] border border-neutral-300 dark:border-white/10 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col text-neutral-900 dark:text-white"
+      >
         
         {/* Cabecera */}
         <div className="p-4 sm:p-5 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between gap-3">
@@ -355,6 +364,7 @@ export default function ModalCalificarSerie({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

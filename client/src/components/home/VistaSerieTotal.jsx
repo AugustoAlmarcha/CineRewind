@@ -349,7 +349,7 @@ export default function VistaSerieTotal({
                   ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border-cyan-500/30'
                   : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30'
               }`}>
-                {progreso.estaCompletada ? '✓ Terminada' : progreso.estaAlDia ? '🎬 Al día' : `⏳ T${progreso.maxTempRegistrada || 1}/${progreso.totalTemporadas || '?'}`}
+                {progreso.estaCompletada ? '✓ Terminada' : progreso.estaAlDia ? 'Al día' : `T${progreso.maxTempRegistrada || 1}/${progreso.totalTemporadas || '?'}`}
               </span>
 
               <p className="text-xs text-neutral-700 dark:text-neutral-300 font-bold truncate">
