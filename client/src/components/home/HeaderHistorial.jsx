@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { obtenerAmigosAPI } from '../../api';
-import { Calendar, Layers, Film, Tv, Users, Trash2, X , Search} from 'lucide-react';
+import { Calendar, Layers, Film, Tv, Users, Trash2, X, Search, ArrowUpDown } from 'lucide-react';
 export default function HeaderHistorial({
   vistaTotal,
   setVistaTotal,
@@ -21,6 +21,8 @@ export default function HeaderHistorial({
   setSoloConAmigos,
   amigosFiltro = [],
   setAmigosFiltro,
+  ordenTotal = 'mas_vistos',
+  setOrdenTotal,
   timelineCompleto = [],
 }) {
   const puedeSeleccionar = true;
@@ -394,6 +396,26 @@ export default function HeaderHistorial({
             >
               <span className="flex items-center gap-1.5"><Tv className="w-3.5 h-3.5" /> Series</span>
             </button>
+          </div>
+        )}
+
+        {/* Selector de ordenamiento en Total Histórico */}
+        {vistaTotal && !serieSeleccionadaTotal && (
+          <div className="flex items-center gap-1.5 bg-neutral-200 dark:bg-[#16161c] px-3 py-2 rounded-xl border border-neutral-300 dark:border-white/10 text-xs">
+            <ArrowUpDown className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400 shrink-0" />
+            <select
+              value={ordenTotal}
+              onChange={(e) => setOrdenTotal && setOrdenTotal(e.target.value)}
+              className="bg-transparent text-neutral-800 dark:text-neutral-200 font-bold focus:outline-none cursor-pointer text-xs pr-1"
+              title="Ordenar obras del catálogo"
+            >
+              <option value="mas_vistos" className="bg-white dark:bg-[#181820]">🔥 Más vistos</option>
+              <option value="menos_vistos" className="bg-white dark:bg-[#181820]">📉 Menos vistos</option>
+              <option value="recientes" className="bg-white dark:bg-[#181820]">🕒 Más recientes</option>
+              <option value="antiguos" className="bg-white dark:bg-[#181820]">⏳ Más antiguas</option>
+              <option value="az" className="bg-white dark:bg-[#181820]">🔤 A - Z (Alfabético)</option>
+              <option value="za" className="bg-white dark:bg-[#181820]">🔡 Z - A (Alfabético)</option>
+            </select>
           </div>
         )}
 

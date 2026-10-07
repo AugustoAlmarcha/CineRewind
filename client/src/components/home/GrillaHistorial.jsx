@@ -93,6 +93,7 @@ export default function GrillaHistorial({
   // Props del filtro social
   soloConAmigos = false,
   amigosFiltro = [],
+  ordenTotal = 'mas_vistos',
 }) {
 
   // Helper para verificar si un registro cumple con el filtro de amigos o acompañantes
@@ -212,8 +213,30 @@ export default function GrillaHistorial({
       }
     });
 
-    return Object.values(mapaObras).sort((a, b) => b.registros.length - a.registros.length);
-  }, [vistaTotal, timelineCompleto, busquedaHistorial, filtroTipo, soloConAmigos, amigosFiltro]);
+    return Object.values(mapaObras).sort((a, b) => {
+      if (ordenTotal === 'az') {
+        return (a.titulo || '').localeCompare(b.titulo || '', 'es', { sensitivity: 'base' });
+      }
+      if (ordenTotal === 'za') {
+        return (b.titulo || '').localeCompare(a.titulo || '', 'es', { sensitivity: 'base' });
+      }
+      if (ordenTotal === 'menos_vistos') {
+        return a.registros.length - b.registros.length;
+      }
+      if (ordenTotal === 'recientes') {
+        const fA = a.registros[0]?.fecha_visto ? new Date(a.registros[0].fecha_visto).getTime() : 0;
+        const fB = b.registros[0]?.fecha_visto ? new Date(b.registros[0].fecha_visto).getTime() : 0;
+        return fB - fA;
+      }
+      if (ordenTotal === 'antiguos') {
+        const fA = a.registros[a.registros.length - 1]?.fecha_visto ? new Date(a.registros[a.registros.length - 1].fecha_visto).getTime() : 0;
+        const fB = b.registros[b.registros.length - 1]?.fecha_visto ? new Date(b.registros[b.registros.length - 1].fecha_visto).getTime() : 0;
+        return fA - fB;
+      }
+      // 'mas_vistos' por defecto
+      return b.registros.length - a.registros.length;
+    });
+  }, [vistaTotal, timelineCompleto, busquedaHistorial, filtroTipo, soloConAmigos, amigosFiltro, ordenTotal]);
 
   // 2. Agrupación por días de una obra (serie, saga o película) en Total Histórico
   const gruposSerieTotalPorDia = useMemo(() => {

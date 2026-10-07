@@ -22,7 +22,8 @@ import {
   avanzarCapituloAPI, 
   obtenerTimelineAPI, 
   eliminarLoteAPI,
-  descartarViendoAPI 
+  descartarViendoAPI,
+  eliminarVisualizacionAPI
 } from '../api';
 
 import { 
@@ -51,6 +52,7 @@ export default function Home({ actualizarTrigger }) {
   const [serieSeleccionadaTotal, setSerieSeleccionadaTotal] = useState(null);
   const [soloConAmigos, setSoloConAmigos] = useState(false);
   const [amigosFiltro, setAmigosFiltro] = useState([]);
+  const [ordenTotal, setOrdenTotal] = useState('mas_vistos');
 
   // 3. Navegación temporal
   const [anioSeleccionado, setAnioSeleccionado] = useState(null);
@@ -87,9 +89,18 @@ export default function Home({ actualizarTrigger }) {
     }
   }, [location.state]);
 
-  // 🔝 Asegurar que la pantalla suba al inicio al cambiar de vistas o abrir series/carpetas
+  // 🔝 Desplazar la vista a la sección de historial ("Diario por Fecha / Total Histórico") al navegar
+  const esPrimeraCargaRef = useRef(true);
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (esPrimeraCargaRef.current) {
+      esPrimeraCargaRef.current = false;
+      return;
+    }
+    const el = document.getElementById('seccion-historial');
+    if (el) {
+      const topOffset = el.getBoundingClientRect().top + window.scrollY - 20;
+      window.scrollTo({ top: Math.max(0, topOffset), behavior: 'instant' });
+    }
   }, [serieSeleccionadaTotal, anioSeleccionado, mesSeleccionado, vistaTotal]);
 
   // -------------------------------------------------------------
@@ -124,6 +135,7 @@ export default function Home({ actualizarTrigger }) {
 
   const esPorPopstateRef = useRef(false);
   const prevDepthRef = useRef(0);
+  const ignorarPopstateCountRef = useRef(0);
 
   const depthActual = (
     (vistaTotal ? 1 : 0) +
@@ -147,6 +159,7 @@ export default function Home({ actualizarTrigger }) {
       }
     } else if (depthActual < prevDepthRef.current) {
       const diff = prevDepthRef.current - depthActual;
+      ignorarPopstateCountRef.current += diff;
       for (let i = 0; i < diff; i++) {
         window.history.back();
       }
@@ -157,6 +170,11 @@ export default function Home({ actualizarTrigger }) {
 
   useEffect(() => {
     const handlePopState = () => {
+      if (ignorarPopstateCountRef.current > 0) {
+        ignorarPopstateCountRef.current--;
+        return;
+      }
+
       const cur = estadoNavRef.current;
       esPorPopstateRef.current = true;
 
@@ -711,7 +729,7 @@ export default function Home({ actualizarTrigger }) {
           />
 
           {/* 2. Mi Diario Cinemático y Total Histórico */}
-          <section className="!mt-[45px] sm:!mt-[65px] space-y-3">
+          <section id="seccion-historial" className="!mt-[45px] sm:!mt-[65px] space-y-3 scroll-mt-20">
             <HeaderHistorial 
               vistaTotal={vistaTotal}
               setVistaTotal={setVistaTotal}
@@ -739,6 +757,8 @@ export default function Home({ actualizarTrigger }) {
               setSoloConAmigos={setSoloConAmigos}
               amigosFiltro={amigosFiltro}
               setAmigosFiltro={setAmigosFiltro}
+              ordenTotal={ordenTotal}
+              setOrdenTotal={setOrdenTotal}
               timelineCompleto={timeline}
             />
 
@@ -751,6 +771,7 @@ export default function Home({ actualizarTrigger }) {
               arbolHistorial={arbolHistorial}
               listaAnios={listaAnios}
               timelineCompleto={timeline}
+              ordenTotal={ordenTotal}
               onSeleccionarAnio={(anio) => setAnioSeleccionado(anio)}
               onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
               modoSeleccion={modoSeleccion}
