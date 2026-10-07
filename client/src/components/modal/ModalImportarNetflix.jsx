@@ -275,7 +275,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
                         1
                       </span>
                       <p className="leading-relaxed">
-                        Tocá el botón rojo de arriba o abrí <strong className="text-neutral-900 dark:text-white">netflix.com</strong> en tu navegador (en PC o celular).
+                        Abrí <strong className="text-neutral-900 dark:text-white">netflix.com</strong> en tu navegador (o tocá el botón de acceso directo arriba).
                       </p>
                     </div>
 
@@ -284,7 +284,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
                         2
                       </span>
                       <p className="leading-relaxed">
-                        Si lo hacés manual: andá a tu foto de <strong className="text-neutral-900 dark:text-white">perfil ➔ Cuenta</strong>, seleccioná tu perfil y tocá <strong className="text-neutral-900 dark:text-white">«Actividad de visualización»</strong>.
+                        Hacé clic en tu <strong className="text-neutral-900 dark:text-white">foto de perfil</strong> y elegí <strong className="text-neutral-900 dark:text-white">«Administrar perfiles»</strong>.
                       </p>
                     </div>
 
@@ -293,7 +293,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
                         3
                       </span>
                       <p className="leading-relaxed">
-                        Bajá hasta el final de la página y hacé clic en el enlace <strong className="text-neutral-900 dark:text-white">«Descargarla toda»</strong>.
+                        Seleccioná tu perfil, bajá por sus preferencias y tocá <strong className="text-neutral-900 dark:text-white">«Actividad de visualización»</strong>.
                       </p>
                     </div>
 
@@ -302,7 +302,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
                         4
                       </span>
                       <p className="leading-relaxed">
-                        Se descargará el archivo <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-white/10 font-mono text-[10px] text-neutral-800 dark:text-neutral-200">NetflixViewingHistory.csv</code>. Subilo acá arriba y tocá Iniciar.
+                        Al final de la página hacé clic en <strong className="text-neutral-900 dark:text-white">«Descargarla toda»</strong>. Se descargará el archivo <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-white/10 font-mono text-[10px] text-neutral-800 dark:text-neutral-200">NetflixViewingHistory.csv</code>. ¡Subilo acá arriba y listo!
                       </p>
                     </div>
                   </div>
