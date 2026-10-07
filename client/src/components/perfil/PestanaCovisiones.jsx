@@ -1,8 +1,50 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { UserX, Loader2 } from 'lucide-react';
+import { desvincularAcompananteCovisionesAPI } from '../../api';
 
-export default function PestanaCovisiones({ covisiones = [], onAbrirModalAmigos }) {
+export default function PestanaCovisiones({ 
+  covisiones = [], 
+  onAbrirModalAmigos,
+  esMiPerfil = false,
+  onActualizado,
+  dispararToast,
+}) {
   const navigate = useNavigate();
+  const [acompananteADesvincular, setAcompananteADesvincular] = useState(null);
+  const [desvinculando, setDesvinculando] = useState(false);
+
+  const handleConfirmarDesvinculacion = async () => {
+    if (!acompananteADesvincular) return;
+    setDesvinculando(true);
+    try {
+      const res = await desvincularAcompananteCovisionesAPI({
+        amigoId: acompananteADesvincular.id,
+        username: acompananteADesvincular.rawUsername || (acompananteADesvincular.username?.replace('@', '')),
+        tipo: acompananteADesvincular.tipo,
+        nombreManual: acompananteADesvincular.nombre,
+      });
+
+      if (dispararToast) {
+        dispararToast(
+          res.mensaje || `Se desvincularon las co-visiones con ${acompananteADesvincular.nombre}`,
+          'exito'
+        );
+      }
+      setAcompananteADesvincular(null);
+      if (onActualizado) {
+        await onActualizado();
+      }
+    } catch (err) {
+      console.error('Error al desvincular co-visiones:', err);
+      if (dispararToast) {
+        dispararToast(err.message || 'No se pudieron desvincular las co-visiones', 'error');
+      }
+    } finally {
+      setDesvinculando(false);
+    }
+  };
 
   if (covisiones.length === 0) {
     return (
@@ -64,14 +106,105 @@ export default function PestanaCovisiones({ covisiones = [], onAbrirModalAmigos 
                   )}
                 </div>
                 <p className="text-[10px] text-zinc-400 font-mono truncate">{co.username}</p>
-                <span className="text-[10px] font-bold text-rose-400 block pt-0.5">
-                  🍿 {co.totalObras} {co.totalObras === 1 ? 'obra vista juntos' : 'obras vistas juntos'}
-                </span>
+                <div className="flex items-center justify-between pt-0.5">
+                  <span className="text-[10px] font-bold text-rose-400 block">
+                    🍿 {co.totalObras} {co.totalObras === 1 ? 'obra vista juntos' : 'obras vistas juntos'}
+                  </span>
+                  {esMiPerfil && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAcompananteADesvincular(co);
+                      }}
+                      className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer flex items-center gap-1 text-[10px] font-semibold"
+                      title={`Desvincular todas las co-visiones con ${co.nombre}`}
+                    >
+                      <UserX className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Desvincular</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* MODAL DE CONFIRMACIÓN PARA DESVINCULAR CO-VISIONES */}
+      {acompananteADesvincular && typeof document !== 'undefined' && createPortal(
+        <div 
+          onClick={() => !desvinculando && setAcompananteADesvincular(null)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#12121a] border border-zinc-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-scaleUp"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 shrink-0">
+                <UserX className="w-6 h-6 stroke-[2]" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-black text-white leading-tight">
+                  ¿Desvincular co-visiones con {acompananteADesvincular.nombre}?
+                </h3>
+                <p className="text-xs text-zinc-400 font-mono">
+                  {acompananteADesvincular.username} · {acompananteADesvincular.totalObras} compartidas
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 text-xs space-y-2.5 text-zinc-300">
+              <div className="flex items-start gap-2.5">
+                <span className="text-emerald-400 font-bold shrink-0 mt-0.5">✓</span>
+                <span>
+                  <strong className="text-white">Tus registros quedan guardados:</strong> Tus {acompananteADesvincular.totalObras} episodios o películas seguirán intactos en tu historial.
+                </span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="text-emerald-400 font-bold shrink-0 mt-0.5">✓</span>
+                <span>
+                  <strong className="text-white">La cuenta de {acompananteADesvincular.nombre} queda intacta:</strong> Todo lo que ya haya aceptado seguirá intacto en su cuenta sin borrarse.
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400 pt-2 border-t border-zinc-800 leading-relaxed">
+                Solo se quitará la etiqueta de "visto juntos" entre ambos para que no figuren vinculados.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                disabled={desvinculando}
+                onClick={() => setAcompananteADesvincular(null)}
+                className="flex-1 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs transition cursor-pointer disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={desvinculando}
+                onClick={handleConfirmarDesvinculacion}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-lg active:scale-95 disabled:opacity-50"
+              >
+                {desvinculando ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Desvinculando...</span>
+                  </>
+                ) : (
+                  <>
+                    <UserX className="w-3.5 h-3.5" />
+                    <span>Desvincular todas ({acompananteADesvincular.totalObras})</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

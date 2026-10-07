@@ -348,8 +348,10 @@ export default function Perfil() {
           const key = `user_${a.username}`;
           if (!covisiones[key]) {
             covisiones[key] = {
+              id: a.amigo_id || a.id,
               nombre: a.nombre || a.username,
               username: `@${a.username}`,
+              rawUsername: a.username,
               avatar: a.avatar_url,
               tipo: 'registrado',
               totalObras: 0,
@@ -680,6 +682,9 @@ export default function Perfil() {
               <PestanaCovisiones 
                 covisiones={listaCovisionesCombinadas} 
                 onAbrirModalAmigos={() => setModalAmigosAbierto(true)} 
+                esMiPerfil={esMiPerfil}
+                onActualizado={cargarDatosPerfil}
+                dispararToast={dispararToast}
               />
             )}
           </section>

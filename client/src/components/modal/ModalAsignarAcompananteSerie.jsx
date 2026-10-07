@@ -164,7 +164,10 @@ export default function ModalAsignarAcompananteSerie({
   // Quitar acompañantes y co-visiones en lote
   const handleQuitarAcompanantes = async () => {
     if (!obraId || capsAfectados.length === 0) return;
-    if (!window.confirm(`¿Quitar acompañantes y co-visiones de los ${capsAfectados.length} capítulos seleccionados?`)) return;
+    const mensajeConfirm = amigosSeleccionados.length > 0
+      ? `¿Quitar a los amigos seleccionados de los ${capsAfectados.length} capítulos?\n(Tus registros y los de tus amigos permanecerán guardados en sus historiales)`
+      : `¿Quitar todos los acompañantes y co-visiones de los ${capsAfectados.length} capítulos seleccionados?\n(Tus registros y los de tus amigos permanecerán guardados en sus historiales)`;
+    if (!window.confirm(mensajeConfirm)) return;
 
     setGuardando(true);
     setError(null);
@@ -175,6 +178,7 @@ export default function ModalAsignarAcompananteSerie({
         alcance,
         temporada: alcance === 'temporada' ? temporadaSeleccionada : null,
         historialIds: alcance === 'episodios' ? targetIds : [],
+        amigosEtiquetados: amigosSeleccionados,
         accion: 'quitar',
       });
       if (onAsignado) {
@@ -487,7 +491,11 @@ export default function ModalAsignarAcompananteSerie({
               className="w-full py-2.5 rounded-2xl bg-transparent hover:bg-rose-500/10 text-neutral-500 hover:text-rose-600 dark:hover:text-rose-400 font-bold text-xs transition border border-transparent hover:border-rose-500/20 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <UserX className="w-3.5 h-3.5" />
-              <span>Quitar acompañantes de estos {capsAfectados.length} caps</span>
+              <span>
+                {amigosSeleccionados.length > 0 
+                  ? `Quitar amigos seleccionados de estos ${capsAfectados.length} caps` 
+                  : `Quitar acompañantes de estos ${capsAfectados.length} caps`}
+              </span>
             </button>
           </div>
         </form>

@@ -5,6 +5,7 @@ const {
   obtenerInvitacionesPendientes,
   responderInvitacion,
   responderTodasInvitaciones,
+  desvincularAcompanante,
 } = require('../controllers/covisualizacionesController');
 
 // Todas las rutas de co-visualizaciones requieren sesión iniciada
@@ -18,5 +19,8 @@ router.put('/responder', responderInvitacion);
 
 // PUT /api/covisualizaciones/responder-todas -> Aceptar o rechazar todas en lote
 router.put('/responder-todas', responderTodasInvitaciones);
+
+// POST /api/covisualizaciones/desvincular-acompanante -> Desvincular todas las co-visiones con un usuario o copiloto
+router.post('/desvincular-acompanante', desvincularAcompanante);
 
 module.exports = router;

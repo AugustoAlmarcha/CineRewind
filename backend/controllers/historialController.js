@@ -1310,18 +1310,52 @@ const asignarAcompananteLoteSerie = async (req, res) => {
 
     // Si la acción es quitar acompañantes
     if (accion === 'quitar' || quitar_acompanantes === true) {
-      await client.query(
-        `UPDATE historial_visualizaciones 
-         SET visto_con_texto = NULL 
-         WHERE id = ANY($1::int[])`,
-        [targetIds]
-      );
+      const amigosIdsInt = (amigos_etiquetados || []).map((id) => parseInt(id, 10)).filter(Boolean);
 
-      await client.query(
-        `DELETE FROM covisualizaciones 
-         WHERE visualizacion_id = ANY($1::int[])`,
-        [targetIds]
-      );
+      if (amigosIdsInt.length > 0) {
+        // Quitar solo a los amigos específicos seleccionados
+        await client.query(
+          `DELETE FROM covisualizaciones 
+           WHERE visualizacion_id = ANY($1::int[]) AND amigo_id = ANY($2::int[])`,
+          [targetIds, amigosIdsInt]
+        );
+
+        // Limpiar también las co-visualizaciones recíprocas en las cuentas de esos amigos para esta obra
+        await client.query(
+          `DELETE FROM covisualizaciones 
+           WHERE amigo_id = $1 
+             AND visualizacion_id IN (
+               SELECT id FROM historial_visualizaciones 
+               WHERE usuario_id = ANY($2::int[]) AND obra_id = $3
+             )`,
+          [usuario_id, amigosIdsInt, obra_id]
+        );
+      } else {
+        // Quitar todos los acompañantes de estos capítulos
+        await client.query(
+          `UPDATE historial_visualizaciones 
+           SET visto_con_texto = NULL 
+           WHERE id = ANY($1::int[])`,
+          [targetIds]
+        );
+
+        await client.query(
+          `DELETE FROM covisualizaciones 
+           WHERE visualizacion_id = ANY($1::int[])`,
+          [targetIds]
+        );
+
+        // Limpiar también las co-visualizaciones recíprocas en las cuentas de amigos para esta obra
+        await client.query(
+          `DELETE FROM covisualizaciones 
+           WHERE amigo_id = $1 
+             AND visualizacion_id IN (
+               SELECT id FROM historial_visualizaciones 
+               WHERE obra_id = $2
+             )`,
+          [usuario_id, obra_id]
+        );
+      }
 
       await client.query('COMMIT');
       return res.json({

@@ -781,4 +781,27 @@ export const asignarAcompananteLoteSerieAPI = async ({
   }
   return res.json();
 };
+
+export const desvincularAcompananteCovisionesAPI = async ({
+  amigoId,
+  username,
+  tipo = 'registrado',
+  nombreManual,
+}) => {
+  const res = await fetch('/api/covisualizaciones/desvincular-acompanante', {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({
+      amigo_id: amigoId,
+      username,
+      tipo,
+      nombre_manual: nombreManual,
+    }),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Error al desvincular co-visualizaciones');
+  }
+  return res.json();
+};
 

@@ -295,8 +295,135 @@ const responderTodasInvitaciones = async (req, res) => {
   }
 };
 
+// 4. POST: /api/covisualizaciones/desvincular-acompanante
+// Desvincula todas las co-visualizaciones de un usuario con un acompañante (registrado o manual)
+// IMPORTANTE: NO elimina los registros de historial de ningún usuario; solo elimina el vínculo de co-visión / visto_con_texto.
+const desvincularAcompanante = async (req, res) => {
+  const usuarioId = req.usuario?.id;
+  if (!usuarioId) {
+    return res.status(401).json({ error: 'Sesión no autorizada' });
+  }
+
+  const { amigo_id, username, tipo = 'registrado', nombre_manual } = req.body;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    let totalDesvinculados = 0;
+    let nombreObjetivo = nombre_manual || username || 'el usuario';
+
+    if (tipo === 'registrado' || amigo_id || username) {
+      let resolvedAmigoId = amigo_id ? parseInt(amigo_id, 10) : null;
+      let targetUsername = username ? String(username).replace(/^@/, '').trim() : null;
+
+      if (!resolvedAmigoId && targetUsername) {
+        const uRes = await client.query(
+          'SELECT id, nombre, username FROM usuarios WHERE LOWER(username) = LOWER($1)',
+          [targetUsername]
+        );
+        if (uRes.rows.length > 0) {
+          resolvedAmigoId = uRes.rows[0].id;
+          nombreObjetivo = uRes.rows[0].nombre || uRes.rows[0].username;
+        }
+      } else if (resolvedAmigoId) {
+        const uRes = await client.query(
+          'SELECT nombre, username FROM usuarios WHERE id = $1',
+          [resolvedAmigoId]
+        );
+        if (uRes.rows.length > 0) {
+          nombreObjetivo = uRes.rows[0].nombre || uRes.rows[0].username;
+          if (!targetUsername) targetUsername = uRes.rows[0].username;
+        }
+      }
+
+      if (resolvedAmigoId) {
+        // 1. Eliminar vínculos en covisualizaciones donde la visualización pertenece al usuario actual y el amigo es resolvedAmigoId
+        const delRes1 = await client.query(
+          `DELETE FROM covisualizaciones 
+           WHERE amigo_id = $1 
+             AND visualizacion_id IN (
+               SELECT id FROM historial_visualizaciones WHERE usuario_id = $2
+             )`,
+          [resolvedAmigoId, usuarioId]
+        );
+        totalDesvinculados += delRes1.rowCount || 0;
+
+        // 2. Eliminar vínculos recíprocos en covisualizaciones donde la visualización pertenece al amigo y el amigo_id es usuarioId
+        // (Nota: los registros de historial_visualizaciones de AMBOS usuarios se conservan 100%)
+        await client.query(
+          `DELETE FROM covisualizaciones 
+           WHERE amigo_id = $1 
+             AND visualizacion_id IN (
+               SELECT id FROM historial_visualizaciones WHERE usuario_id = $2
+             )`,
+          [usuarioId, resolvedAmigoId]
+        );
+
+        // 3. Limpiar cualquier visto_con_texto residual en el historial de usuarioId que mencione al amigo
+        if (targetUsername) {
+          await client.query(
+            `UPDATE historial_visualizaciones 
+             SET visto_con_texto = NULL 
+             WHERE usuario_id = $1 
+               AND (
+                 LOWER(TRIM(visto_con_texto)) = LOWER($2) 
+                 OR LOWER(TRIM(visto_con_texto)) = LOWER($3)
+               )`,
+            [usuarioId, targetUsername, nombreObjetivo]
+          );
+        }
+      }
+    }
+
+    // Si es tipo texto o se pasó un nombre_manual
+    if (tipo === 'texto' || nombre_manual) {
+      const targetNombre = String(nombre_manual || '').trim();
+      if (targetNombre) {
+        const selectManual = await client.query(
+          `SELECT id, visto_con_texto FROM historial_visualizaciones 
+           WHERE usuario_id = $1 AND visto_con_texto ILIKE $2`,
+          [usuarioId, `%${targetNombre}%`]
+        );
+
+        for (const fila of selectManual.rows) {
+          if (!fila.visto_con_texto) continue;
+          const nombres = fila.visto_con_texto
+            .split(',')
+            .map((n) => n.trim())
+            .filter(Boolean);
+          const filtrados = nombres.filter(
+            (n) => n.toLowerCase() !== targetNombre.toLowerCase()
+          );
+          const nuevoTexto = filtrados.length > 0 ? filtrados.join(', ') : null;
+
+          await client.query(
+            `UPDATE historial_visualizaciones SET visto_con_texto = $1 WHERE id = $2`,
+            [nuevoTexto, fila.id]
+          );
+          totalDesvinculados += 1;
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+    res.json({
+      ok: true,
+      mensaje: `Se desvincularon las co-visualizaciones con ${nombreObjetivo}. Tus registros y los de ${nombreObjetivo} se mantienen guardados.`,
+      total_desvinculados: totalDesvinculados,
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al desvincular acompañante:', error.message);
+    res.status(500).json({ error: 'Error del servidor al desvincular co-visualizaciones' });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   obtenerInvitacionesPendientes,
   responderInvitacion,
   responderTodasInvitaciones,
+  desvincularAcompanante,
 };
