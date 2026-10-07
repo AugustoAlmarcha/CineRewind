@@ -89,22 +89,105 @@ export default function Home({ actualizarTrigger }) {
     }
   }, [location.state]);
 
-  // 🔝 Desplazar la vista a la sección de historial ("Diario por Fecha / Total Histórico") al navegar por carpetas
+  // 🔝 Desplazar la vista al entrar a una carpeta, o restaurar la posición exacta al volver atrás
   const esPrimeraCargaRef = useRef(true);
   const ignorarScrollRef = useRef(false);
+
+  const prevSerieTotalRef = useRef(null);
+  const prevAnioRef = useRef(null);
+  const prevMesRef = useRef(null);
+
+  const scrollCatalogRef = useRef(null);
+  const scrollAniosRef = useRef(null);
+  const scrollMesesRef = useRef(null);
 
   useEffect(() => {
     if (esPrimeraCargaRef.current) {
       esPrimeraCargaRef.current = false;
+      prevSerieTotalRef.current = serieSeleccionadaTotal;
+      prevAnioRef.current = anioSeleccionado;
+      prevMesRef.current = mesSeleccionado;
       return;
     }
     if (ignorarScrollRef.current) {
+      prevSerieTotalRef.current = serieSeleccionadaTotal;
+      prevAnioRef.current = anioSeleccionado;
+      prevMesRef.current = mesSeleccionado;
       return;
     }
-    const el = document.getElementById('seccion-historial');
-    if (el) {
-      const topOffset = el.getBoundingClientRect().top + window.scrollY - 20;
-      window.scrollTo({ top: Math.max(0, topOffset), behavior: 'instant' });
+
+    const prevSerie = prevSerieTotalRef.current;
+    const prevAnio = prevAnioRef.current;
+    const prevMes = prevMesRef.current;
+
+    prevSerieTotalRef.current = serieSeleccionadaTotal;
+    prevAnioRef.current = anioSeleccionado;
+    prevMesRef.current = mesSeleccionado;
+
+    // 1. Volver atrás desde una serie al catálogo en Total Histórico
+    if (prevSerie && !serieSeleccionadaTotal) {
+      if (scrollCatalogRef.current !== null) {
+        const destino = scrollCatalogRef.current;
+        scrollCatalogRef.current = null;
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: destino, behavior: 'instant' });
+        });
+      }
+      return;
+    }
+
+    // 2. Entrar a una serie en Total Histórico
+    if (!prevSerie && serieSeleccionadaTotal) {
+      const el = document.getElementById('seccion-historial');
+      if (el) {
+        const topOffset = el.getBoundingClientRect().top + window.scrollY - 20;
+        window.scrollTo({ top: Math.max(0, topOffset), behavior: 'instant' });
+      }
+      return;
+    }
+
+    // 3. Volver atrás desde un mes a la lista de meses
+    if (prevMes !== null && mesSeleccionado === null) {
+      if (scrollMesesRef.current !== null) {
+        const destino = scrollMesesRef.current;
+        scrollMesesRef.current = null;
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: destino, behavior: 'instant' });
+        });
+      }
+      return;
+    }
+
+    // 4. Entrar a un mes
+    if (prevMes === null && mesSeleccionado !== null) {
+      const el = document.getElementById('seccion-historial');
+      if (el) {
+        const topOffset = el.getBoundingClientRect().top + window.scrollY - 20;
+        window.scrollTo({ top: Math.max(0, topOffset), behavior: 'instant' });
+      }
+      return;
+    }
+
+    // 5. Volver atrás desde un año a la lista de años
+    if (prevAnio !== null && anioSeleccionado === null) {
+      if (scrollAniosRef.current !== null) {
+        const destino = scrollAniosRef.current;
+        scrollAniosRef.current = null;
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: destino, behavior: 'instant' });
+        });
+      }
+      return;
+    }
+
+    // 6. Entrar a un año
+    if (prevAnio === null && anioSeleccionado !== null) {
+      const el = document.getElementById('seccion-historial');
+      if (el) {
+        const topOffset = el.getBoundingClientRect().top + window.scrollY - 20;
+        window.scrollTo({ top: Math.max(0, topOffset), behavior: 'instant' });
+      }
+      return;
     }
   }, [serieSeleccionadaTotal, anioSeleccionado, mesSeleccionado]);
 
@@ -114,6 +197,27 @@ export default function Home({ actualizarTrigger }) {
     setTimeout(() => {
       ignorarScrollRef.current = false;
     }, 150);
+  };
+
+  const handleSeleccionarSerieTotal = (serie) => {
+    if (serie) {
+      scrollCatalogRef.current = window.scrollY;
+    }
+    setSerieSeleccionadaTotal(serie);
+  };
+
+  const handleSeleccionarAnio = (anio) => {
+    if (anio !== null) {
+      scrollAniosRef.current = window.scrollY;
+    }
+    setAnioSeleccionado(anio);
+  };
+
+  const handleSeleccionarMes = (mes) => {
+    if (mes !== null) {
+      scrollMesesRef.current = window.scrollY;
+    }
+    setMesSeleccionado(mes);
   };
 
   // -------------------------------------------------------------
@@ -747,7 +851,7 @@ export default function Home({ actualizarTrigger }) {
               vistaTotal={vistaTotal}
               setVistaTotal={handleCambiarVistaTotal}
               serieSeleccionadaTotal={serieSeleccionadaTotal}
-              setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
+              setSerieSeleccionadaTotal={handleSeleccionarSerieTotal}
               anioSeleccionado={anioSeleccionado}
               mesSeleccionado={mesSeleccionado}
               onVolverAnios={() => { 
@@ -778,15 +882,15 @@ export default function Home({ actualizarTrigger }) {
             <GrillaHistorial 
               vistaTotal={vistaTotal}
               serieSeleccionadaTotal={serieSeleccionadaTotal}
-              setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
+              setSerieSeleccionadaTotal={handleSeleccionarSerieTotal}
               anioSeleccionado={anioSeleccionado}
               mesSeleccionado={mesSeleccionado}
               arbolHistorial={arbolHistorial}
               listaAnios={listaAnios}
               timelineCompleto={timeline}
               ordenTotal={ordenTotal}
-              onSeleccionarAnio={(anio) => setAnioSeleccionado(anio)}
-              onSeleccionarMes={(mes) => setMesSeleccionado(mes)}
+              onSeleccionarAnio={handleSeleccionarAnio}
+              onSeleccionarMes={handleSeleccionarMes}
               modoSeleccion={modoSeleccion}
               seleccionadosParaBorrar={seleccionadosParaBorrar}
               onToggleItem={toggleSeleccionItem}

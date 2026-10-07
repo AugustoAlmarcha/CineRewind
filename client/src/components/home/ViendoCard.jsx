@@ -175,9 +175,9 @@ export default function ViendoCard({
             if (onAbrirDetalle) onAbrirDetalle(serie);
           }}
           onMouseLeave={() => setMenuAmigosAbierto(false)}
-          className={`hidden sm:flex absolute top-[-8px] ${alineacionHorizontal} w-96 rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] z-50 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 transition-all duration-300 ease-out flex-col`}
+          className={`hidden sm:flex absolute top-0 ${alineacionHorizontal} w-96 rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] z-50 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 transition-all duration-300 ease-out flex-col`}
         >
-          <div className="w-full h-40 sm:h-42 bg-neutral-900 relative overflow-hidden flex-shrink-0">
+          <div className="w-full h-34 sm:h-36 bg-neutral-900 relative overflow-hidden flex-shrink-0">
             {fotoCapituloUrl ? (
               <img
                 src={fotoCapituloUrl}
@@ -192,32 +192,32 @@ export default function ViendoCard({
             )}
 
             {/* Encabezado sobre la foto: solo el logo de la plataforma para no tapar la cara */}
-            <div className="absolute top-3 left-3 z-10">
+            <div className="absolute top-2.5 left-2.5 z-10">
               <LogoPlataforma nombre={serie.plataforma} />
             </div>
 
-            <div className="absolute bottom-2 left-3">
+            <div className="absolute bottom-2 left-2.5">
               <span className="bg-black/70 backdrop-blur-md text-[10px] font-black text-neutral-300 px-2 py-0.5 rounded-md border border-white/10">
                 SIGUIENTE EPISODIO
               </span>
             </div>
           </div>
 
-          <div className="p-3.5 space-y-2.5 bg-[#16161c]">
+          <div className="p-3 space-y-2 bg-[#16161c]">
             <div>
-              <h3 className="text-base font-black text-white leading-tight truncate">{serie.titulo}</h3>
-              <p className="text-xs font-bold text-rose-500 mt-0.5">
+              <h3 className="text-sm font-black text-white leading-tight truncate">{serie.titulo}</h3>
+              <p className="text-[11px] font-bold text-rose-500 mt-0.5">
                 Temporada {proximaTemporada} · Episodio {proximoEpisodio}
                 {amigosSeleccionados.length > 0 && (
-                  <span className="text-neutral-400 font-normal ml-2">
-                    (con {amigosSeleccionados.length} amigo{amigosSeleccionados.length > 1 ? 's' : ''})
+                  <span className="text-neutral-400 font-normal ml-1.5">
+                    ({amigosSeleccionados.length} amigo{amigosSeleccionados.length > 1 ? 's' : ''})
                   </span>
                 )}
               </p>
             </div>
 
             {/* Botones de acción en la zona negra (arriba del recuadro para calificar) */}
-            <div className="flex items-center gap-2 relative">
+            <div className="flex items-center gap-1.5 relative">
               {/* Botón Amigos */}
               <button
                 type="button"
@@ -225,7 +225,7 @@ export default function ViendoCard({
                   e.stopPropagation();
                   setMenuAmigosAbierto(!menuAmigosAbierto);
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold transition cursor-pointer border ${
                   amigosSeleccionados.length > 0
                     ? 'bg-rose-600 border-rose-400 text-white shadow-md'
                     : 'bg-black/60 hover:bg-neutral-800 text-neutral-300 border-white/15'
@@ -243,7 +243,7 @@ export default function ViendoCard({
                   e.stopPropagation();
                   if (onVerInfoEpisodio) onVerInfoEpisodio(serie);
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition cursor-pointer shadow-md border border-rose-500"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold transition cursor-pointer shadow-md border border-rose-500"
                 title="Ver actores y sinopsis"
               >
                 <Info className="w-3.5 h-3.5" />
@@ -257,7 +257,7 @@ export default function ViendoCard({
                   e.stopPropagation();
                   if (onDescartar) onDescartar(serie.obra_id || serie.id);
                 }}
-                className="p-2 rounded-xl bg-black/60 hover:bg-rose-600 text-neutral-400 hover:text-white border border-white/15 transition cursor-pointer ml-auto"
+                className="p-1.5 rounded-xl bg-black/60 hover:bg-rose-600 text-neutral-400 hover:text-white border border-white/15 transition cursor-pointer ml-auto"
                 title="Descartar de viendo actualmente"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -267,7 +267,7 @@ export default function ViendoCard({
               {menuAmigosAbierto && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute top-10 left-0 bg-[#1c1c24] border border-white/15 rounded-2xl p-2.5 shadow-2xl w-56 z-50 animate-fadeIn"
+                  className="absolute top-8 left-0 bg-[#1c1c24] border border-white/15 rounded-2xl p-2.5 shadow-2xl w-56 z-50 animate-fadeIn"
                 >
                   <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-white/10">
                     <p className="text-[10px] font-black uppercase tracking-wider text-neutral-400">
@@ -322,17 +322,9 @@ export default function ViendoCard({
               )}
             </div>
 
-            {/* Opinar / Calificar en escritorio */}
-            <div className="p-2.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-neutral-300 flex items-center gap-1">
-                  <Star className="w-3 h-3 text-amber-400 fill-amber-400" /> Calificar (opcional):
-                </span>
-                {calificacionEpisodio > 0 && (
-                  <span className="text-amber-400 font-black text-[11px]">★ {calificacionEpisodio}/5</span>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
+            {/* Opinar / Calificar en escritorio (fila compacta) */}
+            <div className="p-1.5 px-2.5 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-0.5 shrink-0" title="Calificar">
                 {[1, 2, 3, 4, 5].map((estrella) => (
                   <button
                     key={estrella}
@@ -341,11 +333,11 @@ export default function ViendoCard({
                       e.stopPropagation();
                       setCalificacionEpisodio(calificacionEpisodio === estrella ? 0 : estrella);
                     }}
-                    className={`p-1 rounded-lg transition cursor-pointer ${
+                    className={`p-0.5 rounded transition cursor-pointer ${
                       calificacionEpisodio >= estrella ? 'text-amber-400' : 'text-neutral-600 hover:text-amber-300'
                     }`}
                   >
-                    <Star className={`w-4 h-4 ${calificacionEpisodio >= estrella ? 'fill-amber-400' : ''}`} />
+                    <Star className={`w-3.5 h-3.5 ${calificacionEpisodio >= estrella ? 'fill-amber-400' : ''}`} />
                   </button>
                 ))}
               </div>
@@ -354,8 +346,8 @@ export default function ViendoCard({
                 value={opinionEpisodio}
                 onChange={(e) => setOpinionEpisodio(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
-                placeholder="Tu opinión del capítulo (opcional)..."
-                className="w-full px-2.5 py-1.5 text-[11px] rounded-lg bg-black/50 border border-white/10 text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500"
+                placeholder="Opinión rápida (opcional)..."
+                className="flex-1 min-w-0 px-2 py-0.5 text-[11px] rounded-lg bg-black/50 border border-white/10 text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500"
               />
             </div>
 
@@ -363,13 +355,13 @@ export default function ViendoCard({
               type="button"
               disabled={avanzando}
               onClick={handleBotonAvanzar}
-              className={`w-full py-2.5 px-4 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 shadow-lg ${
+              className={`w-full py-2 px-3 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md ${
                 avanzando
                   ? 'bg-rose-900/50 text-white/50 cursor-not-allowed'
                   : 'bg-rose-600 hover:bg-rose-700 active:scale-95 text-white'
               }`}
             >
-              <Check className="w-4 h-4 stroke-[2.5]" />
+              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>{avanzando ? 'Guardando...' : `Marcar T${proximaTemporada} E${proximoEpisodio} visto`}</span>
             </button>
           </div>
