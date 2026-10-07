@@ -31,6 +31,7 @@ import {
   Sparkles, 
   Clock, 
   ArrowRight, 
+  ArrowLeft,
   CheckCircle2, 
   Flame, 
   Tv 
@@ -101,6 +102,24 @@ export default function Home({ actualizarTrigger }) {
   const scrollAniosRef = useRef(null);
   const scrollMesesRef = useRef(null);
 
+  // Desactivar la restauración automática del navegador para que no fuerce scroll a 0 en history.back()
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+  }, []);
+
+  // Función robusta de restauración en múltiples etapas para asegurar que el DOM haya crecido
+  const restaurarScroll = useCallback((destino) => {
+    if (destino === null || destino === undefined) return;
+    const aplicar = () => window.scrollTo({ top: destino, behavior: 'instant' });
+    aplicar();
+    requestAnimationFrame(aplicar);
+    setTimeout(aplicar, 50);
+    setTimeout(aplicar, 150);
+    setTimeout(aplicar, 300);
+  }, []);
+
   useEffect(() => {
     if (esPrimeraCargaRef.current) {
       esPrimeraCargaRef.current = false;
@@ -129,9 +148,7 @@ export default function Home({ actualizarTrigger }) {
       if (scrollCatalogRef.current !== null) {
         const destino = scrollCatalogRef.current;
         scrollCatalogRef.current = null;
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: destino, behavior: 'instant' });
-        });
+        restaurarScroll(destino);
       }
       return;
     }
@@ -151,9 +168,7 @@ export default function Home({ actualizarTrigger }) {
       if (scrollMesesRef.current !== null) {
         const destino = scrollMesesRef.current;
         scrollMesesRef.current = null;
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: destino, behavior: 'instant' });
-        });
+        restaurarScroll(destino);
       }
       return;
     }
@@ -173,9 +188,7 @@ export default function Home({ actualizarTrigger }) {
       if (scrollAniosRef.current !== null) {
         const destino = scrollAniosRef.current;
         scrollAniosRef.current = null;
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: destino, behavior: 'instant' });
-        });
+        restaurarScroll(destino);
       }
       return;
     }
@@ -189,7 +202,7 @@ export default function Home({ actualizarTrigger }) {
       }
       return;
     }
-  }, [serieSeleccionadaTotal, anioSeleccionado, mesSeleccionado]);
+  }, [serieSeleccionadaTotal, anioSeleccionado, mesSeleccionado, restaurarScroll]);
 
   const handleCambiarVistaTotal = (nuevaVista) => {
     ignorarScrollRef.current = true;
@@ -219,6 +232,23 @@ export default function Home({ actualizarTrigger }) {
     }
     setMesSeleccionado(mes);
   };
+
+  // Botón flotante para volver cuando el usuario scrollea hacia abajo
+  const [mostrarBotonFlotanteVolver, setMostrarBotonFlotanteVolver] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const dentroDeDetalle = Boolean(serieSeleccionadaTotal || mesSeleccionado !== null || anioSeleccionado !== null);
+      if (dentroDeDetalle && window.scrollY > 250) {
+        setMostrarBotonFlotanteVolver(true);
+      } else {
+        setMostrarBotonFlotanteVolver(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [serieSeleccionadaTotal, mesSeleccionado, anioSeleccionado]);
 
   // -------------------------------------------------------------
   // 📱 NAVEGACIÓN CON BOTÓN FÍSICO "ATRÁS" DE ANDROID / MÓVIL
@@ -980,6 +1010,35 @@ export default function Home({ actualizarTrigger }) {
         onConfirm={dialogoConfirmar.onConfirm}
         onCancel={() => setDialogoConfirmar((prev) => ({ ...prev, abierto: false }))}
       />
+
+      {/* 5. Botón flotante para volver atrás desde cualquier punto sin scrollear hasta arriba */}
+      {mostrarBotonFlotanteVolver && (
+        <div className="fixed bottom-6 left-6 z-40 animate-fadeIn">
+          <button
+            type="button"
+            onClick={() => {
+              if (serieSeleccionadaTotal) {
+                handleSeleccionarSerieTotal(null);
+              } else if (mesSeleccionado !== null) {
+                handleSeleccionarMes(null);
+              } else if (anioSeleccionado !== null) {
+                handleSeleccionarAnio(null);
+              }
+            }}
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-neutral-900/95 dark:bg-[#141620]/95 hover:bg-rose-600 text-white font-black text-xs shadow-2xl border border-white/20 hover:border-rose-400 backdrop-blur-md transition-all duration-200 cursor-pointer active:scale-95 hover:scale-105 group"
+            title="Volver atrás sin subir la pantalla"
+          >
+            <ArrowLeft className="w-4 h-4 text-rose-500 group-hover:text-white transition-colors" />
+            <span>
+              {serieSeleccionadaTotal 
+                ? 'Volver al catálogo' 
+                : mesSeleccionado !== null 
+                ? 'Volver a meses' 
+                : 'Volver a años'}
+            </span>
+          </button>
+        </div>
+      )}
     </main>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { obtenerAmigosAPI } from '../../api';
-import { Calendar, Layers, Film, Tv, Users, Trash2, X, Search, ArrowUpDown } from 'lucide-react';
+import { Calendar, Layers, Film, Tv, Users, Trash2, X, Search, ArrowUpDown, ArrowLeft } from 'lucide-react';
 export default function HeaderHistorial({
   vistaTotal,
   setVistaTotal,
@@ -119,7 +119,7 @@ export default function HeaderHistorial({
 
         {/* Migas de pan en Total Histórico si estás dentro de una serie */}
         {vistaTotal && serieSeleccionadaTotal && (
-          <div className="flex items-center gap-2 text-xs font-black">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={() => {
@@ -127,11 +127,14 @@ export default function HeaderHistorial({
                 setModoSeleccion(false);
                 setSeleccionadosParaBorrar([]);
               }}
-              className="text-rose-600 dark:text-rose-500 hover:underline cursor-pointer"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 text-neutral-800 dark:text-neutral-100 font-black text-xs transition-all shadow-sm border border-neutral-300 dark:border-white/15 cursor-pointer active:scale-95 group"
             >
-              ← Volver al catálogo
+              <ArrowLeft className="w-4 h-4 text-rose-500 group-hover:text-white transition-colors" />
+              <span>Volver al catálogo</span>
             </button>
-            <span className="text-neutral-400">/ {serieSeleccionadaTotal.titulo}</span>
+            <span className="text-xs font-bold text-neutral-400 dark:text-neutral-500 truncate max-w-[200px] sm:max-w-xs">
+              / {serieSeleccionadaTotal.titulo}
+            </span>
           </div>
         )}
 
@@ -141,19 +144,20 @@ export default function HeaderHistorial({
             <button
               type="button"
               onClick={onVolverAnios}
-              className="text-rose-600 dark:text-rose-500 hover:underline cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 text-neutral-800 dark:text-neutral-100 font-black text-xs transition-all shadow-sm border border-neutral-300 dark:border-white/15 cursor-pointer active:scale-95 group"
             >
-              ← {anioSeleccionado}
+              <ArrowLeft className="w-3.5 h-3.5 text-rose-500 group-hover:text-white transition-colors" />
+              <span>← {anioSeleccionado}</span>
             </button>
 
             {mesSeleccionado !== null && (
               <button
                 type="button"
                 onClick={onVolverMeses}
-                className="text-neutral-500 hover:text-neutral-900 dark:hover:text-white cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 text-neutral-800 dark:text-neutral-100 font-black text-xs transition-all shadow-sm border border-neutral-300 dark:border-white/15 cursor-pointer active:scale-95 group"
                 title="Volver a los meses de este año"
               >
-                / {mesSeleccionado === 'todos' ? `Todo ${anioSeleccionado} (← Volver)` : 'Volver a Meses'}
+                <span>{mesSeleccionado === 'todos' ? `Todo ${anioSeleccionado} (← Volver)` : 'Volver a Meses'}</span>
               </button>
             )}
           </div>

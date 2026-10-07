@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import TimelineScrubber from './TimelineScrubber';
-import { Award, Star, Trash2, CheckCircle2, AlertTriangle, RotateCcw, Loader2, Plus } from 'lucide-react';
+import { Award, Star, Trash2, CheckCircle2, AlertTriangle, RotateCcw, Loader2, Plus, ArrowLeft } from 'lucide-react';
 import ModalCalificarSerie from '../modal/ModalCalificarSerie';
 import { 
   obtenerCalificacionesSerieAPI, 
@@ -21,6 +21,7 @@ export default function VistaSerieTotal({
   onEliminarItemDirecto = null,
   onRecargarDatos = null,
   onAbrirRegistrar = null,
+  onVolver = null,
 }) {
   const esSerie = serie?.tipo?.toLowerCase() === 'serie';
   const esSaga = Boolean(serie?.esSaga);
@@ -51,11 +52,6 @@ export default function VistaSerieTotal({
       })
       .catch(() => {});
   }, [esSerie, tmdbId, serie?.total_temporadas, serie?.seasons_info, onRecargarDatos]);
-
-  // Scroll al tope garantizado al abrir la serie
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-  }, [serie?.id_agrupador, serie?.titulo]);
 
   const serieConMetadatos = useMemo(() => {
     return {
@@ -203,9 +199,22 @@ export default function VistaSerieTotal({
       <div className="space-y-3 border-b border-neutral-200 dark:border-white/10 pb-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="min-w-0">
-            <span className="text-[11px] font-black uppercase tracking-wider text-rose-600">
-              {esSerie ? 'Historial de serie' : (esSaga ? 'Saga cinematográfica' : 'Historial de película')}
-            </span>
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              {onVolver && (
+                <button
+                  type="button"
+                  onClick={onVolver}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 text-neutral-800 dark:text-neutral-200 font-black text-xs transition cursor-pointer shadow-sm group active:scale-95 border border-neutral-300 dark:border-white/15"
+                  title="Volver al catálogo"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-rose-500 group-hover:text-white transition-colors" />
+                  <span>Volver al catálogo</span>
+                </button>
+              )}
+              <span className="text-[11px] font-black uppercase tracking-wider text-rose-600">
+                {esSerie ? 'Historial de serie' : (esSaga ? 'Saga cinematográfica' : 'Historial de película')}
+              </span>
+            </div>
             <h2 className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white leading-tight truncate">
               {serie.titulo}
             </h2>

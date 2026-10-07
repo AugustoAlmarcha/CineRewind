@@ -308,6 +308,7 @@ export default function GrillaHistorial({
         onEliminarItemDirecto={onEliminarItemDirecto}
         onRecargarDatos={onRecargarDatos}
         onAbrirRegistrar={onAbrirRegistrar}
+        onVolver={() => setSerieSeleccionadaTotal(null)}
       />
     );
   }
