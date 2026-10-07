@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import TimelineScrubber from './TimelineScrubber';
 import { Award, Star, Trash2, CheckCircle2, AlertTriangle, RotateCcw, Loader2, Plus, ArrowLeft } from 'lucide-react';
 import ModalCalificarSerie from '../modal/ModalCalificarSerie';
+import ModalGestionTemporada from '../modal/ModalGestionTemporada';
 import { 
   obtenerCalificacionesSerieAPI, 
   obtenerDetallePeliculaAPI, 
@@ -31,6 +32,8 @@ export default function VistaSerieTotal({
   const [calificacionesSerie, setCalificacionesSerie] = useState({ serie: null, temporadas: {} });
   const [modalCalificarAbierto, setModalCalificarAbierto] = useState(false);
   const [temporadaSeleccionadaModal, setTemporadaSeleccionadaModal] = useState(null);
+  const [modalGestionTemporadaAbierto, setModalGestionTemporadaAbierto] = useState(false);
+  const [temporadaGestionSeleccionada, setTemporadaGestionSeleccionada] = useState(1);
   const [metadatosExtra, setMetadatosExtra] = useState(null);
 
   // Cargar metadatos TMDb si faltan en la obra
@@ -402,8 +405,8 @@ export default function VistaSerieTotal({
                   key={`temp-pill-${num}`}
                   type="button"
                   onClick={() => {
-                    setTemporadaSeleccionadaModal(num);
-                    setModalCalificarAbierto(true);
+                    setTemporadaGestionSeleccionada(num);
+                    setModalGestionTemporadaAbierto(true);
                   }}
                   className={`px-2.5 py-1 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 shrink-0 border ${
                     !estaVista
@@ -414,8 +417,8 @@ export default function VistaSerieTotal({
                   }`}
                   title={
                     estaVista
-                      ? `Temporada ${num}: ${cantVistos}${totalCaps ? `/${totalCaps}` : ''} caps vistos${califT ? ` · Nota: ★${califT}` : ''} (Toca para calificar)`
-                      : `Temporada ${num} pendiente (Toca para calificar)`
+                      ? `Temporada ${num}: ${cantVistos}${totalCaps ? `/${totalCaps}` : ''} caps vistos · Toca para gestionar o completar`
+                      : `Temporada ${num} pendiente · Toca para registrar episodios`
                   }
                 >
                   <span>T{num}:</span>
@@ -441,6 +444,27 @@ export default function VistaSerieTotal({
           </div>
         )}
       </div>
+
+      {modalGestionTemporadaAbierto && (
+        <ModalGestionTemporada
+          obra={serieConMetadatos}
+          temporadaInicial={temporadaGestionSeleccionada}
+          temporadasDisponibles={progreso?.totalTemporadas || temporadasVistas}
+          onClose={() => setModalGestionTemporadaAbierto(false)}
+          onAbrirRegistrar={(temp) => {
+            setModalGestionTemporadaAbierto(false);
+            handleAbrirRegistrar(temp);
+          }}
+          onAbrirCalificar={(temp) => {
+            setModalGestionTemporadaAbierto(false);
+            setTemporadaSeleccionadaModal(temp);
+            setModalCalificarAbierto(true);
+          }}
+          onCompletado={async () => {
+            if (onRecargarDatos) await onRecargarDatos();
+          }}
+        />
+      )}
 
       {modalCalificarAbierto && (
         <ModalCalificarSerie
