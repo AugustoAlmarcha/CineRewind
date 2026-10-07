@@ -89,11 +89,16 @@ export default function Home({ actualizarTrigger }) {
     }
   }, [location.state]);
 
-  // 🔝 Desplazar la vista a la sección de historial ("Diario por Fecha / Total Histórico") al navegar
+  // 🔝 Desplazar la vista a la sección de historial ("Diario por Fecha / Total Histórico") al navegar por carpetas
   const esPrimeraCargaRef = useRef(true);
+  const ignorarScrollRef = useRef(false);
+
   useEffect(() => {
     if (esPrimeraCargaRef.current) {
       esPrimeraCargaRef.current = false;
+      return;
+    }
+    if (ignorarScrollRef.current) {
       return;
     }
     const el = document.getElementById('seccion-historial');
@@ -101,7 +106,15 @@ export default function Home({ actualizarTrigger }) {
       const topOffset = el.getBoundingClientRect().top + window.scrollY - 20;
       window.scrollTo({ top: Math.max(0, topOffset), behavior: 'instant' });
     }
-  }, [serieSeleccionadaTotal, anioSeleccionado, mesSeleccionado, vistaTotal]);
+  }, [serieSeleccionadaTotal, anioSeleccionado, mesSeleccionado]);
+
+  const handleCambiarVistaTotal = (nuevaVista) => {
+    ignorarScrollRef.current = true;
+    setVistaTotal(nuevaVista);
+    setTimeout(() => {
+      ignorarScrollRef.current = false;
+    }, 150);
+  };
 
   // -------------------------------------------------------------
   // 📱 NAVEGACIÓN CON BOTÓN FÍSICO "ATRÁS" DE ANDROID / MÓVIL
@@ -729,10 +742,10 @@ export default function Home({ actualizarTrigger }) {
           />
 
           {/* 2. Mi Diario Cinemático y Total Histórico */}
-          <section id="seccion-historial" className="!mt-[35px] sm:!mt-[50px] space-y-3 scroll-mt-20 relative z-30">
+          <section id="seccion-historial" className="!mt-[35px] sm:!mt-[50px] space-y-3 scroll-mt-20 relative z-10">
             <HeaderHistorial 
               vistaTotal={vistaTotal}
-              setVistaTotal={setVistaTotal}
+              setVistaTotal={handleCambiarVistaTotal}
               serieSeleccionadaTotal={serieSeleccionadaTotal}
               setSerieSeleccionadaTotal={setSerieSeleccionadaTotal}
               anioSeleccionado={anioSeleccionado}

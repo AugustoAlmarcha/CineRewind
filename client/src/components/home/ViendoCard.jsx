@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import LogoPlataforma from '../common/LogoPlataforma';
 import { obtenerAmigosAPI } from '../../api';
 import { Users, Info, X, Check, Trash2, Layers, Zap, Star } from 'lucide-react';
@@ -127,7 +128,7 @@ export default function ViendoCard({
       {/* TARJETA BASE DEL CARRUSEL */}
       <div
         onClick={handleTouchCardBase}
-        className="relative w-56 h-84 flex-shrink-0 cursor-pointer group select-none hover:z-40"
+        className="relative w-56 h-84 flex-shrink-0 cursor-pointer group select-none sm:pointer-events-auto hover:z-50"
       >
         <div className="w-full h-full rounded-2xl overflow-hidden shadow-lg border border-neutral-300/40 dark:border-white/10 bg-[#141418] relative transition-opacity duration-200 sm:group-hover:opacity-0">
           {posterUrl ? (
@@ -176,7 +177,7 @@ export default function ViendoCard({
           onMouseLeave={() => setMenuAmigosAbierto(false)}
           className={`hidden sm:flex absolute top-[-8px] ${alineacionHorizontal} w-96 rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] z-50 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 transition-all duration-300 ease-out flex-col`}
         >
-          <div className="w-full h-44 sm:h-46 bg-neutral-900 relative overflow-hidden flex-shrink-0">
+          <div className="w-full h-40 sm:h-42 bg-neutral-900 relative overflow-hidden flex-shrink-0">
             {fotoCapituloUrl ? (
               <img
                 src={fotoCapituloUrl}
@@ -376,14 +377,14 @@ export default function ViendoCard({
       </div>
 
       {/* POP-UP MODAL CENTRADO EN CELULAR */}
-      {estaActivo && (
+      {estaActivo && typeof document !== 'undefined' && createPortal(
         <div 
           onClick={() => onCerrarActivo && onCerrarActivo()}
-          className="sm:hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+          className="sm:hidden fixed inset-0 z-[9999] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] flex flex-col animate-scaleUp"
+            className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] flex flex-col animate-scaleUp max-h-[92vh] overflow-y-auto"
           >
             <div className="w-full h-44 sm:aspect-video bg-neutral-900 relative overflow-hidden flex-shrink-0">
               {fotoCapituloUrl ? (
@@ -597,7 +598,8 @@ export default function ViendoCard({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
