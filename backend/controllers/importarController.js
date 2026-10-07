@@ -58,6 +58,39 @@ const ALIAS_TITULOS = {
   'el juego del calamar': 'Squid Game',
 };
 
+// Cache para detalles de series en TMDb
+const cacheDetalleTv = new Map();
+
+async function obtenerDetallesTv(tmdb_id) {
+  if (!tmdb_id) return null;
+  if (cacheDetalleTv.has(tmdb_id)) return cacheDetalleTv.get(tmdb_id);
+  const TMDB_API_KEY = process.env.TMDB_API_KEY;
+  if (!TMDB_API_KEY) return null;
+
+  try {
+    const url = `https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${TMDB_API_KEY}&language=es-ES`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const result = {
+      total_temporadas: data.number_of_seasons || null,
+      total_episodios: data.number_of_episodes || null,
+      estado_serie: data.status || null,
+      seasons_info: (data.seasons || [])
+        .filter((s) => s.season_number > 0)
+        .map((s) => ({
+          temporada: s.season_number,
+          episodios: s.episode_count,
+          nombre: s.name,
+        }))
+    };
+    cacheDetalleTv.set(tmdb_id, result);
+    return result;
+  } catch {
+    return null;
+  }
+}
+
 // 4. Consultar obra en TMDb con alias y fallback
 async function buscarObraEnTMDb(titulo, tipoSugerido) {
   const TMDB_API_KEY = process.env.TMDB_API_KEY;
@@ -85,11 +118,20 @@ async function buscarObraEnTMDb(titulo, tipoSugerido) {
           if (matchHouse) elegido = matchHouse;
         }
 
+        let metaSerie = {};
+        if (tipo === 'serie') {
+          const det = await obtenerDetallesTv(elegido.id);
+          if (det) {
+            metaSerie = det;
+          }
+        }
+
         return {
           tmdb_id: elegido.id,
           tipo: tipo,
           titulo: elegido.title || elegido.name || titulo,
-          poster_path: elegido.poster_path
+          poster_path: elegido.poster_path,
+          ...metaSerie
         };
       }
     } catch {
@@ -554,18 +596,47 @@ const confirmarImportacionCSV = async (req, res) => {
     try {
       // 1. Obtener o crear obra en catálogo
       let obraRes = await pool.query(
-        'SELECT id FROM obras_catalogo WHERE tmdb_id = $1 LIMIT 1',
+        'SELECT id, total_temporadas, seasons_info FROM obras_catalogo WHERE tmdb_id = $1 LIMIT 1',
         [item.obra.tmdb_id]
       );
 
       let obraId = obraRes.rows[0]?.id;
       if (!obraId) {
         const nueva = await pool.query(
-          `INSERT INTO obras_catalogo (tmdb_id, tipo, titulo, poster_path)
-           VALUES ($1, $2, $3, $4) RETURNING id`,
-          [item.obra.tmdb_id, item.obra.tipo, item.obra.titulo, item.obra.poster_path]
+          `INSERT INTO obras_catalogo (tmdb_id, tipo, titulo, poster_path, total_temporadas, total_episodios, estado_serie, seasons_info)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+          [
+            item.obra.tmdb_id,
+            item.obra.tipo,
+            item.obra.titulo,
+            item.obra.poster_path,
+            item.obra.total_temporadas || null,
+            item.obra.total_episodios || null,
+            item.obra.estado_serie || null,
+            item.obra.seasons_info ? JSON.stringify(item.obra.seasons_info) : null
+          ]
         );
         obraId = nueva.rows[0].id;
+      } else if (
+        item.obra.tipo === 'serie' &&
+        (!obraRes.rows[0].total_temporadas || !obraRes.rows[0].seasons_info) &&
+        (item.obra.total_temporadas || item.obra.seasons_info)
+      ) {
+        await pool.query(
+          `UPDATE obras_catalogo 
+           SET total_temporadas = COALESCE(total_temporadas, $1),
+               total_episodios = COALESCE(total_episodios, $2),
+               estado_serie = COALESCE(estado_serie, $3),
+               seasons_info = COALESCE(seasons_info, $4)
+           WHERE id = $5`,
+          [
+            item.obra.total_temporadas || null,
+            item.obra.total_episodios || null,
+            item.obra.estado_serie || null,
+            item.obra.seasons_info ? JSON.stringify(item.obra.seasons_info) : null,
+            obraId
+          ]
+        );
       }
 
       // 2. Verificar duplicado exacto
@@ -675,7 +746,7 @@ const importarLoteCSV = async (req, res) => {
         if (datosTmdb) {
           tipoFinal = datosTmdb.tipo;
           const porTmdb = await pool.query(
-            'SELECT id, tmdb_id, tipo FROM obras_catalogo WHERE tmdb_id = $1 LIMIT 1',
+            'SELECT id, tmdb_id, tipo, total_temporadas, seasons_info FROM obras_catalogo WHERE tmdb_id = $1 LIMIT 1',
             [datosTmdb.tmdb_id]
           );
 
@@ -683,13 +754,48 @@ const importarLoteCSV = async (req, res) => {
             obraId = porTmdb.rows[0].id;
             tmdbId = porTmdb.rows[0].tmdb_id;
             tipoFinal = porTmdb.rows[0].tipo;
+            if (
+              tipoFinal === 'serie' &&
+              (!porTmdb.rows[0].total_temporadas || !porTmdb.rows[0].seasons_info) &&
+              (datosTmdb.total_temporadas || datosTmdb.seasons_info)
+            ) {
+              await pool.query(
+                `UPDATE obras_catalogo 
+                 SET total_temporadas = COALESCE(total_temporadas, $1),
+                     total_episodios = COALESCE(total_episodios, $2),
+                     estado_serie = COALESCE(estado_serie, $3),
+                     seasons_info = COALESCE(seasons_info, $4)
+                 WHERE id = $5`,
+                [
+                  datosTmdb.total_temporadas || null,
+                  datosTmdb.total_episodios || null,
+                  datosTmdb.estado_serie || null,
+                  datosTmdb.seasons_info ? JSON.stringify(datosTmdb.seasons_info) : null,
+                  obraId
+                ]
+              );
+            }
           } else {
             const nueva = await pool.query(
-              `INSERT INTO obras_catalogo (tmdb_id, tipo, titulo, poster_path)
-               VALUES ($1, $2, $3, $4)
-               ON CONFLICT (tmdb_id) DO UPDATE SET titulo = EXCLUDED.titulo
+              `INSERT INTO obras_catalogo (tmdb_id, tipo, titulo, poster_path, total_temporadas, total_episodios, estado_serie, seasons_info)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+               ON CONFLICT (tmdb_id) DO UPDATE SET 
+                 titulo = EXCLUDED.titulo,
+                 total_temporadas = COALESCE(obras_catalogo.total_temporadas, EXCLUDED.total_temporadas),
+                 total_episodios = COALESCE(obras_catalogo.total_episodios, EXCLUDED.total_episodios),
+                 estado_serie = COALESCE(obras_catalogo.estado_serie, EXCLUDED.estado_serie),
+                 seasons_info = COALESCE(obras_catalogo.seasons_info, EXCLUDED.seasons_info)
                RETURNING id, tmdb_id, tipo`,
-              [datosTmdb.tmdb_id, datosTmdb.tipo, datosTmdb.titulo, datosTmdb.poster_path]
+              [
+                datosTmdb.tmdb_id,
+                datosTmdb.tipo,
+                datosTmdb.titulo,
+                datosTmdb.poster_path,
+                datosTmdb.total_temporadas || null,
+                datosTmdb.total_episodios || null,
+                datosTmdb.estado_serie || null,
+                datosTmdb.seasons_info ? JSON.stringify(datosTmdb.seasons_info) : null
+              ]
             );
             obraId = nueva.rows[0].id;
             tmdbId = nueva.rows[0].tmdb_id;

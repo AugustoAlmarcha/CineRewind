@@ -353,42 +353,44 @@ export default function HeaderHistorial({
           </button>
         )}
 
-        {/* Selector de medio: Todos / Películas / Series */}
-        <div className="flex bg-neutral-200 dark:bg-[#16161c] p-1 rounded-xl border border-neutral-300 dark:border-white/10">
-          <button
-            type="button"
-            onClick={() => setFiltroTipo('')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
-              filtroTipo === '' 
-                ? 'bg-rose-600 text-white shadow' 
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-            }`}
-          >
-            Todos
-          </button>
-          <button
-            type="button"
-            onClick={() => setFiltroTipo('pelicula')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
-              filtroTipo === 'pelicula' 
-                ? 'bg-rose-600 text-white shadow' 
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-            }`}
-          >
-            <span className="flex items-center gap-1.5"><Film className="w-3.5 h-3.5" /> Películas</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setFiltroTipo('serie')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
-              filtroTipo === 'serie' 
-                ? 'bg-rose-600 text-white shadow' 
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-            }`}
-          >
-            <span className="flex items-center gap-1.5"><Tv className="w-3.5 h-3.5" /> Series</span>
-          </button>
-        </div>
+        {/* Selector de medio: Todos / Películas / Series (oculto si ya estás dentro de una serie) */}
+        {(!vistaTotal || !serieSeleccionadaTotal) && (
+          <div className="flex bg-neutral-200 dark:bg-[#16161c] p-1 rounded-xl border border-neutral-300 dark:border-white/10">
+            <button
+              type="button"
+              onClick={() => setFiltroTipo('')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
+                filtroTipo === '' 
+                  ? 'bg-rose-600 text-white shadow' 
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={() => setFiltroTipo('pelicula')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
+                filtroTipo === 'pelicula' 
+                  ? 'bg-rose-600 text-white shadow' 
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+              }`}
+            >
+              <span className="flex items-center gap-1.5"><Film className="w-3.5 h-3.5" /> Películas</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFiltroTipo('serie')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer ${
+                filtroTipo === 'serie' 
+                  ? 'bg-rose-600 text-white shadow' 
+                  : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+              }`}
+            >
+              <span className="flex items-center gap-1.5"><Tv className="w-3.5 h-3.5" /> Series</span>
+            </button>
+          </div>
+        )}
 
       </div>
     </div>

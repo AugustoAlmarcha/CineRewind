@@ -13,7 +13,7 @@ export default function TimelineScrubber({ puntos = [] }) {
   };
 
   return (
-    <div className="fixed right-3 top-1/2 -translate-y-1/2 z-40 flex items-center select-none group">
+    <div className="hidden md:flex fixed right-3 top-1/2 -translate-y-1/2 z-40 items-center select-none group">
       
       {/* Contenedor vertical interactivo */}
       <div className="relative py-4 px-2 flex flex-col items-center justify-between h-64 sm:h-80 bg-neutral-900/60 hover:bg-neutral-900/90 backdrop-blur-md border border-white/10 rounded-full transition-all duration-300">

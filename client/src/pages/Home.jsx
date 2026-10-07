@@ -638,6 +638,7 @@ export default function Home({ actualizarTrigger }) {
               onEliminarSerieDirecto={solicitarEliminarCarpetaDirecto}
               onEliminarItemDirecto={solicitarEliminarItemDirecto}
               onRecargarDatos={cargarDatos}
+              onAbrirRegistrar={(obra) => setSerieParaEditar(obra)}
               onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
               busquedaHistorial={busquedaHistorial}
               filtroTipo={filtroTipo}

@@ -86,6 +86,7 @@ export default function GrillaHistorial({
   onEliminarSerieDirecto,
   onEliminarItemDirecto,
   onRecargarDatos,
+  onAbrirRegistrar,
   onAbrirDetalleTimeline,
   busquedaHistorial = '',
   filtroTipo = '',
@@ -276,6 +277,7 @@ export default function GrillaHistorial({
         onEliminarSerieDirecto={onEliminarSerieDirecto || onEliminarCarpetaDirecto}
         onEliminarItemDirecto={onEliminarItemDirecto}
         onRecargarDatos={onRecargarDatos}
+        onAbrirRegistrar={onAbrirRegistrar}
       />
     );
   }
