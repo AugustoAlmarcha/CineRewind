@@ -729,7 +729,7 @@ export default function Home({ actualizarTrigger }) {
           />
 
           {/* 2. Mi Diario Cinemático y Total Histórico */}
-          <section id="seccion-historial" className="!mt-[45px] sm:!mt-[65px] space-y-3 scroll-mt-20">
+          <section id="seccion-historial" className="!mt-[35px] sm:!mt-[50px] space-y-3 scroll-mt-20 relative z-30">
             <HeaderHistorial 
               vistaTotal={vistaTotal}
               setVistaTotal={setVistaTotal}

@@ -51,34 +51,53 @@ export function useRuletaSorteo(items = []) {
     // Calcular pasos para que termine exactamente en el ganador
     const offset = (indiceGanador - (indiceActual % total) + total) % total;
     let totalPasos = offset;
-    // Buscamos que dé entre 22 y 36 pasos para una duración óptima de ~3 segundos
-    while (totalPasos < 22) {
+    // Buscamos que dé entre 16 y 24 pasos para una duración óptima y visible
+    while (totalPasos < 16) {
       totalPasos += total;
     }
-    if (totalPasos > 36 && total > 20) {
+    if (totalPasos > 26) {
       totalPasos = offset + total;
-      if (totalPasos < 18) totalPasos += total;
+      if (totalPasos < 14) totalPasos += total;
     }
 
     let paso = 0;
 
+    // Curva de velocidad: inicia a ~95ms para que el ojo humano y las pantallas móviles distingan
+    // el recuadro dorado y desacelera progresivamente para dar suspenso
     const calcularIntervalo = (p, t) => {
       const progreso = p / t;
-      if (progreso < 0.5) return 55;
-      if (progreso < 0.7) return 55 + Math.round((progreso - 0.5) * 180);
-      if (progreso < 0.85) return 90 + Math.round((progreso - 0.7) * 450);
-      if (progreso < 0.95) return 160 + Math.round((progreso - 0.85) * 1100);
-      return 270 + Math.round((progreso - 0.95) * 2500);
+      if (progreso < 0.45) return 95;
+      if (progreso < 0.7) return 95 + Math.round((progreso - 0.45) * 280);
+      if (progreso < 0.85) return 165 + Math.round((progreso - 0.7) * 600);
+      if (progreso < 0.95) return 255 + Math.round((progreso - 0.85) * 1400);
+      return 395 + Math.round((progreso - 0.95) * 2200);
     };
 
     const siguientePaso = () => {
       indiceActual = (indiceActual + 1) % total;
       setIndiceResaltado(indiceActual);
 
-      // Auto scroll suave hacia la tarjeta actual
+      // Auto scroll inteligente para móvil y PC:
+      // Evita acumular transiciones suaves de scroll ('smooth') que retrasan la pantalla en celulares
       const el = elementoRefs.current[indiceActual];
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        const rect = el.getBoundingClientRect();
+        const estaEnPantalla = (
+          rect.top >= 80 && 
+          rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) - 80
+        );
+
+        if (!estaEnPantalla) {
+          // Si está en la etapa rápida inicial, usamos 'auto' instantáneo para no ir persiguiendo con lag
+          if (paso < totalPasos * 0.7) {
+            el.scrollIntoView({ behavior: 'auto', block: 'center' });
+          } else {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        } else if (paso >= totalPasos * 0.7) {
+          // En la desaceleración final hacia el ganador, centramos suavemente
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
 
       paso++;

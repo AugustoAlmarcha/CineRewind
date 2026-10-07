@@ -176,7 +176,7 @@ export default function ViendoCard({
           onMouseLeave={() => setMenuAmigosAbierto(false)}
           className={`hidden sm:flex absolute top-[-8px] ${alineacionHorizontal} w-96 rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] z-50 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 transition-all duration-300 ease-out flex-col`}
         >
-          <div className="w-full h-52 sm:h-54 bg-neutral-900 relative overflow-hidden flex-shrink-0">
+          <div className="w-full h-44 sm:h-46 bg-neutral-900 relative overflow-hidden flex-shrink-0">
             {fotoCapituloUrl ? (
               <img
                 src={fotoCapituloUrl}
@@ -202,7 +202,7 @@ export default function ViendoCard({
             </div>
           </div>
 
-          <div className="p-4 space-y-3 bg-[#16161c]">
+          <div className="p-3.5 space-y-2.5 bg-[#16161c]">
             <div>
               <h3 className="text-base font-black text-white leading-tight truncate">{serie.titulo}</h3>
               <p className="text-xs font-bold text-rose-500 mt-0.5">

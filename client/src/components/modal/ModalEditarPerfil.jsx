@@ -249,7 +249,7 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
   };
 
   // Contraseña
-  const [modoPass, setModoPass] = useState(perfilActual?.tiene_password === false ? 'asignar' : 'cambiar');
+  const [modoPass, setModoPass] = useState(usuario?.tiene_password === false ? 'asignar' : 'cambiar');
   const [passActual, setPassActual] = useState('');
   const [passNueva, setPassNueva] = useState('');
   const [passRepetir, setPassRepetir] = useState('');
@@ -744,7 +744,7 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
                       <span>🔑</span> ¿Iniciaste sesión con Google?
                     </p>
                     <p className="text-[11px] text-neutral-300">
-                      Asignale una contraseña a tu cuenta para poder ingresar también con tu usuario (<strong>@{perfilActual?.username}</strong>) o tu correo electrónico sin depender exclusivamente de Google. Puede ser diferente a tu clave de Google.
+                      Asignale una contraseña a tu cuenta para poder ingresar también con tu usuario (<strong>@{usuario?.username}</strong>) o tu correo electrónico sin depender exclusivamente de Google. Puede ser diferente a tu clave de Google.
                     </p>
                   </div>
 
