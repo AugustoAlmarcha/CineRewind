@@ -172,23 +172,32 @@ export default function Home({ actualizarTrigger }) {
   };
 
   const solicitarEliminarCarpetaDirecto = (carpeta) => {
-    const idsABorrar = (carpeta.items || [])
+    const idsABorrar = (carpeta.items || carpeta.registros || [])
       .map((item) => (item.id !== undefined ? item.id : item.historial_id))
       .filter((id) => id !== undefined && id !== null);
 
     if (idsABorrar.length === 0) return;
 
+    const esSerie = carpeta.tipo?.toLowerCase() === 'serie';
+    const etiqueta = carpeta.etiqueta 
+      ? `todo ${carpeta.etiqueta}` 
+      : (esSerie ? `la serie "${carpeta.titulo}"` : (carpeta.esSaga ? `la saga "${carpeta.titulo}"` : `"${carpeta.titulo}"`));
+    const tipoTexto = esSerie 
+      ? (idsABorrar.length === 1 ? 'capítulo registrado' : 'capítulos registrados')
+      : (idsABorrar.length === 1 ? 'obra' : 'obras');
+
     setDialogoConfirmar({
       abierto: true,
-      titulo: `¿Eliminar todo ${carpeta.etiqueta}?`,
-      mensaje: `Se quitarán permanentemente las ${idsABorrar.length} ${idsABorrar.length === 1 ? 'obra' : 'obras'} registradas en este período.`,
+      titulo: `¿Eliminar ${etiqueta}?`,
+      mensaje: `Se quitarán permanentemente las ${idsABorrar.length} ${tipoTexto} de tu cuenta y diario.`,
       onConfirm: async () => {
         setDialogoConfirmar((prev) => ({ ...prev, abierto: false }));
+        setSerieSeleccionadaTotal(null);
         try {
           await eliminarLoteAPI(idsABorrar);
           await cargarDatos();
         } catch (err) {
-          console.error('Error al eliminar carpeta en lote:', err);
+          console.error('Error al eliminar en lote:', err);
           cargarDatos();
         }
       },
@@ -590,6 +599,7 @@ export default function Home({ actualizarTrigger }) {
               onToggleItem={toggleSeleccionItem}
               onToggleCarpeta={toggleSeleccionCarpeta}
               onEliminarCarpetaDirecto={solicitarEliminarCarpetaDirecto}
+              onEliminarSerieDirecto={solicitarEliminarCarpetaDirecto}
               onAbrirDetalleTimeline={(item) => setItemDetalle(item)}
               busquedaHistorial={busquedaHistorial}
               filtroTipo={filtroTipo}

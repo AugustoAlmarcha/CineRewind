@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import TimelineScrubber from './TimelineScrubber';
-import { Award, Star } from 'lucide-react';
+import { Award, Star, Trash2 } from 'lucide-react';
 import ModalCalificarSerie from '../modal/ModalCalificarSerie';
 import { obtenerCalificacionesSerieAPI } from '../../api';
 
@@ -11,7 +11,8 @@ export default function VistaSerieTotal({
   onAbrirDetalleTimeline,
   modoSeleccion = false,
   seleccionadosParaBorrar = [],
-  onToggleItem = () => {}
+  onToggleItem = () => {},
+  onEliminarSerieDirecto = null,
 }) {
   const esSerie = serie?.tipo?.toLowerCase() === 'serie';
   const esSaga = Boolean(serie?.esSaga);
@@ -81,13 +82,26 @@ export default function VistaSerieTotal({
               {serie.titulo}
             </h2>
           </div>
-          <span className="text-xs font-black px-3 py-1.5 bg-rose-600 text-white rounded-xl shadow shrink-0">
-            {esSerie 
-              ? `${serie.registros.length} capítulos vistos`
-              : esSaga 
-              ? `${serie.registros.length} visualizaciones · ${serie.peliculasDistintas?.length || 1} películas`
-              : `${serie.registros.length} ${serie.registros.length === 1 ? 'visualización registrada' : 'visualizaciones registradas'}`}
-          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-black px-3 py-1.5 bg-rose-600 text-white rounded-xl shadow shrink-0">
+              {esSerie 
+                ? `${serie.registros.length} capítulos vistos`
+                : esSaga 
+                ? `${serie.registros.length} visualizaciones · ${serie.peliculasDistintas?.length || 1} películas`
+                : `${serie.registros.length} ${serie.registros.length === 1 ? 'visualización registrada' : 'visualizaciones registradas'}`}
+            </span>
+            {onEliminarSerieDirecto && serie?.registros?.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onEliminarSerieDirecto(serie)}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-rose-600/10 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-600/20 hover:border-rose-600 transition cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
+                title={`Eliminar toda ${esSerie ? 'la serie' : (esSaga ? 'la saga' : 'la obra')} "${serie.titulo}"`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Eliminar {esSerie ? 'serie completa' : (esSaga ? 'saga completa' : 'obra')}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Panel de Veredicto & Calificaciones (Serie Completa y Temporadas) */}

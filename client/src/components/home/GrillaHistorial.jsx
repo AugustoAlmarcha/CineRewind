@@ -83,6 +83,7 @@ export default function GrillaHistorial({
   onToggleItem,
   onToggleCarpeta,
   onEliminarCarpetaDirecto,
+  onEliminarSerieDirecto,
   onAbrirDetalleTimeline,
   busquedaHistorial = '',
   filtroTipo = '',
@@ -246,6 +247,7 @@ export default function GrillaHistorial({
         modoSeleccion={modoSeleccion}
         seleccionadosParaBorrar={seleccionadosParaBorrar}
         onToggleItem={onToggleItem}
+        onEliminarSerieDirecto={onEliminarSerieDirecto || onEliminarCarpetaDirecto}
       />
     );
   }
@@ -258,6 +260,10 @@ export default function GrillaHistorial({
         resolverImagen={resolverImagen}
         onSeleccionarSerie={setSerieSeleccionadaTotal}
         onAbrirDetalleTimeline={onAbrirDetalleTimeline}
+        modoSeleccion={modoSeleccion}
+        seleccionadosParaBorrar={seleccionadosParaBorrar}
+        onToggleSerie={onToggleCarpeta}
+        onEliminarSerieDirecto={onEliminarSerieDirecto || onEliminarCarpetaDirecto}
       />
     );
   }
