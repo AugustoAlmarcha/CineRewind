@@ -196,6 +196,10 @@ const obtenerTimeline = async (req, res) => {
         o.titulo,
         o.poster_path AS poster_serie,
         o.poster_path AS poster_obra,
+        o.total_temporadas,
+        o.total_episodios,
+        o.estado_serie,
+        o.seasons_info,
         COALESCE(h.foto_episodio, o.poster_path, '') AS poster_path,
         COALESCE(
           (

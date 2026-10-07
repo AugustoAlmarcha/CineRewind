@@ -113,12 +113,29 @@ const obtenerDetallePelicula = async (req, res) => {
       generos: (data.genres || []).map((g) => g.name),
       total_temporadas: data.number_of_seasons || null,
       total_episodios: data.number_of_episodes || null,
+      estado_serie: data.status || null,
+      seasons: (data.seasons || [])
+        .filter((s) => s.season_number > 0)
+        .map((s) => ({
+          temporada: s.season_number,
+          episodios: s.episode_count,
+          nombre: s.name,
+        })),
       calificacion: data.vote_average ? Number(data.vote_average.toFixed(1)) : null,
       director,
       tagline: data.tagline || null,
       reparto,
       trailer_youtube_key,
     };
+
+    if (endpointTipo === 'tv' && data.number_of_seasons) {
+      pool.query(
+        `UPDATE obras_catalogo 
+         SET total_temporadas = $1, total_episodios = $2, estado_serie = $3, seasons_info = $4 
+         WHERE tmdb_id = $5`,
+        [data.number_of_seasons, data.number_of_episodes, data.status, JSON.stringify(detalle.seasons), data.id]
+      ).catch(() => {});
+    }
 
     res.json(detalle);
   } catch (error) {

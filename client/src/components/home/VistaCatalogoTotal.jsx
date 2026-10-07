@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trash2, Check } from 'lucide-react';
+import { calcularProgresoSerie } from '../../utils/seriesProgreso';
 
 export default function VistaCatalogoTotal({ 
   obras, 
@@ -26,6 +27,7 @@ export default function VistaCatalogoTotal({
         const esSerie = obra.tipo?.toLowerCase() === 'serie';
         const esSaga = Boolean(obra.esSaga);
         const cantPeliculasDistintas = obra.peliculasDistintas?.length || 1;
+        const progresoSerie = esSerie ? calcularProgresoSerie(obra) : null;
 
         const idsDeLaObra = (obra.registros || [])
           .map((r) => (r.id !== undefined ? r.id : r.historial_id))
@@ -103,14 +105,26 @@ export default function VistaCatalogoTotal({
 
             <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-4 pointer-events-none">
               <div className="flex justify-between items-center gap-1">
-                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border ${
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border shadow-xs ${
                   esSaga 
-                    ? 'bg-amber-500 text-neutral-950 font-black border-amber-300 shadow'
+                    ? 'bg-amber-500 text-neutral-950 font-black border-amber-300'
+                    : esSerie && progresoSerie?.estaCompletada
+                    ? 'bg-emerald-600/95 text-white border-emerald-400/50'
+                    : esSerie && progresoSerie?.estaAlDia
+                    ? 'bg-cyan-600/95 text-white border-cyan-400/50'
+                    : esSerie && progresoSerie?.estaEnCurso
+                    ? 'bg-amber-500/90 text-neutral-950 font-black border-amber-300/80'
                     : 'bg-black/70 text-white border-white/10'
                 }`}>
-                  {esSerie 
-                    ? 'Serie' 
-                    : (esSaga ? `Saga · ${cantPeliculasDistintas} pelis` : 'Película')}
+                  {esSerie ? (
+                    progresoSerie?.estaCompletada ? (
+                      '✓ Terminada'
+                    ) : progresoSerie?.estaAlDia ? (
+                      `✓ Al día (${progresoSerie.totalTemporadas}T)`
+                    ) : (
+                      `⏳ T${progresoSerie?.maxTempRegistrada || 1}/${progresoSerie?.totalTemporadas || '?'}`
+                    )
+                  ) : (esSaga ? `Saga · ${cantPeliculasDistintas} pelis` : 'Película')}
                 </span>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-rose-600 text-white shadow">
                   {obra.registros.length} {obra.registros.length === 1 ? 'visto' : 'vistos'}
@@ -129,13 +143,29 @@ export default function VistaCatalogoTotal({
                         ? `${totalSeleccionados}/${totalIds} seleccionados` 
                         : 'Toca para seleccionar todo')
                     : (esSerie 
-                        ? 'Toca para abrir capítulos' 
+                        ? (progresoSerie?.resumenTexto || 'Toca para abrir capítulos')
                         : esSaga 
                         ? `Toca para abrir saga (${cantPeliculasDistintas} películas)`
                         : (obra.registros.length > 1 
                             ? `Toca para ver fechas (${obra.registros.length} vistos)` 
                             : 'Toca para abrir fecha'))}
                 </p>
+
+                {/* Barra de progreso de serie en la tarjeta */}
+                {esSerie && progresoSerie && (
+                  <div className="w-full bg-white/20 h-1 rounded-full overflow-hidden mt-1.5 backdrop-blur-xs">
+                    <div 
+                      className={`h-full transition-all duration-500 ${
+                        progresoSerie.estaCompletada 
+                          ? 'bg-emerald-400' 
+                          : progresoSerie.estaAlDia 
+                          ? 'bg-cyan-400' 
+                          : 'bg-amber-400'
+                      }`}
+                      style={{ width: `${Math.max(6, progresoSerie.porcentajeGlobal)}%` }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

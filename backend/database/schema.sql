@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS obras_catalogo (
     tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('pelicula', 'serie')),
     titulo VARCHAR(255) NOT NULL,
     poster_path TEXT,
+    total_temporadas INTEGER,
+    total_episodios INTEGER,
+    estado_serie VARCHAR(50),
+    seasons_info JSONB,
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

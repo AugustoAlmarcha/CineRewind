@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import TimelineScrubber from './TimelineScrubber';
 import { Award, Star, Trash2 } from 'lucide-react';
 import ModalCalificarSerie from '../modal/ModalCalificarSerie';
-import { obtenerCalificacionesSerieAPI } from '../../api';
+import { obtenerCalificacionesSerieAPI, obtenerDetallePeliculaAPI } from '../../api';
+import { calcularProgresoSerie } from '../../utils/seriesProgreso';
 
 export default function VistaSerieTotal({ 
   serie, 
@@ -22,6 +23,37 @@ export default function VistaSerieTotal({
   const [calificacionesSerie, setCalificacionesSerie] = useState({ serie: null, temporadas: {} });
   const [modalCalificarAbierto, setModalCalificarAbierto] = useState(false);
   const [temporadaSeleccionadaModal, setTemporadaSeleccionadaModal] = useState(null);
+  const [metadatosExtra, setMetadatosExtra] = useState(null);
+
+  // Cargar metadatos TMDb si faltan en la obra
+  useEffect(() => {
+    if (!esSerie || !tmdbId) return;
+    if (serie?.total_temporadas && serie?.seasons_info) return;
+
+    obtenerDetallePeliculaAPI('serie', tmdbId)
+      .then((det) => {
+        if (det) {
+          setMetadatosExtra({
+            total_temporadas: det.total_temporadas,
+            total_episodios: det.total_episodios,
+            estado_serie: det.estado_serie,
+            seasons_info: det.seasons,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [esSerie, tmdbId, serie?.total_temporadas, serie?.seasons_info]);
+
+  const serieConMetadatos = useMemo(() => {
+    return {
+      ...serie,
+      ...(metadatosExtra || {}),
+    };
+  }, [serie, metadatosExtra]);
+
+  const progreso = useMemo(() => {
+    return esSerie ? calcularProgresoSerie(serieConMetadatos) : null;
+  }, [esSerie, serieConMetadatos]);
 
   const temporadasVistas = useMemo(() => {
     if (!esSerie || !Array.isArray(serie?.registros)) return [];
@@ -104,13 +136,96 @@ export default function VistaSerieTotal({
           </div>
         </div>
 
+        {/* Banner de Progreso y Estado de la Serie */}
+        {esSerie && progreso && (
+          <div className={`p-4 rounded-2xl sm:rounded-3xl border transition shadow-xs ${
+            progreso.estaCompletada
+              ? 'bg-emerald-500/10 border-emerald-500/30'
+              : progreso.estaAlDia
+              ? 'bg-cyan-500/10 border-cyan-500/30'
+              : 'bg-amber-500/10 border-amber-500/30'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className={`w-9 h-9 rounded-2xl flex items-center justify-center font-black text-lg shrink-0 ${
+                  progreso.estaCompletada
+                    ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                    : progreso.estaAlDia
+                    ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400'
+                    : 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
+                }`}>
+                  {progreso.estaCompletada ? '✓' : progreso.estaAlDia ? '🎬' : '⏳'}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-sm font-black text-neutral-900 dark:text-white">
+                      {progreso.estaCompletada
+                        ? '¡Serie Completada!'
+                        : progreso.estaAlDia
+                        ? `Al día con la serie (${progreso.totalTemporadas} temps)`
+                        : `En curso · Viste ${progreso.temporadasConVistosCount} de ${progreso.totalTemporadas} temporadas`}
+                    </h4>
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                      progreso.estaCompletada
+                        ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                        : progreso.estaAlDia
+                        ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border-cyan-500/30'
+                        : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                    }`}>
+                      {progreso.estaCompletada ? 'Terminada' : progreso.estaAlDia ? 'En emisión' : 'En progreso'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400 font-bold mt-0.5">
+                    {progreso.estaCompletada ? (
+                      `Viste todas las ${progreso.totalTemporadas} temporadas (${progreso.capsUnicosVistos} capítulos registrados).`
+                    ) : progreso.estaAlDia ? (
+                      `Serie en emisión. Viste las ${progreso.totalTemporadas} temporadas estrenadas.`
+                    ) : (
+                      <>
+                        Viste {progreso.capsUnicosVistos} {progreso.capsUnicosVistos === 1 ? 'capítulo' : 'capítulos'} en total.
+                        {progreso.totalTemporadas > progreso.temporadasConVistosCount && (
+                          <span className="font-black text-amber-700 dark:text-amber-300">
+                            {` · Faltan ${progreso.totalTemporadas - progreso.temporadasConVistosCount} ${
+                              progreso.totalTemporadas - progreso.temporadasConVistosCount === 1 ? 'temporada' : 'temporadas'
+                            } para completarla.`}
+                          </span>
+                        )}
+                        {progreso.esFinalizadaTMDb && ' (Serie finalizada en TV)'}
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Porcentaje y mini-barra */}
+              <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+                <div className="w-28 sm:w-36 bg-black/10 dark:bg-white/10 h-2.5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      progreso.estaCompletada
+                        ? 'bg-emerald-500'
+                        : progreso.estaAlDia
+                        ? 'bg-cyan-500'
+                        : 'bg-amber-500'
+                    }`}
+                    style={{ width: `${Math.max(6, progreso.porcentajeGlobal)}%` }}
+                  />
+                </div>
+                <span className="text-xs font-black min-w-[36px] text-right">
+                  {progreso.porcentajeGlobal}%
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Panel de Veredicto & Calificaciones (Serie Completa y Temporadas) */}
         {esSerie && (
           <div className="p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-neutral-200/60 dark:bg-white/[0.03] border border-neutral-300 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
             <div className="space-y-1.5 min-w-0">
               <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
                 <Award className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                <span>Calificaciones & Veredicto</span>
+                <span>Calificaciones & Veredicto por Temporada</span>
               </span>
 
               <div className="flex flex-wrap items-center gap-2 pt-0.5">
@@ -137,28 +252,61 @@ export default function VistaSerieTotal({
                   </span>
                 </button>
 
-                {/* Pills interactivos de Temporadas */}
-                {temporadasVistas.map((temp) => {
-                  const califT = calificacionesSerie.temporadas[temp]?.calificacion;
+                {/* Pills interactivos de Temporadas (Vistas y Pendientes) */}
+                {(progreso?.temporadas || temporadasVistas.map((t) => ({ numero: t, cantVistos: 1, estaCompleta: false, totalEpisodios: null }))).map((tempObj) => {
+                  const num = tempObj.numero;
+                  const califT = calificacionesSerie.temporadas[num]?.calificacion;
+                  const estaVista = tempObj.cantVistos > 0;
+                  const estaCompleta = tempObj.estaCompleta;
+                  const cantVistos = tempObj.cantVistos;
+                  const totalCaps = tempObj.totalEpisodios;
+
                   return (
                     <button
-                      key={`temp-pill-${temp}`}
+                      key={`temp-pill-${num}`}
                       type="button"
                       onClick={() => {
-                        setTemporadaSeleccionadaModal(temp);
+                        setTemporadaSeleccionadaModal(num);
                         setModalCalificarAbierto(true);
                       }}
-                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs active:scale-95 border ${
-                        califT
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 border ${
+                        !estaVista
+                          ? 'opacity-60 border-dashed border-neutral-400/40 dark:border-white/15 text-neutral-500 dark:text-neutral-400 bg-black/5 dark:bg-white/[0.02] hover:opacity-100 hover:border-rose-400'
+                          : califT
                           ? 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400 font-black'
-                          : 'bg-white dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:border-rose-500'
+                          : 'bg-white dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:border-rose-500'
                       }`}
-                      title={`Calificar Temporada ${temp}`}
+                      title={
+                        estaVista
+                          ? `Temporada ${num}: ${cantVistos}${totalCaps ? `/${totalCaps}` : ''} caps vistos${califT ? ` · Nota: ${califT}` : ''}`
+                          : `Temporada ${num} aún no vista (tiene ${totalCaps || '?'} episodios)`
+                      }
                     >
-                      <span>T{temp}:</span>
-                      <span className={califT ? 'text-amber-500 font-black' : 'text-neutral-400'}>
-                        {califT ? `★ ${Number(califT).toFixed(1)}` : '+ Nota'}
-                      </span>
+                      <span className="font-black">T{num}:</span>
+                      {califT ? (
+                        <span className="text-amber-500 font-black">★ {Number(califT).toFixed(1)}</span>
+                      ) : estaVista ? (
+                        <span className="text-neutral-400">+ Nota</span>
+                      ) : (
+                        <span className="text-neutral-400 italic">Pendiente</span>
+                      )}
+
+                      {/* Micro-badge de estado de temporada */}
+                      {estaVista && estaCompleta && (
+                        <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1 py-0.2 rounded-md">
+                          ✓ {totalCaps || cantVistos}
+                        </span>
+                      )}
+                      {estaVista && !estaCompleta && totalCaps && (
+                        <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1 py-0.2 rounded-md">
+                          {cantVistos}/{totalCaps}
+                        </span>
+                      )}
+                      {!estaVista && totalCaps && (
+                        <span className="text-[10px] text-neutral-400 font-semibold">
+                          ({totalCaps} caps)
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -184,7 +332,7 @@ export default function VistaSerieTotal({
         <ModalCalificarSerie
           obra={serie}
           temporadaInicial={temporadaSeleccionadaModal}
-          temporadasDisponibles={temporadasVistas}
+          temporadasDisponibles={progreso?.totalTemporadas || temporadasVistas}
           onClose={() => setModalCalificarAbierto(false)}
           onActualizado={cargarCalificaciones}
         />

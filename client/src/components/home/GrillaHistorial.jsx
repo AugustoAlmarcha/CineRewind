@@ -152,13 +152,31 @@ export default function GrillaHistorial({
           mapaObras[clave] = {
             id_agrupador: clave,
             obra_id: item.obra_id,
+            tmdb_id: item.tmdb_id,
             titulo: item.titulo,
             tipo: 'serie',
             esSaga: false,
             poster_path: item.poster_serie || item.obra_poster || item.poster_path,
             plataforma: item.plataforma,
+            total_temporadas: item.total_temporadas || null,
+            total_episodios: item.total_episodios || null,
+            estado_serie: item.estado_serie || null,
+            seasons_info: item.seasons_info || null,
             registros: [],
           };
+        } else {
+          if (!mapaObras[clave].total_temporadas && item.total_temporadas) {
+            mapaObras[clave].total_temporadas = item.total_temporadas;
+          }
+          if (!mapaObras[clave].total_episodios && item.total_episodios) {
+            mapaObras[clave].total_episodios = item.total_episodios;
+          }
+          if (!mapaObras[clave].estado_serie && item.estado_serie) {
+            mapaObras[clave].estado_serie = item.estado_serie;
+          }
+          if (!mapaObras[clave].seasons_info && item.seasons_info) {
+            mapaObras[clave].seasons_info = item.seasons_info;
+          }
         }
         mapaObras[clave].registros.push(item);
       } else {

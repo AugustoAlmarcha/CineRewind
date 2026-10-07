@@ -45,6 +45,18 @@ if (hasExternalPostgres) {
       console.error('[PostgreSQL] Error inesperado en pool:', err.message);
       eventListeners.error.forEach((cb) => cb(err, client));
     });
+
+    // Asegurar columnas de metadatos de series en obras_catalogo
+    realPool.query(`
+      ALTER TABLE obras_catalogo 
+      ADD COLUMN IF NOT EXISTS total_temporadas INTEGER,
+      ADD COLUMN IF NOT EXISTS total_episodios INTEGER,
+      ADD COLUMN IF NOT EXISTS estado_serie VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS seasons_info JSONB;
+    `).catch((err) => {
+      console.warn('[Database] Aviso de migración de columnas:', err.message);
+    });
+
     activeEngine = 'pg';
   } catch (err) {
     console.warn('[PostgreSQL] Failed to initialize pg.Pool, falling back to in-memory PGlite:', err.message);
