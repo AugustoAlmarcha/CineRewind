@@ -7,7 +7,8 @@ import {
   Sparkles, 
   Check,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ExternalLink
 } from 'lucide-react';
 
 export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar }) {
@@ -24,6 +25,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
   const [resumen, setResumen] = useState(null);
   const [error, setError] = useState(null);
   const [mostrarDetalleOmitidos, setMostrarDetalleOmitidos] = useState(false);
+  const [mostrarGuia, setMostrarGuia] = useState(false);
   const inputRef = useRef(null);
 
   const handleCerrarModal = () => {
@@ -37,6 +39,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
     setResumen(null);
     setError(null);
     setMostrarDetalleOmitidos(false);
+    setMostrarGuia(false);
     if (alCerrar) alCerrar();
   };
 
@@ -227,6 +230,90 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
               <Sparkles className="w-4 h-4" />
               <span>Iniciar Importación</span>
             </button>
+
+            {/* Guía Desplegable: Cómo obtener el archivo */}
+            <div className="pt-1 border-t border-neutral-200 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => setMostrarGuia(!mostrarGuia)}
+                className="w-full py-2.5 px-3.5 rounded-2xl bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200/70 dark:hover:bg-white/10 border border-neutral-200 dark:border-white/10 transition-all flex items-center justify-between text-left text-xs font-bold text-neutral-700 dark:text-neutral-300 cursor-pointer active:scale-98"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="text-base">💡</span>
+                  <span>¿Cómo descargo mi historial de Netflix?</span>
+                </span>
+                <span className="text-neutral-400">
+                  {mostrarGuia ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </span>
+              </button>
+
+              {/* Contenido desplegable con pasos y enlace directo */}
+              {mostrarGuia && (
+                <div className="mt-3 p-4 rounded-2xl bg-neutral-50 dark:bg-[#18181f] border border-neutral-200 dark:border-white/10 space-y-3.5 text-xs text-neutral-600 dark:text-neutral-300 animate-fadeIn">
+                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-neutral-200/80 dark:border-white/5">
+                    <span className="font-mono text-[10px] uppercase font-bold text-neutral-400">
+                      Acceso Rápido
+                    </span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                      1 Clic
+                    </span>
+                  </div>
+
+                  <a
+                    href="https://www.netflix.com/viewingactivity"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 px-3.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-98 text-white font-black text-xs transition shadow-md shadow-red-600/20 cursor-pointer"
+                  >
+                    <span>Abrir mi Actividad en Netflix</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+
+                  <div className="space-y-2.5 pt-1">
+                    <div className="flex items-start gap-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-600/10 text-red-600 dark:text-red-400 font-bold flex items-center justify-center text-[11px] mt-0.5">
+                        1
+                      </span>
+                      <p className="leading-relaxed">
+                        Tocá el botón rojo de arriba o abrí <strong className="text-neutral-900 dark:text-white">netflix.com</strong> en tu navegador (en PC o celular).
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-600/10 text-red-600 dark:text-red-400 font-bold flex items-center justify-center text-[11px] mt-0.5">
+                        2
+                      </span>
+                      <p className="leading-relaxed">
+                        Si lo hacés manual: andá a tu foto de <strong className="text-neutral-900 dark:text-white">perfil ➔ Cuenta</strong>, seleccioná tu perfil y tocá <strong className="text-neutral-900 dark:text-white">«Actividad de visualización»</strong>.
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-600/10 text-red-600 dark:text-red-400 font-bold flex items-center justify-center text-[11px] mt-0.5">
+                        3
+                      </span>
+                      <p className="leading-relaxed">
+                        Bajá hasta el final de la página y hacé clic en el enlace <strong className="text-neutral-900 dark:text-white">«Descargarla toda»</strong>.
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-600/10 text-red-600 dark:text-red-400 font-bold flex items-center justify-center text-[11px] mt-0.5">
+                        4
+                      </span>
+                      <p className="leading-relaxed">
+                        Se descargará el archivo <code className="px-1.5 py-0.5 rounded bg-neutral-200 dark:bg-white/10 font-mono text-[10px] text-neutral-800 dark:text-neutral-200">NetflixViewingHistory.csv</code>. Subilo acá arriba y tocá Iniciar.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 text-[11px] text-neutral-500 dark:text-neutral-400 border-t border-neutral-200/80 dark:border-white/5 flex items-center gap-1.5 leading-normal">
+                    <span className="shrink-0 text-xs">🔒</span>
+                    <span>100% privado: tu archivo solo se analiza para registrar títulos en tu diario.</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
