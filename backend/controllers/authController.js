@@ -239,7 +239,7 @@ const obtenerPerfilActual = async (req, res) => {
 
   try {
     const consulta = `
-      SELECT id, nombre, username, email, rol, avatar_url, biografia, banner_url, creado_en
+      SELECT id, nombre, username, email, rol, avatar_url, biografia, banner_url, creado_en, (password_hash IS NOT NULL) AS tiene_password
       FROM usuarios 
       WHERE id = $1;
     `;
@@ -412,6 +412,41 @@ const cambiarPassword = async (req, res) => {
   } catch (error) {
     console.error('Error al cambiar contraseña:', error.message);
     res.status(500).json({ error: 'Error del servidor al cambiar la contraseña' });
+  }
+};
+
+// POST: /api/auth/asignar-password (Para cuentas creadas con Google o para fijar una contraseña directa)
+const asignarPassword = async (req, res) => {
+  const usuarioId = req.usuario?.id;
+  const { passwordNueva } = req.body;
+
+  if (!usuarioId) {
+    return res.status(401).json({ error: 'Sesión no autorizada' });
+  }
+
+  if (!passwordNueva || passwordNueva.length < 6) {
+    return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+  }
+
+  if (passwordNueva.length > 72) {
+    return res.status(400).json({ error: 'La nueva contraseña no puede superar los 72 caracteres' });
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const nuevoHash = await bcrypt.hash(passwordNueva, salt);
+
+    await pool.query(
+      'UPDATE usuarios SET password_hash = $1 WHERE id = $2',
+      [nuevoHash, usuarioId]
+    );
+
+    res.json({ 
+      mensaje: '¡Contraseña asignada con éxito! Ahora puedes iniciar sesión también con tu usuario o correo electrónico.' 
+    });
+  } catch (error) {
+    console.error('Error al asignar contraseña:', error.message);
+    res.status(500).json({ error: 'Error del servidor al asignar la contraseña' });
   }
 };
 
@@ -590,6 +625,7 @@ module.exports = {
   obtenerPerfilActual,
   obtenerPerfilPublico,
   cambiarPassword,
+  asignarPassword,
   solicitarRecuperacionPassword,
   restablecerPasswordConToken
 };

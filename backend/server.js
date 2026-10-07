@@ -24,8 +24,10 @@ const PORT = process.env.PORT || 5000;
 // 🛡️ 1. CAPA DE SEGURIDAD: CABECERAS HTTP
 // ==========================================
 // crossOriginResourcePolicy en false permite cargar carátulas y avatares externos
+// crossOriginOpenerPolicy en same-origin-allow-popups permite el flujo de Google OAuth sin bloquear window.postMessage
 app.use(helmet({
-  crossOriginResourcePolicy: false
+  crossOriginResourcePolicy: false,
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
 }));
 
 // ==========================================

@@ -535,6 +535,26 @@ export const cambiarPasswordAPI = async ({ passwordActual, passwordNueva }) => {
   return data;
 };
 
+// Asignar contraseña a cuenta de Google o sin clave previa
+export const asignarPasswordAPI = async ({ passwordNueva }) => {
+  const token = localStorage.getItem('cinerewind_token');
+  const res = await fetch('/api/auth/asignar-password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ passwordNueva }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Error al asignar la contraseña');
+  }
+
+  return data;
+};
+
 // Obtener métricas globales del panel de administración
 export const obtenerMetricasAdminAPI = async () => {
   const token = localStorage.getItem('cinerewind_token');

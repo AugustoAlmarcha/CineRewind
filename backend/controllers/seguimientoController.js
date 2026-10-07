@@ -223,7 +223,7 @@ const obtenerViendoActualmente = async (req, res) => {
 // POST: Avanzar capítulo registrando el salto correcto
 const avanzarCapitulo = async (req, res) => {
   const usuario_id = resolverUsuarioId(req);
-  const { obra_id, temporada, episodio_actual, plataforma, amigos_etiquetados } = req.body;
+  const { obra_id, temporada, episodio_actual, plataforma, amigos_etiquetados, calificacion, resenia } = req.body;
 
   if (!usuario_id || !obra_id || !temporada || episodio_actual === undefined) {
     return res.status(400).json({ error: 'Faltan parámetros obligatorios' });
@@ -320,8 +320,8 @@ const avanzarCapitulo = async (req, res) => {
 
     const insertQuery = `
       INSERT INTO historial_visualizaciones 
-        (usuario_id, obra_id, temporada, episodio, plataforma, fecha_visto, foto_episodio, es_final_temporada)
-      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7)
+        (usuario_id, obra_id, temporada, episodio, plataforma, fecha_visto, foto_episodio, es_final_temporada, calificacion, resenia)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9)
       RETURNING *;
     `;
     const resHistorial = await pool.query(insertQuery, [
@@ -331,7 +331,9 @@ const avanzarCapitulo = async (req, res) => {
       proximoEp,
       plataforma || null,
       fotoEp,
-      esFinTemporada
+      esFinTemporada,
+      calificacion ? Number(calificacion) : null,
+      resenia && typeof resenia === 'string' && resenia.trim() ? resenia.trim() : null
     ]);
 
     // HU-10: Guardar invitaciones pendientes si se etiquetaron amigos desde la tarjeta

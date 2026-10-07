@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import LogoPlataforma from '../common/LogoPlataforma';
 import { obtenerAmigosAPI } from '../../api';
-import { Users, Info, X, Check, Trash2, Layers, Zap } from 'lucide-react';
+import { Users, Info, X, Check, Trash2, Layers, Zap, Star } from 'lucide-react';
 
 export default function ViendoCard({
   serie,
@@ -19,6 +19,11 @@ export default function ViendoCard({
   const [menuAmigosAbierto, setMenuAmigosAbierto] = useState(false);
   const [amigosDisponibles, setAmigosDisponibles] = useState([]);
   const [amigosSeleccionados, setAmigosSeleccionados] = useState([]);
+
+  // Estados para opinar y calificar antes de marcar como visto
+  const [calificacionEpisodio, setCalificacionEpisodio] = useState(0);
+  const [opinionEpisodio, setOpinionEpisodio] = useState('');
+  const [mostrarOpinion, setMostrarOpinion] = useState(false);
 
   // Referencia para detectar doble toque rápido en celular sobre la tarjeta base
   const ultimoTapRef = useRef(0);
@@ -79,9 +84,15 @@ export default function ViendoCard({
     setAvanzando(true);
     try {
       if (onAvanzar) {
-        await onAvanzar(serie, amigosSeleccionados);
+        await onAvanzar(serie, amigosSeleccionados, {
+          calificacion: calificacionEpisodio || null,
+          resenia: opinionEpisodio.trim() || null,
+        });
         setAmigosSeleccionados([]);
         setMenuAmigosAbierto(false);
+        setCalificacionEpisodio(0);
+        setOpinionEpisodio('');
+        setMostrarOpinion(false);
         if (onCerrarActivo) onCerrarActivo();
       }
     } finally {
@@ -306,6 +317,43 @@ export default function ViendoCard({
               </p>
             </div>
 
+            {/* Opinar / Calificar en escritorio */}
+            <div className="p-2.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-neutral-300 flex items-center gap-1">
+                  <Star className="w-3 h-3 text-amber-400 fill-amber-400" /> Calificar (opcional):
+                </span>
+                {calificacionEpisodio > 0 && (
+                  <span className="text-amber-400 font-black text-[11px]">★ {calificacionEpisodio}/5</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((estrella) => (
+                  <button
+                    key={estrella}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCalificacionEpisodio(calificacionEpisodio === estrella ? 0 : estrella);
+                    }}
+                    className={`p-1 rounded-lg transition cursor-pointer ${
+                      calificacionEpisodio >= estrella ? 'text-amber-400' : 'text-neutral-600 hover:text-amber-300'
+                    }`}
+                  >
+                    <Star className={`w-4 h-4 ${calificacionEpisodio >= estrella ? 'fill-amber-400' : ''}`} />
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={opinionEpisodio}
+                onChange={(e) => setOpinionEpisodio(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="Tu opinión del capítulo (opcional)..."
+                className="w-full px-2.5 py-1.5 text-[11px] rounded-lg bg-black/50 border border-white/10 text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500"
+              />
+            </div>
+
             <button
               type="button"
               disabled={avanzando}
@@ -346,10 +394,10 @@ export default function ViendoCard({
                 </div>
               )}
 
-              {/* Botonera superior celular: Plataforma a la izq, Amigos + Info + Descartar + Cerrar a la der */}
+              {/* Botonera superior celular: Plataforma a la izq, Amigos + Info + Descartar + Cerrar a la der (Botones más grandes y cómodos) */}
               <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-10">
                 <LogoPlataforma nombre={serie.plataforma} />
-                <div className="flex items-center gap-1.5 relative">
+                <div className="flex items-center gap-2 relative">
                   {/* Botón Amigos */}
                   <button
                     type="button"
@@ -357,17 +405,17 @@ export default function ViendoCard({
                       e.stopPropagation();
                       setMenuAmigosAbierto(!menuAmigosAbierto);
                     }}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition cursor-pointer border ${
+                    className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition cursor-pointer backdrop-blur-md active:scale-90 border ${
                       amigosSeleccionados.length > 0
                         ? 'bg-rose-600 border-rose-400 text-white shadow-md'
-                        : 'bg-black/60 text-neutral-200 border-white/20'
+                        : 'bg-black/70 text-neutral-200 border-white/25 hover:bg-black/90'
                     }`}
                     title="Etiquetar amigos"
                   >
                     {amigosSeleccionados.length > 0 ? (
-                      <span className="text-[10px] font-black">{amigosSeleccionados.length}</span>
+                      <span className="text-xs font-black">{amigosSeleccionados.length}</span>
                     ) : (
-                      <Users className="w-3.5 h-3.5 text-neutral-300" />
+                      <Users className="w-4 h-4 text-neutral-200" />
                     )}
                   </button>
 
@@ -378,10 +426,10 @@ export default function ViendoCard({
                       e.stopPropagation();
                       if (onVerInfoEpisodio) onVerInfoEpisodio(serie);
                     }}
-                    className="w-7 h-7 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-md cursor-pointer"
+                    className="w-9 h-9 rounded-full bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-md cursor-pointer transition backdrop-blur-md active:scale-90 border border-rose-400/40"
                     title="Ver actores y sinopsis"
                   >
-                    <Info className="w-3.5 h-3.5" />
+                    <Info className="w-4 h-4" />
                   </button>
 
                   {/* Botón ELIMINAR / DESCARTAR de Viendo Actualmente */}
@@ -392,10 +440,10 @@ export default function ViendoCard({
                       if (onCerrarActivo) onCerrarActivo();
                       if (onDescartar) onDescartar(serie.obra_id || serie.id);
                     }}
-                    className="w-7 h-7 rounded-full bg-black/60 text-rose-400 hover:text-white hover:bg-rose-600 border border-white/20 flex items-center justify-center cursor-pointer transition"
+                    className="w-9 h-9 rounded-full bg-black/70 text-rose-400 hover:text-white hover:bg-rose-600 border border-white/25 flex items-center justify-center cursor-pointer transition backdrop-blur-md active:scale-90"
                     title="Quitar de Viendo Actualmente"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
 
                   {/* Botón Cerrar ventana */}
@@ -405,17 +453,17 @@ export default function ViendoCard({
                       e.stopPropagation();
                       if (onCerrarActivo) onCerrarActivo();
                     }}
-                    className="w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center border border-white/20 cursor-pointer"
+                    className="w-9 h-9 rounded-full bg-black/80 hover:bg-white/20 text-white flex items-center justify-center border border-white/35 cursor-pointer shadow-lg transition backdrop-blur-md active:scale-90"
                     title="Cerrar"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4 stroke-[2.5]" />
                   </button>
 
                   {/* Menú de amigos en móvil */}
                   {menuAmigosAbierto && (
                     <div
                       onClick={(e) => e.stopPropagation()}
-                      className="absolute top-9 right-0 bg-[#1c1c24] border border-white/15 rounded-2xl p-2.5 shadow-2xl w-52 z-50 animate-fadeIn"
+                      className="absolute top-11 right-0 bg-[#1c1c24] border border-white/15 rounded-2xl p-2.5 shadow-2xl w-56 z-50 animate-fadeIn"
                     >
                       <p className="text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-2 px-1">
                         ¿Con quién lo viste?
@@ -469,6 +517,53 @@ export default function ViendoCard({
                 </p>
               </div>
 
+              {/* Sección para Calificar y Opinar antes de marcar visto en móvil */}
+              <div className="p-3 rounded-2xl bg-black/40 border border-white/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-300">
+                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                    <span>Calificar capítulo:</span>
+                  </div>
+                  {calificacionEpisodio > 0 && (
+                    <span className="text-amber-400 font-black text-xs">
+                      ★ {calificacionEpisodio}/5
+                    </span>
+                  )}
+                </div>
+
+                {/* 5 estrellas interactivas */}
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((estrella) => (
+                    <button
+                      key={estrella}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCalificacionEpisodio(calificacionEpisodio === estrella ? 0 : estrella);
+                      }}
+                      className={`p-1.5 rounded-xl transition cursor-pointer active:scale-90 ${
+                        calificacionEpisodio >= estrella
+                          ? 'text-amber-400 bg-amber-400/10'
+                          : 'text-neutral-500 hover:text-amber-300 hover:bg-white/5'
+                      }`}
+                      title={`${estrella} estrella${estrella > 1 ? 's' : ''}`}
+                    >
+                      <Star className={`w-5 h-5 ${calificacionEpisodio >= estrella ? 'fill-amber-400' : ''}`} />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Campo para opinión / reseña breve */}
+                <textarea
+                  value={opinionEpisodio}
+                  onChange={(e) => setOpinionEpisodio(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="Tu opinión o veredicto de este capítulo (opcional)..."
+                  rows={2}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-black/60 border border-white/10 text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500 transition resize-none font-medium"
+                />
+              </div>
+
               {/* Botón para marcar el siguiente visto */}
               <button
                 type="button"
@@ -491,7 +586,7 @@ export default function ViendoCard({
                   if (onCerrarActivo) onCerrarActivo();
                   if (onAbrirDetalle) onAbrirDetalle(serie);
                 }}
-                className="w-full py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 border border-white/10 bg-white/5 text-neutral-300 hover:text-white hover:bg-white/10"
+                className="w-full py-2.5 px-3 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 border border-white/10 bg-white/5 text-neutral-300 hover:text-white hover:bg-white/10"
               >
                 <Layers className="w-3.5 h-3.5 text-rose-500" />
                 <span>Ver todas las temporadas y episodios</span>

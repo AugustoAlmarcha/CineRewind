@@ -9,6 +9,7 @@ const {
   actualizarPerfil,
   comprobarDisponibilidadUsername,
   cambiarPassword,
+  asignarPassword,
   solicitarRecuperacionPassword,
   restablecerPasswordConToken
 } = require('../controllers/authController');
@@ -25,6 +26,7 @@ router.post('/restablecer-password', restablecerPasswordConToken);
 router.get('/comprobar-username', comprobarDisponibilidadUsername);
 router.get('/usuario/:username', extraerTokenOpcional, obtenerPerfilPublico);
 router.put('/cambiar-password', verificarToken, validarBody(cambiarPasswordSchema), cambiarPassword);
+router.post('/asignar-password', verificarToken, asignarPassword);
 
 // Verificación y actualización de sesión activa (JWT)
 router.get('/perfil', verificarToken, obtenerPerfilActual);

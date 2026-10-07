@@ -87,6 +87,122 @@ export default function Home({ actualizarTrigger }) {
     }
   }, [location.state]);
 
+  // -------------------------------------------------------------
+  // 📱 NAVEGACIÓN CON BOTÓN FÍSICO "ATRÁS" DE ANDROID / MÓVIL
+  // -------------------------------------------------------------
+  const estadoNavRef = useRef({});
+  useEffect(() => {
+    estadoNavRef.current = {
+      dialogoConfirmar,
+      serieParaEditar,
+      itemDetalle,
+      serieParaDetalleXRay,
+      modalNetflixAbierto,
+      modalAmigosAbierto,
+      serieSeleccionadaTotal,
+      mesSeleccionado,
+      anioSeleccionado,
+      vistaTotal,
+    };
+  }, [
+    dialogoConfirmar,
+    serieParaEditar,
+    itemDetalle,
+    serieParaDetalleXRay,
+    modalNetflixAbierto,
+    modalAmigosAbierto,
+    serieSeleccionadaTotal,
+    mesSeleccionado,
+    anioSeleccionado,
+    vistaTotal,
+  ]);
+
+  const esPorPopstateRef = useRef(false);
+  const prevDepthRef = useRef(0);
+
+  const depthActual = (
+    (vistaTotal ? 1 : 0) +
+    (serieSeleccionadaTotal ? 1 : 0) +
+    (anioSeleccionado !== null ? 1 : 0) +
+    (mesSeleccionado !== null ? 1 : 0) +
+    (itemDetalle || serieParaEditar || serieParaDetalleXRay || modalNetflixAbierto || modalAmigosAbierto || dialogoConfirmar.abierto ? 1 : 0)
+  );
+
+  useEffect(() => {
+    if (esPorPopstateRef.current) {
+      esPorPopstateRef.current = false;
+      prevDepthRef.current = depthActual;
+      return;
+    }
+
+    if (depthActual > prevDepthRef.current) {
+      const diff = depthActual - prevDepthRef.current;
+      for (let i = 0; i < diff; i++) {
+        window.history.pushState({ cr_depth: depthActual }, '');
+      }
+    } else if (depthActual < prevDepthRef.current) {
+      const diff = prevDepthRef.current - depthActual;
+      for (let i = 0; i < diff; i++) {
+        window.history.back();
+      }
+    }
+
+    prevDepthRef.current = depthActual;
+  }, [depthActual]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const cur = estadoNavRef.current;
+      esPorPopstateRef.current = true;
+
+      if (cur.dialogoConfirmar?.abierto) {
+        setDialogoConfirmar((prev) => ({ ...prev, abierto: false }));
+        return;
+      }
+      if (cur.itemDetalle) {
+        setItemDetalle(null);
+        return;
+      }
+      if (cur.serieParaEditar) {
+        setSerieParaEditar(null);
+        return;
+      }
+      if (cur.serieParaDetalleXRay) {
+        setSerieParaDetalleXRay(null);
+        return;
+      }
+      if (cur.modalNetflixAbierto) {
+        setModalNetflixAbierto(false);
+        return;
+      }
+      if (cur.modalAmigosAbierto) {
+        setModalAmigosAbierto(false);
+        return;
+      }
+      if (cur.serieSeleccionadaTotal) {
+        setSerieSeleccionadaTotal(null);
+        return;
+      }
+      if (cur.mesSeleccionado !== null) {
+        setMesSeleccionado(null);
+        return;
+      }
+      if (cur.anioSeleccionado !== null) {
+        setAnioSeleccionado(null);
+        return;
+      }
+      if (cur.vistaTotal) {
+        setVistaTotal(false);
+        return;
+      }
+
+      esPorPopstateRef.current = false;
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const cargarDatos = useCallback(async () => {
     if (!usuario?.id) {
       setSeriesActivas([]);
@@ -240,7 +356,7 @@ export default function Home({ actualizarTrigger }) {
     });
   };
 
-  const handleAvanzar = async (serie, amigos = []) => {
+  const handleAvanzar = async (serie, amigos = [], extra = {}) => {
     if (!usuario?.id) return;
     try {
       const pasaDeTemporada = serie.siguiente_temporada && Number(serie.siguiente_temporada) > Number(serie.temporada);
@@ -252,6 +368,8 @@ export default function Home({ actualizarTrigger }) {
         episodio_actual: pasaDeTemporada ? 0 : (serie.episodio_actual ?? serie.episodio),
         plataforma: serie.plataforma,
         amigos_etiquetados: amigos,
+        calificacion: extra?.calificacion || null,
+        resenia: extra?.resenia || null,
       });
       await cargarDatos();
     } catch (err) {

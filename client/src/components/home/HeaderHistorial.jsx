@@ -23,7 +23,7 @@ export default function HeaderHistorial({
   setAmigosFiltro,
   timelineCompleto = [],
 }) {
-  const puedeSeleccionar = !vistaTotal || (vistaTotal && serieSeleccionadaTotal !== null);
+  const puedeSeleccionar = true;
   const [amigosDisponibles, setAmigosDisponibles] = useState([]);
   const [menuAmigosAbierto, setMenuAmigosAbierto] = useState(false);
   const menuAmigosRef = useRef(null);
@@ -349,7 +349,11 @@ export default function HeaderHistorial({
             title="Seleccionar obras, meses o años para eliminar"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span>{modoSeleccion ? 'Cancelar' : 'Eliminar obras'}</span>
+            <span>
+              {modoSeleccion 
+                ? 'Cancelar' 
+                : (vistaTotal && !serieSeleccionadaTotal ? 'Eliminar series' : 'Eliminar obras')}
+            </span>
           </button>
         )}
 

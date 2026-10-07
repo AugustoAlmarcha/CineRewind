@@ -70,90 +70,31 @@ export default function VistaCatalogoTotal({
               </div>
             )}
 
-            {/* 1. Indicador de selección circular (cuando modoSeleccion está activo) */}
-            {modoSeleccion && (
-              <div className="absolute top-3.5 right-3.5 z-20">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition shadow-lg ${
-                    todosSeleccionados
-                      ? 'bg-rose-600 text-white border-2 border-white'
-                      : parcialSeleccionados
-                      ? 'bg-rose-500/80 text-white border-2 border-white/60'
-                      : 'bg-black/60 border-2 border-white/40 text-transparent'
-                  }`}
-                >
-                  {todosSeleccionados && <Check className="w-4 h-4 stroke-[3]" />}
-                  {parcialSeleccionados && <span className="text-xs font-bold leading-none">-</span>}
-                </div>
-              </div>
-            )}
-
-            {/* 2. Botón directo de eliminar serie/obra completa (cuando modoSeleccion no está activo) */}
-            {!modoSeleccion && onEliminarSerieDirecto && totalIds > 0 && (
+            {/* 1. Botón de eliminar serie completa (SOLO cuando modoSeleccion está activo) */}
+            {modoSeleccion && onEliminarSerieDirecto && totalIds > 0 && (
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onEliminarSerieDirecto(obra);
                 }}
-                className="absolute top-3.5 right-3.5 z-20 w-8 h-8 rounded-full bg-black/70 hover:bg-rose-600 text-neutral-300 hover:text-white flex items-center justify-center backdrop-blur-md border border-white/15 hover:border-rose-500 shadow-xl transition-all cursor-pointer opacity-90 sm:opacity-0 sm:group-hover:opacity-100 active:scale-95"
-                title={`Eliminar toda ${esSerie ? 'la serie' : (esSaga ? 'la saga' : 'la obra')} "${obra.titulo}" (${totalIds} ${totalIds === 1 ? 'visto' : 'vistos'})`}
+                className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-xl transition-all cursor-pointer active:scale-90 border border-white/20"
+                title={`Eliminar toda ${esSerie ? 'la serie' : (esSaga ? 'la saga' : 'la obra')} "${obra.titulo}"`}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
             )}
 
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent flex flex-col justify-between p-4 pointer-events-none">
-              <div className="flex justify-between items-center gap-1">
-                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border shadow-xs ${
-                  esSaga 
-                    ? 'bg-amber-500 text-neutral-950 font-black border-amber-300'
-                    : esSerie && progresoSerie?.estaCompletada
-                    ? 'bg-emerald-600/95 text-white border-emerald-400/50'
-                    : esSerie && progresoSerie?.estaAlDia
-                    ? 'bg-cyan-600/95 text-white border-cyan-400/50'
-                    : esSerie && progresoSerie?.estaEnCurso
-                    ? 'bg-amber-500/90 text-neutral-950 font-black border-amber-300/80'
-                    : 'bg-black/70 text-white border-white/10'
-                }`}>
-                  {esSerie ? (
-                    progresoSerie?.estaCompletada ? (
-                      '✓ Terminada'
-                    ) : progresoSerie?.estaAlDia ? (
-                      `✓ Al día (${progresoSerie.totalTemporadas}T)`
-                    ) : (
-                      `⏳ T${progresoSerie?.maxTempRegistrada || 1}/${progresoSerie?.totalTemporadas || '?'}`
-                    )
-                  ) : (esSaga ? `Saga · ${cantPeliculasDistintas} pelis` : 'Película')}
-                </span>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-rose-600 text-white shadow">
-                  {obra.registros.length} {obra.registros.length === 1 ? 'visto' : 'vistos'}
-                </span>
-              </div>
-
+            {/* Capa inferior limpia: únicamente el nombre de la serie y la línea de progreso */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-transparent flex flex-col justify-end p-3 sm:p-3.5 pointer-events-none">
               <div>
-                <h3 className="text-base font-black text-white truncate drop-shadow" title={obra.titulo}>
+                <h3 className="text-sm sm:text-base font-black text-white truncate drop-shadow-md leading-tight" title={obra.titulo}>
                   {obra.titulo}
                 </h3>
-                <p className="text-[11px] text-neutral-300 mt-0.5 font-bold">
-                  {modoSeleccion
-                    ? (todosSeleccionados 
-                        ? '✓ Todos seleccionados' 
-                        : parcialSeleccionados 
-                        ? `${totalSeleccionados}/${totalIds} seleccionados` 
-                        : 'Toca para seleccionar todo')
-                    : (esSerie 
-                        ? (progresoSerie?.resumenTexto || 'Toca para abrir capítulos')
-                        : esSaga 
-                        ? `Toca para abrir saga (${cantPeliculasDistintas} películas)`
-                        : (obra.registros.length > 1 
-                            ? `Toca para ver fechas (${obra.registros.length} vistos)` 
-                            : 'Toca para abrir fecha'))}
-                </p>
 
-                {/* Barra de progreso de serie en la tarjeta */}
+                {/* Línea minimalista de progreso de serie */}
                 {esSerie && progresoSerie && (
-                  <div className="w-full bg-white/20 h-1 rounded-full overflow-hidden mt-1.5 backdrop-blur-xs">
+                  <div className="w-full bg-white/20 h-1 sm:h-1.5 rounded-full overflow-hidden mt-1.5 backdrop-blur-xs">
                     <div 
                       className={`h-full transition-all duration-500 ${
                         progresoSerie.estaCompletada 

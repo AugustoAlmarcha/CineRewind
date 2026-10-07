@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { comprobarUsernameAPI, cambiarPasswordAPI } from '../../api';
+import { comprobarUsernameAPI, cambiarPasswordAPI, asignarPasswordAPI } from '../../api';
 import {
   User,
   Image as ImageIcon,
@@ -249,6 +249,7 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
   };
 
   // Contraseña
+  const [modoPass, setModoPass] = useState(perfilActual?.tiene_password === false ? 'asignar' : 'cambiar');
   const [passActual, setPassActual] = useState('');
   const [passNueva, setPassNueva] = useState('');
   const [passRepetir, setPassRepetir] = useState('');
@@ -283,6 +284,36 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
       setPassRepetir('');
     } catch (err) {
       setErrorPass(err.message || 'Error al actualizar contraseña');
+    } finally {
+      setGuardandoPass(false);
+    }
+  };
+
+  const handleAsignarPassword = async (e) => {
+    e.preventDefault();
+    setErrorPass(null);
+    setMensajePass(null);
+
+    if (passNueva.length < 6) {
+      setErrorPass('La nueva contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    if (passNueva !== passRepetir) {
+      setErrorPass('Las contraseñas nuevas no coinciden.');
+      return;
+    }
+
+    setGuardandoPass(true);
+    try {
+      const res = await asignarPasswordAPI({
+        passwordNueva: passNueva,
+      });
+      setMensajePass(res.mensaje || '✓ Contraseña asignada correctamente a tu cuenta.');
+      setPassNueva('');
+      setPassRepetir('');
+    } catch (err) {
+      setErrorPass(err.message || 'Error al asignar contraseña');
     } finally {
       setGuardandoPass(false);
     }
@@ -657,7 +688,41 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
 
           {/* 4. SECCIÓN: SEGURIDAD & CONTRASEÑA */}
           {seccionModal === 'seguridad' && (
-            <div className="space-y-3.5 animate-fadeIn">
+            <div className="space-y-4 animate-fadeIn">
+              {/* Selector de modo de contraseña */}
+              <div className="flex bg-neutral-900/90 p-1 rounded-2xl border border-white/10 gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModoPass('cambiar');
+                    setErrorPass(null);
+                    setMensajePass(null);
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition cursor-pointer text-center ${
+                    modoPass === 'cambiar'
+                      ? 'bg-rose-600 text-white shadow-md'
+                      : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  Cambiar Contraseña
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModoPass('asignar');
+                    setErrorPass(null);
+                    setMensajePass(null);
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition cursor-pointer text-center flex items-center justify-center gap-1.5 ${
+                    modoPass === 'asignar'
+                      ? 'bg-rose-600 text-white shadow-md'
+                      : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span>Asignar Contraseña (Google)</span>
+                </button>
+              </div>
+
               {errorPass && (
                 <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold text-center">
                   ⚠️ {errorPass}
@@ -666,62 +731,118 @@ export default function ModalEditarPerfil({ usuario, subpestanaInicial = 'info',
 
               {mensajePass && (
                 <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold text-center flex items-center justify-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>{mensajePass}</span>
                 </div>
               )}
 
-              <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-neutral-400">
-                  Contraseña Actual
-                </label>
-                <input
-                  type="password"
-                  value={passActual}
-                  onChange={(e) => setPassActual(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-neutral-900 border border-white/10 text-white outline-none focus:border-rose-500 font-mono"
-                />
-              </div>
+              {modoPass === 'asignar' ? (
+                /* MODO ASIGNAR (GOOGLE O SIN CLAVE) */
+                <div className="space-y-3.5">
+                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs leading-relaxed">
+                    <p className="font-bold text-amber-300 mb-1 flex items-center gap-1.5">
+                      <span>🔑</span> ¿Iniciaste sesión con Google?
+                    </p>
+                    <p className="text-[11px] text-neutral-300">
+                      Asignale una contraseña a tu cuenta para poder ingresar también con tu usuario (<strong>@{perfilActual?.username}</strong>) o tu correo electrónico sin depender exclusivamente de Google. Puede ser diferente a tu clave de Google.
+                    </p>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-neutral-400">
-                    Nueva Contraseña (mínimo 6)
-                  </label>
-                  <input
-                    type="password"
-                    value={passNueva}
-                    onChange={(e) => setPassNueva(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-neutral-900 border border-white/10 text-white outline-none focus:border-rose-500 font-mono"
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-neutral-400">
+                        Nueva Contraseña (mínimo 6)
+                      </label>
+                      <input
+                        type="password"
+                        value={passNueva}
+                        onChange={(e) => setPassNueva(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-neutral-900 border border-white/10 text-white outline-none focus:border-rose-500 font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-neutral-400">
+                        Repetir Contraseña
+                      </label>
+                      <input
+                        type="password"
+                        value={passRepetir}
+                        onChange={(e) => setPassRepetir(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-neutral-900 border border-white/10 text-white outline-none focus:border-rose-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      disabled={guardandoPass || !passNueva || !passRepetir}
+                      onClick={handleAsignarPassword}
+                      className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-black rounded-xl transition cursor-pointer disabled:opacity-40 shadow-md active:scale-95"
+                    >
+                      {guardandoPass ? 'Asignando...' : 'Asignar Contraseña a mi Cuenta'}
+                    </button>
+                  </div>
                 </div>
+              ) : (
+                /* MODO MODIFICAR CLAVE ACTUAL */
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-neutral-400">
+                      Contraseña Actual
+                    </label>
+                    <input
+                      type="password"
+                      value={passActual}
+                      onChange={(e) => setPassActual(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-neutral-900 border border-white/10 text-white outline-none focus:border-rose-500 font-mono"
+                    />
+                  </div>
 
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-neutral-400">
-                    Repetir Nueva Contraseña
-                  </label>
-                  <input
-                    type="password"
-                    value={passRepetir}
-                    onChange={(e) => setPassRepetir(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-neutral-900 border border-white/10 text-white outline-none focus:border-rose-500 font-mono"
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-neutral-400">
+                        Nueva Contraseña (mínimo 6)
+                      </label>
+                      <input
+                        type="password"
+                        value={passNueva}
+                        onChange={(e) => setPassNueva(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-neutral-900 border border-white/10 text-white outline-none focus:border-rose-500 font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[11px] font-bold text-neutral-400">
+                        Repetir Nueva Contraseña
+                      </label>
+                      <input
+                        type="password"
+                        value={passRepetir}
+                        onChange={(e) => setPassRepetir(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-neutral-900 border border-white/10 text-white outline-none focus:border-rose-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      disabled={guardandoPass || !passActual || !passNueva || !passRepetir}
+                      onClick={handleCambiarPassword}
+                      className="px-4 py-2.5 bg-neutral-800 hover:bg-rose-600 text-white text-xs font-black rounded-xl transition cursor-pointer disabled:opacity-40 shadow-sm active:scale-95"
+                    >
+                      {guardandoPass ? 'Actualizando...' : 'Actualizar Contraseña'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  disabled={guardandoPass || !passActual || !passNueva || !passRepetir}
-                  onClick={handleCambiarPassword}
-                  className="px-4 py-2 bg-neutral-800 hover:bg-rose-600 text-white text-xs font-black rounded-xl transition cursor-pointer disabled:opacity-40 shadow-sm"
-                >
-                  {guardandoPass ? 'Actualizando...' : 'Actualizar Contraseña'}
-                </button>
-              </div>
+              )}
             </div>
           )}
 

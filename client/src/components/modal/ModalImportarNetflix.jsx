@@ -448,6 +448,17 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
               </button>
             </div>
 
+            {/* Aviso informativo sobre posibles discrepancias */}
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-left space-y-1 text-xs">
+              <div className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400 font-bold">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>Nota sobre la importación de series y episodios</span>
+              </div>
+              <p className="text-[11px] text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                Netflix exporta los títulos con formatos muy variados (especiales, temporadas divididas o nombres en inglés). Es normal que en algunas series puntuales puedan surgir pequeñas discrepancias en capítulos. Podés revisar o completar cualquier episodio faltante directamente tocando <strong>«Registrar capítulos»</strong> dentro de cada serie.
+              </p>
+            </div>
+
             {/* Desplegable interactivo al tocar el botón de Omitidos */}
             {mostrarDetalleOmitidos && (
               <div className="space-y-2 pt-1 animate-fadeIn">
