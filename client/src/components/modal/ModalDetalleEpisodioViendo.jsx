@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { obtenerDetalleEpisodioAPI } from '../../api';
 import LogoPlataforma from '../common/LogoPlataforma';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
@@ -36,9 +37,11 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
 
   const fotoCabecera = detalle?.still_path || serie.foto_siguiente || serie.poster_path;
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
         <div className="bg-[#fcfaf7] dark:bg-[#121216] border border-neutral-300 dark:border-white/10 rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white my-auto animate-fadeIn transition-colors">
           
           {/* Cabecera Cinemática con Foto Grande */}
@@ -189,6 +192,7 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
       }}
     />
   )}
-    </>
+    </>,
+    document.body
   );
 }

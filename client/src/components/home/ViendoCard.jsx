@@ -128,7 +128,7 @@ export default function ViendoCard({
       {/* TARJETA BASE DEL CARRUSEL */}
       <div
         onClick={handleTouchCardBase}
-        className="relative w-56 h-84 flex-shrink-0 cursor-pointer group select-none sm:pointer-events-auto hover:z-50"
+        className="relative w-56 h-84 sm:h-[385px] flex-shrink-0 cursor-pointer group select-none sm:pointer-events-auto hover:z-50"
       >
         <div className="w-full h-full rounded-2xl overflow-hidden shadow-lg border border-neutral-300/40 dark:border-white/10 bg-[#141418] relative transition-opacity duration-200 sm:group-hover:opacity-0">
           {posterUrl ? (
@@ -177,13 +177,13 @@ export default function ViendoCard({
           onMouseLeave={() => setMenuAmigosAbierto(false)}
           className={`hidden sm:flex absolute top-0 ${alineacionHorizontal} w-96 rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] z-50 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 transition-all duration-300 ease-out flex-col`}
         >
-          <div className="w-full h-34 sm:h-36 bg-neutral-900 relative overflow-hidden flex-shrink-0">
+          <div className="w-full aspect-video bg-neutral-900 relative overflow-hidden flex-shrink-0">
             {fotoCapituloUrl ? (
               <img
                 src={fotoCapituloUrl}
                 alt={`Capítulo ${proximoEpisodio}`}
                 loading="lazy"
-                className="w-full h-full object-cover object-center"
+                className="w-full h-full object-cover object-top"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-xs text-neutral-500 font-bold">

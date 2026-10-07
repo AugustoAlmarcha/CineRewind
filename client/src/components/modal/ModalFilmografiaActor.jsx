@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { obtenerFilmografiaActorAPI, obtenerTimelineAPI, registrarVisualizacionAPI } from '../../api';
 import TarjetaFilmografia from './TarjetaFilmografia';
@@ -117,8 +118,10 @@ export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObr
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[10002] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
       <div className="bg-[#fcfaf7] dark:bg-[#141418] border border-neutral-300 dark:border-white/10 rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white my-auto animate-fadeIn relative">
         
         {/* Notificación Toast superior */}
@@ -246,7 +249,7 @@ export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObr
 
         {/* MODAL / PANEL DE GUARDADO EN LOTE */}
         {modalLoteAbierto && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="fixed inset-0 z-[10004] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
             <div className="bg-[#fcfaf7] dark:bg-[#181822] border border-neutral-300 dark:border-white/10 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl text-neutral-900 dark:text-white my-auto">
               <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-white/10">
                 <div className="flex items-center gap-2">
@@ -385,6 +388,7 @@ export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObr
         )}
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
