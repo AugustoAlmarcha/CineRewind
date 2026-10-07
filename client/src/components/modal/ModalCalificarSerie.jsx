@@ -5,6 +5,7 @@ import {
   guardarCalificacionSerieTemporadaAPI, 
   obtenerCalificacionesSerieAPI 
 } from '../../api';
+import { obtenerNotaEspecialSerie } from '../../utils/seriesNotas';
 
 export default function ModalCalificarSerie({
   obra,
@@ -16,6 +17,7 @@ export default function ModalCalificarSerie({
   const tmdbId = Number(obra?.tmdb_id || obra?.id || obra?.obra_tmdb_id);
   const titulo = obra?.titulo || 'Serie';
   const posterPath = obra?.poster_serie || obra?.poster_path || obra?.poster_obra || obra?.foto_episodio;
+  const notaEspecial = obtenerNotaEspecialSerie(tmdbId, titulo);
 
   // Normalizar lista de temporadas disponibles
   const listaTemporadas = React.useMemo(() => {
@@ -260,6 +262,17 @@ export default function ModalCalificarSerie({
             );
           })}
         </div>
+
+        {/* Nota explicativa de formato si la serie tiene discrepancias */}
+        {notaEspecial && (
+          <div className="mx-4 sm:mx-5 mt-3 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2 animate-fadeIn">
+            <span className="text-sm shrink-0">ℹ️</span>
+            <div className="leading-snug">
+              <span className="font-bold mr-1">Nota de formato:</span>
+              <span>{typeof notaEspecial === 'string' ? notaEspecial : notaEspecial.nota}</span>
+            </div>
+          </div>
+        )}
 
         {/* Cuerpo del formulario */}
         <div className="p-4 sm:p-6 space-y-4 overflow-y-auto max-h-[60vh] scrollbar-thin">

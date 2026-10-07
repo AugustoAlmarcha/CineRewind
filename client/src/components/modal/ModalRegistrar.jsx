@@ -14,6 +14,7 @@ import {
   alternarPendienteAPI    
 } from '../../api';
 import { obtenerFechaHoyLocal, obtenerFechaAyerLocal, formatearFecha } from '../../utils/fechas';
+import { obtenerNotaEspecialSerie } from '../../utils/seriesNotas';
 import BarraConfiguracionRegistro from './BarraConfiguracionRegistro';
 import ListaEpisodios from './ListaEpisodios';
 import SelectorTemporadaBarra from './SelectorTemporadaBarra';
@@ -472,6 +473,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                 faltantesCount={faltantesCount}
                 onMarcarRestantes={handleMarcarRestantes}
                 onAbrirCalificarTemporada={() => setModalCalificarSerieAbierto(true)}
+                notaEspecial={obtenerNotaEspecialSerie(tmdbIdReal, obraActual?.titulo)}
               />
 
 
