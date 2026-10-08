@@ -223,7 +223,7 @@ const obtenerViendoActualmente = async (req, res) => {
 // POST: Avanzar capítulo registrando el salto correcto
 const avanzarCapitulo = async (req, res) => {
   const usuario_id = resolverUsuarioId(req);
-  const { obra_id, temporada, episodio_actual, plataforma, amigos_etiquetados, calificacion, resenia } = req.body;
+  const { obra_id, temporada, episodio_actual, plataforma, amigos_etiquetados, calificacion, resenia, fecha_visto } = req.body;
 
   if (!usuario_id || !obra_id || !temporada || episodio_actual === undefined) {
     return res.status(400).json({ error: 'Faltan parámetros obligatorios' });
@@ -318,10 +318,21 @@ const avanzarCapitulo = async (req, res) => {
     const esFinTemporada = Boolean(totalCapsTemp && proximoEp === totalCapsTemp);
     const esFinSerie = Boolean(totalTemps && proximaTemp >= totalTemps && esFinTemporada);
 
+    let fechaFinal;
+    if (fecha_visto) {
+      fechaFinal = String(fecha_visto).split('T')[0];
+    } else {
+      const ahora = new Date();
+      const a = ahora.getFullYear();
+      const m = String(ahora.getMonth() + 1).padStart(2, '0');
+      const d = String(ahora.getDate()).padStart(2, '0');
+      fechaFinal = `${a}-${m}-${d}`;
+    }
+
     const insertQuery = `
       INSERT INTO historial_visualizaciones 
         (usuario_id, obra_id, temporada, episodio, plataforma, fecha_visto, foto_episodio, es_final_temporada, calificacion, resenia)
-      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *;
     `;
     const resHistorial = await pool.query(insertQuery, [
@@ -330,6 +341,7 @@ const avanzarCapitulo = async (req, res) => {
       proximaTemp,
       proximoEp,
       plataforma || null,
+      fechaFinal,
       fotoEp,
       esFinTemporada,
       calificacion ? Number(calificacion) : null,

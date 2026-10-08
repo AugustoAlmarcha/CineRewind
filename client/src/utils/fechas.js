@@ -40,6 +40,21 @@ export const formatearFecha = (fechaStr) => {
 };
 
 /**
+ * Formatea una fecha a formato legible ("2 de octubre de 2026") sin desfasajes de zona horaria UTC
+ */
+export const formatearFechaLarga = (fechaStr) => {
+  if (!fechaStr) return '';
+  const partes = String(fechaStr).split('T')[0].split('-');
+  if (partes.length === 3) {
+    const [anio, mes, dia] = partes;
+    const mesIndex = parseInt(mes, 10) - 1;
+    const nombreMes = NOMBRES_MESES[mesIndex] || mes;
+    return `${parseInt(dia, 10)} de ${nombreMes.toLowerCase()} de ${anio}`;
+  }
+  return fechaStr;
+};
+
+/**
  * Descompone de forma segura una fecha en [anio, mesIndex, diaNumero]
  */
 export const descomponerFecha = (fechaStr) => {

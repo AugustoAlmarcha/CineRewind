@@ -1049,7 +1049,11 @@ const completarTemporadaSerie = async (req, res) => {
     );
     const episodiosExistentes = new Set(yaVistosRes.rows.map((r) => r.episodio));
 
-    const fechaFinal = fecha_visto || new Date().toISOString().split('T')[0];
+    let fechaFinal = fecha_visto ? String(fecha_visto).split('T')[0] : null;
+    if (!fechaFinal) {
+      const d = new Date();
+      fechaFinal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
     let insertados = 0;
 
     for (let ep = 1; ep <= totalCaps; ep++) {
@@ -1130,7 +1134,11 @@ const completarSerieTotal = async (req, res) => {
     );
     const episodiosExistentes = new Set(yaVistosRes.rows.map((r) => `${r.temporada}_${r.episodio}`));
 
-    const fechaFinal = fecha_visto || new Date().toISOString().split('T')[0];
+    let fechaFinal = fecha_visto ? String(fecha_visto).split('T')[0] : null;
+    if (!fechaFinal) {
+      const d = new Date();
+      fechaFinal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
     let insertados = 0;
 
     for (const s of seasonsList) {

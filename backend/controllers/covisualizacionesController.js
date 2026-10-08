@@ -97,16 +97,18 @@ const responderInvitacion = async (req, res) => {
     }
 
     // Acción: Aceptar -> Clonar en el historial del amigo si no existe
+    const fechaVistoLimpia = inv.fecha_visto ? String(inv.fecha_visto).split('T')[0] : null;
+
     const existeEnHistorial = await client.query(
       `SELECT id FROM historial_visualizaciones
        WHERE usuario_id = $1 AND obra_id = $2 
          AND COALESCE(temporada, 0) = COALESCE($3, 0)
          AND COALESCE(episodio, 0) = COALESCE($4, 0)
          AND fecha_visto = $5`,
-      [usuarioId, inv.obra_id, inv.temporada, inv.episodio, inv.fecha_visto]
+      [usuarioId, inv.obra_id, inv.temporada, inv.episodio, fechaVistoLimpia]
     );
 
-let nuevoRegistroId;
+    let nuevoRegistroId;
 
     if (existeEnHistorial.rows.length === 0) {
       const nuevoHistorial = await client.query(
@@ -117,7 +119,7 @@ let nuevoRegistroId;
         [
           usuarioId,
           inv.obra_id,
-          inv.fecha_visto,
+          fechaVistoLimpia,
           inv.plataforma,
           inv.temporada,
           inv.episodio,
@@ -219,13 +221,15 @@ const responderTodasInvitaciones = async (req, res) => {
 
     // Aceptar todas las invitaciones
     for (const inv of invRes.rows) {
+      const fechaVistoLimpia = inv.fecha_visto ? String(inv.fecha_visto).split('T')[0] : null;
+
       const existeEnHistorial = await client.query(
         `SELECT id FROM historial_visualizaciones
          WHERE usuario_id = $1 AND obra_id = $2 
            AND COALESCE(temporada, 0) = COALESCE($3, 0)
            AND COALESCE(episodio, 0) = COALESCE($4, 0)
            AND fecha_visto = $5`,
-        [usuarioId, inv.obra_id, inv.temporada, inv.episodio, inv.fecha_visto]
+        [usuarioId, inv.obra_id, inv.temporada, inv.episodio, fechaVistoLimpia]
       );
 
       let nuevoRegistroId;
@@ -238,7 +242,7 @@ const responderTodasInvitaciones = async (req, res) => {
           [
             usuarioId,
             inv.obra_id,
-            inv.fecha_visto,
+            fechaVistoLimpia,
             inv.plataforma,
             inv.temporada,
             inv.episodio,

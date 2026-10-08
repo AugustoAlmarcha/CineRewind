@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { obtenerEpisodiosTemporadaAPI, registrarLoteAPI } from '../../api';
-import { formatearFecha } from '../../utils/fechas';
+import { formatearFecha, obtenerFechaHoyLocal } from '../../utils/fechas';
 import { 
   Zap, Calendar, Check, X, Star, AlertCircle, Loader2, 
   Sparkles, CheckCircle2, Tv, Edit3, ArrowRight, Users
@@ -30,7 +30,7 @@ function deducirFechasFaltantes(temporadaNum, episodiosFaltantesNums, todosRegis
 
   const registrosMismaTemp = registrosConFecha.filter((r) => r.temp === temporadaNum);
   const mapaFechas = {};
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = obtenerFechaHoyLocal();
 
   episodiosFaltantesNums.forEach((epNum) => {
     let referencia = null;
@@ -207,7 +207,7 @@ export default function ModalGestionTemporada({
       const gruposPorFecha = {};
       episodiosFaltantes.forEach((ep) => {
         const info = mapaFechasDeducidas[ep.numero];
-        const f = info?.fecha || new Date().toISOString().split('T')[0];
+        const f = info?.fecha || obtenerFechaHoyLocal();
 
         if (!gruposPorFecha[f]) {
           gruposPorFecha[f] = {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clapperboard, Calendar, Check, X, Sparkles, Loader2 } from 'lucide-react';
+import { formatearFecha } from '../../../utils/fechas';
 
 export default function TabCovisionesAmigos({ 
   invitaciones, 
@@ -133,7 +134,7 @@ export default function TabCovisionesAmigos({
               {inv.fecha_visto && (
                 <p className="text-[11px] text-neutral-400 font-mono flex items-center gap-1.5">
                   <Calendar className="w-3 h-3 text-neutral-400" />
-                  <span>{new Date(inv.fecha_visto).toLocaleDateString()}</span>
+                  <span>{formatearFecha(inv.fecha_visto)}</span>
                 </p>
               )}
             </div>

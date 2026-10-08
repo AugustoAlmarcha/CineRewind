@@ -6,6 +6,7 @@ import GrillaHistorial from '../components/home/GrillaHistorial';
 import BarraAccionLote from '../components/home/BarraAccionLote';
 import OnboardingBienvenida from '../components/home/OnboardingBienvenida';
 import { obtenerInfoSaga } from '../utils/seriesProgreso';
+import { obtenerFechaHoyLocal } from '../utils/fechas';
 
 // Modales modulares
 import ModalRegistrar from '../components/modal/ModalRegistrar';
@@ -578,6 +579,7 @@ export default function Home({ actualizarTrigger }) {
         amigos_etiquetados: amigos,
         calificacion: extra?.calificacion || null,
         resenia: extra?.resenia || null,
+        fecha_visto: extra?.fecha_visto || obtenerFechaHoyLocal(),
       });
       await cargarDatos();
     } catch (err) {

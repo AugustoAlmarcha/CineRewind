@@ -179,9 +179,14 @@ async function obtenerEpisodiosDeTemporada(tmdb_id, temporada) {
   }
 }
 
+function obtenerHoyLocalBackend() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // 6. Formatear Fecha de CSV (MM/DD/YY o DD/MM/YY) a YYYY-MM-DD
 function parsearFechaNetflix(fechaStr) {
-  if (!fechaStr) return new Date().toISOString().split('T')[0];
+  if (!fechaStr) return obtenerHoyLocalBackend();
   const limpia = fechaStr.replace(/"/g, '').trim();
   const partes = limpia.split('/');
   if (partes.length === 3) {
@@ -197,7 +202,7 @@ function parsearFechaNetflix(fechaStr) {
     }
     return `${anio}-${mes}-${dia}`;
   }
-  return new Date().toISOString().split('T')[0];
+  return obtenerHoyLocalBackend();
 }
 
 // 7. Desarmar línea de Netflix

@@ -1,8 +1,13 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
+
+// OID 1082 es el tipo DATE en PostgreSQL.
+// Al parsearlo directamente como string plano ('YYYY-MM-DD') en vez de instanciar un Date en UTC,
+// evitamos desfases de un día al consultar y serializar en JSON hacia el frontend.
+types.setTypeParser(1082, (val) => val);
 
 let activeEngine = null; // 'pg' or 'pglite'
 let realPool = null;

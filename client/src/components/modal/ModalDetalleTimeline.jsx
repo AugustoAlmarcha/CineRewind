@@ -10,7 +10,7 @@ import ModalFilmografiaActor from './ModalFilmografiaActor';
 import ModalCalificarSerie from './ModalCalificarSerie';
 import SelectorAmigosEtiquetar from './SelectorAmigosEtiquetar';
 import { Tv, Users, Clapperboard, BookOpen, ChevronDown, Calendar, Award, Star } from 'lucide-react';
-import { obtenerFechaHoyLocal, obtenerFechaAyerLocal } from '../../utils/fechas';
+import { obtenerFechaHoyLocal, obtenerFechaAyerLocal, formatearFechaLarga } from '../../utils/fechas';
 
 
 const PLATAFORMAS_DISPONIBLES = [
@@ -55,13 +55,7 @@ export default function ModalDetalleTimeline({
   const [seccionExpandida, setSeccionExpandida] = useState(null);
 
   const formatearFecha = (fechaStr) => {
-    if (!fechaStr) return '';
-    try {
-      const f = new Date(fechaStr.includes('T') ? fechaStr : `${fechaStr}T00:00:00`);
-      return f.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-    } catch {
-      return fechaStr;
-    }
+    return formatearFechaLarga(fechaStr);
   };
 
   useEffect(() => {
