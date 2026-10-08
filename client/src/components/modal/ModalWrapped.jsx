@@ -7,10 +7,15 @@ import { X, Play, Pause, ChevronLeft, ChevronRight, Film } from 'lucide-react';
 import LogoCineRewind from './wrapped/LogoCineRewind';
 import SlideClaqueta from './wrapped/SlideClaqueta';
 import SlideHoras from './wrapped/SlideHoras';
-import SlideTopSerie from './wrapped/SlideTopSerie';
+import SlidePrimerPlayPregunta from './wrapped/SlidePrimerPlayPregunta';
+import SlidePrimerPlayReveal from './wrapped/SlidePrimerPlayReveal';
+import SlideTeaserTop from './wrapped/SlideTeaserTop';
+import SlideTopCountdown from './wrapped/SlideTopCountdown';
+import SlideTop5Collage from './wrapped/SlideTop5Collage';
+import SlideTeaserPeliculas from './wrapped/SlideTeaserPeliculas';
 import SlideSobreHonor from './wrapped/SlideSobreHonor';
-import SlideSeriesCollage from './wrapped/SlideSeriesCollage';
-import SlidePeliculasCollage from './wrapped/SlidePeliculasCollage';
+import SlidePlataformas from './wrapped/SlidePlataformas';
+import SlideGenerosMeses from './wrapped/SlideGenerosMeses';
 import SlideMuralCompleto from './wrapped/SlideMuralCompleto';
 import SlideHabitos from './wrapped/SlideHabitos';
 import SlideArquetipo from './wrapped/SlideArquetipo';
@@ -50,7 +55,6 @@ const playSound = (tipo) => {
   } catch (e) {}
 };
 
-const TOTAL_SLIDES = 13;
 const DURATION_MS = 8500;
 
 export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
@@ -121,6 +125,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
       totalSeries: seriesUnicas.length,
       totalObras: totalPeliculas + totalEpisodios,
       diasEquivalentes: datosWrapped.dias_equivalentes || `${(totalHoras / 24).toFixed(1)} días`,
+      primerPlay: datosWrapped.primer_play || (todasLasObras.length > 0 ? todasLasObras[0] : null),
       topSerie: datosWrapped.top_serie || null,
       topPelicula: datosWrapped.top_pelicula || null,
       diaSagrado: datosWrapped.dia_sagrado || 'Domingo',
@@ -128,6 +133,11 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
       seriesVistas: seriesUnicas,
       peliculasVistas: peliculasUnicas,
       todasLasObras,
+      plataformasStats: datosWrapped.plataformas_stats || [],
+      vecesAlCine: datosWrapped.veces_al_cine || 0,
+      topGeneros: datosWrapped.top_generos || [],
+      mesPicoPeliculas: datosWrapped.mes_pico_peliculas || null,
+      mesPicoSeries: datosWrapped.mes_pico_series || null,
       sobres: [
         {
           id: 'actor',
@@ -204,16 +214,162 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
     };
   }, [datosWrapped]);
 
+  // Construcción dinámica de la cuenta regresiva del podio de series (5 -> 4 -> 3 -> 2 -> 1)
+  const topSeriesCountdown = useMemo(() => {
+    if (!stats) return [];
+    const raw = (stats.seriesVistas && stats.seriesVistas.length > 0)
+      ? stats.seriesVistas
+      : [];
+    const top = raw.slice(0, 5);
+    // Asignamos posición oficial (1 es la más vista) y damos vuelta para cuenta regresiva 5..1
+    return top.map((s, idx) => ({
+      ...s,
+      posicionOriginal: idx + 1,
+      episodios_vistos: s.episodios_vistos || s.veces_vista || 1
+    })).reverse();
+  }, [stats]);
+
+  // Construcción dinámica de la cuenta regresiva del podio de películas (5 -> 4 -> 3 -> 2 -> 1)
+  const topPeliculasCountdown = useMemo(() => {
+    if (!stats) return [];
+    const raw = stats.peliculasVistas || [];
+    const top = raw.slice(0, 5);
+    return top.map((p, idx) => ({
+      ...p,
+      posicionOriginal: idx + 1,
+      veces_vista: p.veces_vista || p.veces || p.conteo || 1
+    })).reverse();
+  }, [stats]);
+
+  // Estructura y mapeo dinámico de diapositivas
+  const offsets = useMemo(() => {
+    let cursor = 4; // slide 0: Claqueta, 1: Horas, 2: PrimerPlayPregunta, 3: PrimerPlayReveal
+
+    // Series
+    const tieneSeries = topSeriesCountdown.length > 0;
+    const idxTeaserSeries = tieneSeries ? cursor++ : -1;
+    const offsetSeriesCountdown = tieneSeries ? cursor : -1;
+    if (tieneSeries) {
+      cursor += topSeriesCountdown.length;
+    }
+    const idxCollageSeries = tieneSeries ? cursor++ : -1;
+
+    // Películas
+    const tienePelis = topPeliculasCountdown.length > 0;
+    const idxTeaserPelis = tienePelis ? cursor++ : -1;
+    const offsetPelisCountdown = tienePelis ? cursor : -1;
+    if (tienePelis) {
+      cursor += topPeliculasCountdown.length;
+    }
+    const idxCollagePelis = tienePelis ? cursor++ : -1;
+
+    // Nuevas diapositivas: Plataformas/Cine y Géneros/Meses Récord
+    const idxPlataformas = cursor++;
+    const idxGenerosMeses = cursor++;
+
+    // Sobres de Honor (4 sobres: actor, actriz, director, copiloto)
+    const offsetSobres = cursor;
+    cursor += 4;
+
+    // Diapositivas finales
+    const idxMural = cursor++;
+    const idxHabitos = cursor++;
+    const idxArquetipo = cursor++;
+    const idxTarjetaVIP = cursor++;
+
+    const totalSlides = cursor;
+
+    return {
+      tieneSeries,
+      idxTeaserSeries,
+      offsetSeriesCountdown,
+      cantSeries: topSeriesCountdown.length,
+      idxCollageSeries,
+      tienePelis,
+      idxTeaserPelis,
+      offsetPelisCountdown,
+      cantPelis: topPeliculasCountdown.length,
+      idxCollagePelis,
+      idxPlataformas,
+      idxGenerosMeses,
+      offsetSobres,
+      idxMural,
+      idxHabitos,
+      idxArquetipo,
+      idxTarjetaVIP,
+      totalSlides
+    };
+  }, [topSeriesCountdown, topPeliculasCountdown]);
+
+  const totalSlides = offsets.totalSlides;
+
+  const colorActivo = useMemo(() => {
+    if (slideActual === 0) return '#e11d48'; // Claqueta
+    if (slideActual === 1) return '#8b5cf6'; // Horas
+    if (slideActual === 2) return '#f59e0b'; // Pregunta Primer Play
+    if (slideActual === 3) return '#f59e0b'; // Reveal Primer Play
+    if (offsets.tieneSeries && slideActual === offsets.idxTeaserSeries) return '#06b6d4'; // Cyan Teaser Series
+
+    // Series countdown
+    if (
+      offsets.tieneSeries &&
+      slideActual >= offsets.offsetSeriesCountdown &&
+      slideActual < offsets.offsetSeriesCountdown + offsets.cantSeries
+    ) {
+      const pos = topSeriesCountdown[slideActual - offsets.offsetSeriesCountdown]?.posicionOriginal;
+      if (pos === 1) return '#f59e0b';
+      if (pos === 2) return '#0284c7';
+      if (pos === 3) return '#ec4899';
+      if (pos === 4) return '#8b5cf6';
+      return '#e11d48'; // 5
+    }
+
+    if (offsets.tieneSeries && slideActual === offsets.idxCollageSeries) return '#10b981'; // Spotify Collage Series
+    if (offsets.tienePelis && slideActual === offsets.idxTeaserPelis) return '#f97316'; // Naranja Teaser Pelis
+
+    // Pelis countdown
+    if (
+      offsets.tienePelis &&
+      slideActual >= offsets.offsetPelisCountdown &&
+      slideActual < offsets.offsetPelisCountdown + offsets.cantPelis
+    ) {
+      const pos = topPeliculasCountdown[slideActual - offsets.offsetPelisCountdown]?.posicionOriginal;
+      if (pos === 1) return '#f59e0b';
+      if (pos === 2) return '#0284c7';
+      if (pos === 3) return '#ec4899';
+      if (pos === 4) return '#8b5cf6';
+      return '#e11d48'; // 5
+    }
+
+    if (offsets.tienePelis && slideActual === offsets.idxCollagePelis) return '#f43f5e'; // Spotify Collage Pelis
+    if (slideActual === offsets.idxPlataformas) return '#f59e0b'; // Plataformas / Cine
+    if (slideActual === offsets.idxGenerosMeses) return '#ec4899'; // Géneros y Meses
+
+    // Sobres
+    if (slideActual === offsets.offsetSobres) return '#fbbf24'; // Actor
+    if (slideActual === offsets.offsetSobres + 1) return '#f472b6'; // Actriz
+    if (slideActual === offsets.offsetSobres + 2) return '#34d399'; // Director
+    if (slideActual === offsets.offsetSobres + 3) return '#38bdf8'; // Copiloto
+
+    // Diapositivas finales
+    if (slideActual === offsets.idxMural) return '#a855f7'; // Mural
+    if (slideActual === offsets.idxHabitos) return '#facc15'; // Hábitos
+    if (slideActual === offsets.idxArquetipo) return '#ec4899'; // Arquetipo
+    if (slideActual === offsets.idxTarjetaVIP) return '#facc15'; // Tarjeta VIP
+
+    return '#e11d48';
+  }, [slideActual, offsets, topSeriesCountdown, topPeliculasCountdown]);
+
   // NAVEGACIÓN PRECISA: avanza estrictamente 1 slide con candado antirrebote
   const avanzarUnSlide = useCallback(() => {
     if (transitionLockRef.current) return;
     transitionLockRef.current = true;
-    setSlideActual((prev) => (prev < TOTAL_SLIDES - 1 ? prev + 1 : prev));
+    setSlideActual((prev) => (prev < totalSlides - 1 ? prev + 1 : prev));
     setProgreso(0);
     setTimeout(() => {
       transitionLockRef.current = false;
     }, 350);
-  }, []);
+  }, [totalSlides]);
 
   const retrocederUnSlide = useCallback(() => {
     if (transitionLockRef.current) return;
@@ -263,8 +419,8 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
 
   useEffect(() => {
     if (slideActual === 0) setClaquetaGolpeada(false);
-    if (slideActual >= 3 && slideActual <= 6) setSobreAbierto(false);
-  }, [slideActual]);
+    if (slideActual >= offsets.offsetSobres && slideActual < offsets.offsetSobres + 4) setSobreAbierto(false);
+  }, [slideActual, offsets.offsetSobres]);
 
   const handleGolpearClaqueta = () => {
     playSound('clap');
@@ -321,7 +477,12 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
         skipFonts: true, 
         cacheBust: false,
         includeQueryParams: true,
-        backgroundColor: '#0a0a0f',
+        filter: (node) => {
+          if (node?.dataset?.noCapture === 'true' || node?.getAttribute?.('data-no-capture') === 'true') {
+            return false;
+          }
+          return true;
+        },
         style: {
           margin: '0',
           transform: 'none'
@@ -351,7 +512,12 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
         skipFonts: true, 
         cacheBust: false,
         includeQueryParams: true,
-        backgroundColor: '#0a0a0f',
+        filter: (node) => {
+          if (node?.dataset?.noCapture === 'true' || node?.getAttribute?.('data-no-capture') === 'true') {
+            return false;
+          }
+          return true;
+        },
         style: {
           margin: '0',
           transform: 'none'
@@ -364,7 +530,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
         await navigator.share({
           files: [file],
           title: `Mi CineRewind ${stats?.anio}`,
-          text: `¡Mira mi CineRewind ${stats?.anio}! 🍿✨`
+          text: `¡Mira mi CineRewind ${stats?.anio}! 🍿✨ https://cinerewind.com.ar`
         });
       } else {
         const a = document.createElement('a');
@@ -383,7 +549,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
 
   const copiarResumen = () => {
     if (!stats) return;
-    const texto = `🍿 ¡Mi CineRewind Gala Pop ${stats.anio}! 🍿\n` +
+    const texto = `🍿 ¡Mi CineRewind ${stats.anio}! 🍿\n` +
       `⏱️ ${stats.totalHoras} horas en pantalla (${stats.totalMinutos.toLocaleString()} minutos)\n` +
       `📺 ${stats.totalEpisodios} capítulos de serie | 🎬 ${stats.totalPeliculas} películas\n` +
       `🏆 Top Serie: ${stats.topSerie?.titulo || 'Viendo'}\n` +
@@ -417,12 +583,6 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
     );
   }
 
-  const coloresSlide = [
-    '#facc15', '#bef264', '#10b981', '#f59e0b', '#ec4899', '#10b981', 
-    '#06b6d4', '#6366f1', '#f43f5e', '#facc15', '#fde047', '#a855f7', '#facc15'
-  ];
-  const colorActivo = coloresSlide[slideActual] || '#facc15';
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/95 backdrop-blur-xl select-none">
       <div 
@@ -435,7 +595,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
         {/* Barra superior de progreso */}
         <div className="relative z-30 pt-3 px-4 sm:px-6 bg-gradient-to-b from-black/90 to-transparent pb-2">
           <div className="flex items-center gap-1.5 w-full">
-            {Array.from({ length: TOTAL_SLIDES }).map((_, i) => (
+            {Array.from({ length: totalSlides }).map((_, i) => (
               <div 
                 key={i} 
                 className="flex-1 h-1.5 rounded-full bg-white/20 overflow-hidden cursor-pointer"
@@ -460,7 +620,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
                   Gala · {stats.anio}
                 </span>
                 <span className="text-[10px] sm:text-xs font-mono font-black px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/10">
-                  {slideActual + 1}/{TOTAL_SLIDES}
+                  {slideActual + 1}/{totalSlides}
                 </span>
               </div>
             </div>
@@ -502,16 +662,105 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
           )}
 
           {slideActual === 2 && (
-            <SlideTopSerie
+            <SlidePrimerPlayPregunta
+              stats={stats}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {slideActual === 3 && (
+            <SlidePrimerPlayReveal
               stats={stats}
               obtenerUrlImagenSegura={obtenerUrlImagenSegura}
               onSiguiente={avanzarUnSlide}
             />
           )}
 
-          {slideActual >= 3 && slideActual <= 6 && (
+          {offsets.tieneSeries && slideActual === offsets.idxTeaserSeries && (
+            <SlideTeaserTop
+              stats={stats}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {offsets.tieneSeries &&
+            slideActual >= offsets.offsetSeriesCountdown &&
+            slideActual < offsets.offsetSeriesCountdown + offsets.cantSeries && (
+              <SlideTopCountdown
+                key={`serie-${slideActual}`}
+                posicion={topSeriesCountdown[slideActual - offsets.offsetSeriesCountdown].posicionOriginal}
+                obra={topSeriesCountdown[slideActual - offsets.offsetSeriesCountdown]}
+                tipo="serie"
+                totalEnPodio={offsets.cantSeries}
+                obtenerUrlImagenSegura={obtenerUrlImagenSegura}
+                onSiguiente={avanzarUnSlide}
+              />
+          )}
+
+          {offsets.tieneSeries && slideActual === offsets.idxCollageSeries && (
+            <SlideTop5Collage
+              stats={stats}
+              items={stats.seriesVistas}
+              tipo="series"
+              obtenerUrlImagenSegura={obtenerUrlImagenSegura}
+              descargarElemento={descargarElemento}
+              compartirEnRedes={compartirEnRedes}
+              descargando={descargando}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {offsets.tienePelis && slideActual === offsets.idxTeaserPelis && (
+            <SlideTeaserPeliculas
+              stats={stats}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {offsets.tienePelis &&
+            slideActual >= offsets.offsetPelisCountdown &&
+            slideActual < offsets.offsetPelisCountdown + offsets.cantPelis && (
+              <SlideTopCountdown
+                key={`peli-${slideActual}`}
+                posicion={topPeliculasCountdown[slideActual - offsets.offsetPelisCountdown].posicionOriginal}
+                obra={topPeliculasCountdown[slideActual - offsets.offsetPelisCountdown]}
+                tipo="pelicula"
+                totalEnPodio={offsets.cantPelis}
+                obtenerUrlImagenSegura={obtenerUrlImagenSegura}
+                onSiguiente={avanzarUnSlide}
+              />
+          )}
+
+          {offsets.tienePelis && slideActual === offsets.idxCollagePelis && (
+            <SlideTop5Collage
+              stats={stats}
+              items={stats.peliculasVistas}
+              tipo="peliculas"
+              obtenerUrlImagenSegura={obtenerUrlImagenSegura}
+              descargarElemento={descargarElemento}
+              compartirEnRedes={compartirEnRedes}
+              descargando={descargando}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {slideActual === offsets.idxPlataformas && (
+            <SlidePlataformas
+              stats={stats}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {slideActual === offsets.idxGenerosMeses && (
+            <SlideGenerosMeses
+              stats={stats}
+              onSiguiente={avanzarUnSlide}
+            />
+          )}
+
+          {slideActual >= offsets.offsetSobres && slideActual < offsets.offsetSobres + 4 && (
             <SlideSobreHonor
-              sobre={stats.sobres[slideActual - 3]}
+              sobre={stats.sobres[slideActual - offsets.offsetSobres]}
               sobreAbierto={sobreAbierto}
               onAbrirSobre={abrirSobre}
               onCerrarSobre={() => setSobreAbierto(false)}
@@ -521,29 +770,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
             />
           )}
 
-          {slideActual === 7 && (
-            <SlideSeriesCollage
-              stats={stats}
-              obtenerUrlImagenSegura={obtenerUrlImagenSegura}
-              descargarElemento={descargarElemento}
-              compartirEnRedes={compartirEnRedes}
-              descargando={descargando}
-              onSiguiente={avanzarUnSlide}
-            />
-          )}
-
-          {slideActual === 8 && (
-            <SlidePeliculasCollage
-              stats={stats}
-              obtenerUrlImagenSegura={obtenerUrlImagenSegura}
-              descargarElemento={descargarElemento}
-              compartirEnRedes={compartirEnRedes}
-              descargando={descargando}
-              onSiguiente={avanzarUnSlide}
-            />
-          )}
-
-          {slideActual === 9 && (
+          {slideActual === offsets.idxMural && (
             <SlideMuralCompleto
               stats={stats}
               obtenerUrlImagenSegura={obtenerUrlImagenSegura}
@@ -554,21 +781,21 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
             />
           )}
 
-          {slideActual === 10 && (
+          {slideActual === offsets.idxHabitos && (
             <SlideHabitos
               stats={stats}
               onSiguiente={avanzarUnSlide}
             />
           )}
 
-          {slideActual === 11 && (
+          {slideActual === offsets.idxArquetipo && (
             <SlideArquetipo
               stats={stats}
               onSiguiente={avanzarUnSlide}
             />
           )}
 
-          {slideActual === 12 && (
+          {slideActual === offsets.idxTarjetaVIP && (
             <SlideTarjetaVIP
               stats={stats}
               obtenerUrlImagenSegura={obtenerUrlImagenSegura}
@@ -577,6 +804,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
               copiarResumen={copiarResumen}
               copiado={copiado}
               descargando={descargando}
+              onConfetti={lanzarConfetti}
             />
           )}
         </div>
@@ -591,7 +819,7 @@ export default function ModalWrapped({ abierto, alCerrar, datosWrapped }) {
         </button>
         <button 
           onClick={avanzarUnSlide} 
-          disabled={slideActual === TOTAL_SLIDES - 1} 
+          disabled={slideActual === totalSlides - 1} 
           className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 hover:bg-black/90 text-white disabled:opacity-0 cursor-pointer border border-white/20 z-40 transition-all"
         >
           <ChevronRight className="w-5 h-5" />

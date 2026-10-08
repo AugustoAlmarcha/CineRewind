@@ -68,7 +68,7 @@ async function obtenerDetallesTv(tmdb_id) {
   if (!TMDB_API_KEY) return null;
 
   try {
-    const url = `https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${TMDB_API_KEY}&language=es-ES`;
+    const url = `https://api.themoviedb.org/3/tv/${tmdb_id}?api_key=${TMDB_API_KEY}&language=es-MX`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
@@ -102,7 +102,7 @@ async function buscarObraEnTMDb(titulo, tipoSugerido) {
   const buscarTipo = async (tipo) => {
     try {
       const endpoint = tipo === 'serie' ? 'search/tv' : 'search/movie';
-      const url = `https://api.themoviedb.org/3/${endpoint}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(queryFinal)}&language=es-ES`;
+      const url = `https://api.themoviedb.org/3/${endpoint}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(queryFinal)}&language=es-MX`;
       const res = await fetch(url);
       if (!res.ok) return null;
       const data = await res.json();
@@ -157,7 +157,7 @@ async function obtenerEpisodiosDeTemporada(tmdb_id, temporada) {
     const resEn = await fetch(urlEn);
     const dataEn = resEn.ok ? await resEn.json() : { episodes: [] };
 
-    const urlEs = `https://api.themoviedb.org/3/tv/${tmdb_id}/season/${temporada}?api_key=${TMDB_API_KEY}&language=es-ES`;
+    const urlEs = `https://api.themoviedb.org/3/tv/${tmdb_id}/season/${temporada}?api_key=${TMDB_API_KEY}&language=es-MX`;
     const resEs = await fetch(urlEs);
     const dataEs = resEs.ok ? await resEs.json() : { episodes: [] };
 

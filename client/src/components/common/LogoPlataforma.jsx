@@ -1,29 +1,95 @@
 import React from 'react';
 
-export default function LogoPlataforma({ nombre }) {
-  const normalizado = (nombre || '').toLowerCase();
+export default function LogoPlataforma({ nombre, className = "h-5 w-5 object-contain rounded" }) {
+  const normalizado = (nombre || '').toLowerCase().trim();
 
+  if (normalizado.includes('disney')) {
+    return (
+      <img 
+        src="/logos-plataformas/disney.png" 
+        alt="Disney+" 
+        className={className} 
+        onError={(e) => { e.target.style.display = 'none'; }}
+      />
+    );
+  }
   if (normalizado.includes('netflix')) {
-    return <span className="bg-[#E50914] text-white font-black text-[10px] px-2 py-0.5 rounded shadow tracking-tighter">NETFLIX</span>;
+    return (
+      <img 
+        src="/logos-plataformas/netflix.png" 
+        alt="Netflix" 
+        className={className} 
+        onError={(e) => { e.target.style.display = 'none'; }}
+      />
+    );
   }
   if (normalizado.includes('max') || normalizado.includes('hbo')) {
-    return <span className="bg-[#002BE7] text-white font-black text-[10px] px-2 py-0.5 rounded shadow tracking-wider">MAX</span>;
-  }
-  if (normalizado.includes('disney')) {
-    return <span className="bg-[#113CCF] text-white font-black text-[10px] px-2 py-0.5 rounded shadow tracking-tight">Disney+</span>;
+    return (
+      <img 
+        src="/logos-plataformas/max.png" 
+        alt="Max" 
+        className={className} 
+        onError={(e) => { e.target.style.display = 'none'; }}
+      />
+    );
   }
   if (normalizado.includes('prime') || normalizado.includes('amazon')) {
-    return <span className="bg-[#00A8E1] text-white font-black text-[10px] px-2 py-0.5 rounded shadow tracking-tight">prime</span>;
+    return (
+      <img 
+        src="/logos-plataformas/prime.png" 
+        alt="Prime Video" 
+        className={className} 
+        onError={(e) => { e.target.style.display = 'none'; }}
+      />
+    );
   }
   if (normalizado.includes('apple')) {
-    return <span className="bg-neutral-900 text-white font-bold text-[10px] px-2 py-0.5 rounded border border-white/20 shadow">tv+</span>;
+    return (
+      <img 
+        src="/logos-plataformas/appletv.png" 
+        alt="Apple TV" 
+        className={className} 
+        onError={(e) => { e.target.style.display = 'none'; }}
+      />
+    );
+  }
+  if (normalizado.includes('paramount')) {
+    return (
+      <img 
+        src="/logos-plataformas/paramount.png" 
+        alt="Paramount+" 
+        className={className} 
+        onError={(e) => { e.target.style.display = 'none'; }}
+      />
+    );
   }
   if (normalizado.includes('cine')) {
-    return <span className="bg-rose-600 text-white font-black text-[10px] px-2 py-0.5 rounded shadow tracking-wider">CINE</span>;
+    return (
+      <img 
+        src="/logos-plataformas/popcorn.png" 
+        alt="Cine" 
+        className={className} 
+        onError={(e) => { e.target.style.display = 'none'; }}
+      />
+    );
   }
+  if (normalizado.includes('stremio')) {
+    return (
+      <img 
+        src="/logos-plataformas/stremio.png" 
+        alt="Stremio" 
+        className={className} 
+        onError={(e) => { e.target.style.display = 'none'; }}
+      />
+    );
+  }
+  // Para 'otro', 'tv', 'tele' o cualquier otra pantalla: tele 3D moderna
   return (
-    <span className="bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded border border-white/20">
-      {nombre || 'Streaming'}
-    </span>
+    <img 
+      src="/logos-plataformas/tv.png" 
+      alt={nombre || 'Otro'} 
+      className={className} 
+      onError={(e) => { e.target.style.display = 'none'; }}
+    />
   );
 }

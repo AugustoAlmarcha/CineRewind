@@ -419,7 +419,7 @@ export default function PestanaResenias({
         </div>
       ) : (
         <div className="space-y-3.5">
-          {itemsPagina.map((item) => {
+          {itemsPagina.map((item, idx) => {
             const calif = Number(item.calificacion);
             const tieneCalif = !isNaN(calif) && calif > 0;
             const tieneTexto = Boolean(item.resenia && item.resenia.trim() !== '');
@@ -427,7 +427,7 @@ export default function PestanaResenias({
 
             return (
               <div 
-                key={item.visualizacion_id || item.id} 
+                key={`${item.tipo_categoria || 'rev'}-${item.visualizacion_id || item.id || idx}-${idx}`} 
                 onClick={() => {
                   if (!esMiPerfil) return;
                   if (item.es_serie_completa || item.es_temporada || item.tipo_categoria === 'serie_completa' || item.tipo_categoria === 'temporada') {

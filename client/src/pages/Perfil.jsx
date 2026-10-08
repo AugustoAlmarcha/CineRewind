@@ -336,10 +336,14 @@ export default function Perfil() {
         tipo_categoria: t.tipo === 'serie' ? 'capitulo' : 'pelicula'
       }));
 
-    const deSeries = (Array.isArray(calificacionesSeries) ? calificacionesSeries : []).map((cs) => ({
-      ...cs,
-      tipo_categoria: cs.es_serie_completa ? 'serie_completa' : 'temporada'
-    }));
+    const idsRegistrados = new Set(delTimeline.map((t) => String(t.id || t.visualizacion_id)));
+
+    const deSeries = (Array.isArray(calificacionesSeries) ? calificacionesSeries : [])
+      .filter((cs) => !idsRegistrados.has(String(cs.id || cs.visualizacion_id)))
+      .map((cs) => ({
+        ...cs,
+        tipo_categoria: cs.es_serie_completa ? 'serie_completa' : 'temporada'
+      }));
 
     return [...delTimeline, ...deSeries].sort((a, b) => new Date(b.fecha_visto || 0) - new Date(a.fecha_visto || 0));
   }, [timeline, calificacionesSeries]);

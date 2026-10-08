@@ -972,30 +972,33 @@ const obtenerCalificacionesSeriesUsuario = async (req, res) => {
   try {
     const resCalif = await pool.query(`
       SELECT 
-        cs.id,
-        cs.id AS visualizacion_id,
-        cs.temporada,
-        cs.calificacion,
-        cs.resenia,
-        cs.fecha_calificado,
-        cs.fecha_calificado AS fecha_visto,
+        hv.id,
+        hv.id AS visualizacion_id,
+        hv.temporada,
+        hv.episodio,
+        hv.calificacion,
+        hv.resenia,
+        hv.fecha_visto AS fecha_calificado,
+        hv.fecha_visto,
         o.id AS obra_id,
         o.tmdb_id,
         o.tipo,
         o.titulo,
         o.poster_path,
-        CASE WHEN cs.temporada IS NULL THEN true ELSE false END AS es_serie_completa,
-        CASE WHEN cs.temporada IS NOT NULL THEN true ELSE false END AS es_temporada
-      FROM calificaciones_series cs
-      INNER JOIN obras_catalogo o ON cs.obra_id = o.id
-      WHERE cs.usuario_id = $1
-      ORDER BY cs.fecha_calificado DESC;
+        CASE WHEN hv.temporada IS NULL THEN true ELSE false END AS es_serie_completa,
+        CASE WHEN hv.temporada IS NOT NULL THEN true ELSE false END AS es_temporada
+      FROM historial_visualizaciones hv
+      INNER JOIN obras_catalogo o ON hv.obra_id = o.id OR hv.obra_id = o.tmdb_id
+      WHERE hv.usuario_id = $1
+        AND LOWER(o.tipo) = 'serie'
+        AND ((hv.calificacion IS NOT NULL AND hv.calificacion > 0) OR (hv.resenia IS NOT NULL AND TRIM(hv.resenia) != ''))
+      ORDER BY hv.fecha_visto DESC;
     `, [usuario_id]);
 
-    return res.json(resCalif.rows);
+    return res.json(resCalif.rows || []);
   } catch (err) {
     console.error('Error al obtener calificaciones de series de usuario:', err);
-    return res.status(500).json({ error: 'Error interno al consultar calificaciones del usuario.' });
+    return res.json([]);
   }
 };
 

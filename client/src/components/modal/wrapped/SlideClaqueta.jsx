@@ -1,113 +1,173 @@
 import React from 'react';
 import { Play } from 'lucide-react';
-import { FloatingEmojis, PolkaDotsOverlay } from '../../SpotifyDecorations';
-import LogoCineRewind from './LogoCineRewind';
 
-export default function SlideClaqueta({ stats, claquetaGolpeada, onGolpearClaqueta, onIniciar }) {
+export default function SlideClaqueta({ stats, onIniciar }) {
+  const anioStr = String(stats?.anio || new Date().getFullYear());
+  const parte1 = anioStr.slice(0, 2);
+  const parte2 = anioStr.slice(2);
+
   return (
-    <div className="w-full h-full flex flex-col items-center justify-between text-center bg-gradient-to-br from-[#4c1d95] via-[#3b0764] to-[#1e1035] rounded-3xl p-3 sm:p-4 md:p-5 relative overflow-hidden text-white shadow-2xl select-none">
-      <PolkaDotsOverlay color="#facc15" opacity={0.16} />
-      <FloatingEmojis emojis={['🍿', '🎬', '🎟️', '⚡', '✨', '🏆', '🔥']} count={10} />
-      
-      {/* 1. CABECERA: LOGO + GALA + TEXTO "DEJÉMONOS DE TANTO..." ESTRICTAMENTE ARRIBA */}
-      <div className="relative z-30 flex flex-col items-center shrink-0 pt-1 pb-1">
-        <LogoCineRewind tamano="md" className="hover:scale-105 transition-transform" />
-        <span className="text-[10px] sm:text-xs uppercase font-black tracking-widest px-3.5 py-0.5 rounded-full bg-[#facc15] text-black shadow-md mt-1 mb-1 border border-yellow-200">
-          CINEREWIND GALA · {stats.anio}
-        </span>
+    <div className="w-full h-full flex flex-col items-center justify-between text-center bg-gradient-to-b from-[#cf276a] via-[#8e104e] to-[#43042c] rounded-3xl p-4 sm:p-6 relative overflow-hidden text-white shadow-2xl select-none">
+      <style>{`
+        @keyframes organicPulse {
+          0%, 100% {
+            transform: scale(1) translate(0px, 0px);
+            opacity: 0.85;
+          }
+          50% {
+            transform: scale(1.08) translate(-6px, -8px);
+            opacity: 1;
+          }
+        }
+        @keyframes organicPulseReverse {
+          0%, 100% {
+            transform: scale(1) translate(0px, 0px);
+            opacity: 0.8;
+          }
+          50% {
+            transform: scale(1.12) translate(8px, 6px);
+            opacity: 0.95;
+          }
+        }
+        @keyframes subtleGlow {
+          0%, 100% {
+            opacity: 0.45;
+            transform: scale(0.95);
+          }
+          50% {
+            opacity: 0.75;
+            transform: scale(1.05);
+          }
+        }
+      `}</style>
 
-        {/* FRASES JUSTO DEBAJO DE CINE REWIND (NUNCA DETRÁS DE LA CLAQUETA) */}
-        <div className="text-center px-2 mt-0.5">
-          <h2 className="text-lg sm:text-2xl md:text-3xl font-black uppercase text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] tracking-tight leading-tight">
-            Dejémonos de tanto {stats.anio}.
-          </h2>
-          <p className="text-xs sm:text-sm md:text-base font-black text-[#facc15] drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] mt-0.5">
-            ¡Hablemos de tus títulos reales!
-          </p>
-        </div>
-      </div>
+      {/* 1. CAPAS DE CÍRCULOS Y ONDAS ORGÁNICAS ESTILO DEEZER */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        {/* Resplandor central profundo */}
+        <div 
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] sm:w-[460px] h-[340px] sm:h-[460px] rounded-full bg-rose-500/30 blur-3xl"
+          style={{ animation: 'subtleGlow 6s ease-in-out infinite' }}
+        />
 
-      {/* 2. CÍRCULO GIRATORIO GIGANTE EN EL FONDO + CLAQUETA AL CENTRO */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center my-auto w-full max-w-lg min-h-0 py-1">
-        <div className="relative flex flex-col items-center justify-center w-full">
-          <style>{`
-            @keyframes spinStarburst {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
-          
-          {/* CÍRCULO CON PUNTAS (STARBURST) GIGANTE DETRÁS DE LA CLAQUETA */}
-          <svg
-            viewBox="0 0 200 200"
-            className="w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] filter drop-shadow-[0_0_50px_rgba(249,115,22,0.6)] pointer-events-none absolute -z-10"
-            style={{ animation: 'spinStarburst 50s linear infinite' }}
-          >
-            <polygon
-              points="
-                100,0 120,40 160,25 155,70 195,80 170,120 195,160 150,165 
-                140,205 100,180 60,205 50,165 5,160 30,120 5,80 45,70 
-                40,25 80,40
-              "
-              fill="#f97316"
-            />
-          </svg>
+        {/* Círculo orgánico superior derecho */}
+        <div 
+          className="absolute -top-16 -right-16 w-80 sm:w-96 h-80 sm:h-96 rounded-full bg-gradient-to-br from-[#f43f5e]/80 via-[#db2777]/60 to-transparent blur-xl"
+          style={{ animation: 'organicPulse 7s ease-in-out infinite' }}
+        />
 
-          {/* CLAQUETA AL CENTRO */}
-          <div 
-            onClick={onGolpearClaqueta} 
-            className="cursor-pointer transform hover:scale-103 active:scale-98 transition-all select-none z-20"
-            title="¡Toca para accionar la claqueta!"
-          >
-            {/* Brazo móvil de la claqueta */}
-            <div 
-              className="w-52 sm:w-64 md:w-72 h-5.5 sm:h-7 bg-zinc-950 rounded-t-lg border-2 border-white flex items-center overflow-hidden transition-transform duration-300 origin-bottom-left shadow-xl"
-              style={{ transform: claquetaGolpeada ? 'rotate(0deg)' : 'rotate(-16deg)' }}
-            >
-              <div className="flex w-full h-full">
-                {Array.from({ length: 9 }).map((_, i) => (
-                  <div key={i} className={`flex-1 h-full skew-x-[-30deg] ${i % 2 === 0 ? 'bg-[#fbbf24]' : 'bg-black'}`} />
-                ))}
-              </div>
-            </div>
+        {/* Círculo orgánico inferior izquierdo */}
+        <div 
+          className="absolute -bottom-20 -left-16 w-96 sm:w-[420px] h-96 sm:h-[420px] rounded-full bg-gradient-to-tr from-[#be123c]/90 via-[#9d174d]/70 to-transparent blur-xl"
+          style={{ animation: 'organicPulseReverse 8s ease-in-out infinite' }}
+        />
 
-            {/* Tablero de la claqueta */}
-            <div className="w-52 sm:w-64 md:w-72 bg-black border-2 border-white rounded-b-2xl p-2 sm:p-2.5 flex flex-col justify-between text-left shadow-2xl relative">
-              <div className="flex justify-between items-center text-[8px] sm:text-[9.5px] font-mono text-[#facc15] font-black border-b border-zinc-800 pb-1">
-                <span className="tracking-wider">CINEREWIND PRODUCCIÓN</span>
-                <span className="bg-[#facc15] text-black px-1.5 py-0.2 rounded font-black">TAKE 01</span>
-              </div>
-
-              <div className="my-1 space-y-0.5">
-                <p className="text-base sm:text-xl font-black text-white uppercase tracking-tight leading-none">
-                  {stats.totalObras} OBRAS VISTAS
-                </p>
-                <div className="flex flex-wrap items-center gap-1.5 text-[9px] sm:text-[10.5px] font-mono text-zinc-200 pt-0.5">
-                  <span className="text-amber-400 font-extrabold">{stats.totalHoras}h</span>
-                  <span className="text-zinc-600">•</span>
-                  <span className="text-cyan-300 font-bold">{stats.totalPeliculas} Pelis</span>
-                  <span className="text-zinc-600">•</span>
-                  <span className="text-emerald-300 font-bold">{stats.totalEpisodios} Caps</span>
-                </div>
-              </div>
-
-              <div className="text-[7.5px] sm:text-[9px] font-mono text-zinc-400 border-t border-zinc-800 pt-1 flex justify-between items-center">
-                <span className="truncate max-w-[130px] sm:max-w-[160px]">CINÉFILO: {stats.usuario.nombre}</span>
-                <span className="text-emerald-400 font-black">● LISTO</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. BOTÓN DE INICIO VISIBLE SIEMPRE */}
-      <div className="relative z-30 shrink-0 pb-1 sm:pb-2 pt-1">
-        <button
-          onClick={onIniciar}
-          className="px-8 sm:px-10 py-2.5 sm:py-3 rounded-2xl font-black text-xs sm:text-sm text-black bg-[#bef264] hover:bg-[#a3e635] shadow-xl border-2 border-black flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95 uppercase tracking-wider"
+        {/* Curvas concéntricas de pétalos SVG tipo Deezer */}
+        <svg 
+          viewBox="0 0 400 700" 
+          className="absolute inset-0 w-full h-full opacity-65 mix-blend-screen"
+          preserveAspectRatio="xMidYMid slice"
         >
-          <Play className="w-4 h-4 fill-current" />
-          <span>INICIAR PROYECCIÓN</span>
+          {/* Cúpula curva superior */}
+          <ellipse 
+            cx="200" 
+            cy="160" 
+            rx="240" 
+            ry="180" 
+            fill="url(#gradientePetaloSuperior)"
+            style={{ 
+              animation: 'organicPulse 6.5s ease-in-out infinite',
+              transformOrigin: '200px 160px'
+            }}
+          />
+
+          {/* Cintura / Onda media */}
+          <ellipse 
+            cx="200" 
+            cy="360" 
+            rx="270" 
+            ry="160" 
+            fill="url(#gradientePetaloMedio)"
+            style={{ 
+              animation: 'organicPulseReverse 7.5s ease-in-out infinite',
+              transformOrigin: '200px 360px'
+            }}
+          />
+
+          {/* Arco inferior */}
+          <ellipse 
+            cx="200" 
+            cy="540" 
+            rx="250" 
+            ry="200" 
+            fill="url(#gradientePetaloInferior)"
+            style={{ 
+              animation: 'organicPulse 8s ease-in-out infinite',
+              transformOrigin: '200px 540px'
+            }}
+          />
+
+          <defs>
+            <radialGradient id="gradientePetaloSuperior" cx="50%" cy="30%" r="60%">
+              <stop offset="0%" stopColor="#fb7185" stopOpacity="0.75" />
+              <stop offset="60%" stopColor="#e11d48" stopOpacity="0.45" />
+              <stop offset="100%" stopColor="#9f1239" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="gradientePetaloMedio" cx="50%" cy="50%" r="70%">
+              <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.6" />
+              <stop offset="50%" stopColor="#be123c" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#4c0519" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="gradientePetaloInferior" cx="50%" cy="60%" r="65%">
+              <stop offset="0%" stopColor="#fda4af" stopOpacity="0.7" />
+              <stop offset="55%" stopColor="#db2777" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#831843" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+        </svg>
+
+        {/* Textura sutil de ruido / grano cinematográfico */}
+        <div 
+          className="absolute inset-0 opacity-[0.06] mix-blend-overlay"
+          style={{
+            backgroundImage: `radial-gradient(rgba(255,255,255,0.7) 1px, transparent 1px)`,
+            backgroundSize: '8px 8px'
+          }}
+        />
+      </div>
+
+      {/* 2. CABECERA: BRANDING EDITORIAL ESTILO DEEZER (#MydeezerYear) */}
+      <div className="relative z-10 flex flex-col items-center shrink-0 pt-2 sm:pt-4">
+        <span className="text-base sm:text-lg font-black tracking-tight text-white drop-shadow-md">
+          #MiCineRewindAño
+        </span>
+      </div>
+
+      {/* 3. HERO: TIPOGRAFÍA MONUMENTAL APILADA (20 / 26) */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center my-auto w-full select-none py-4">
+        <div className="flex flex-col items-center leading-[0.80] font-black text-white tracking-tighter drop-shadow-[0_15px_45px_rgba(0,0,0,0.5)]">
+          <span className="text-[32vw] sm:text-[155px] md:text-[185px] font-black tracking-tight select-none">
+            {parte1}
+          </span>
+          <span className="text-[32vw] sm:text-[155px] md:text-[185px] font-black tracking-tight select-none">
+            {parte2}
+          </span>
+        </div>
+
+        {/* Sutil bajada de línea editorial */}
+        <p className="mt-4 sm:mt-5 text-[10px] sm:text-xs font-bold uppercase tracking-[0.28em] text-rose-100/95 text-center drop-shadow-sm max-w-[260px] leading-relaxed">
+          La historia de tu año en pantalla
+        </p>
+      </div>
+
+      {/* 4. BOTÓN DE INICIO: PILL BLANCO ELEGANTE CON PLAY */}
+      <div className="relative z-20 shrink-0 pb-3 sm:pb-6 pt-2">
+        <button
+          type="button"
+          onClick={onIniciar}
+          className="group px-8 sm:px-11 py-3.5 sm:py-4 rounded-full font-black text-xs sm:text-sm text-neutral-900 bg-white hover:bg-neutral-100 shadow-[0_12px_35px_rgba(0,0,0,0.4)] hover:shadow-[0_18px_50px_rgba(0,0,0,0.55)] flex items-center justify-center gap-2.5 cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95 uppercase tracking-wider border border-white/60"
+        >
+          <Play className="w-4 h-4 fill-neutral-900 text-neutral-900 transition-transform group-hover:scale-110" />
+          <span>¡Comienza ahora!</span>
         </button>
       </div>
     </div>

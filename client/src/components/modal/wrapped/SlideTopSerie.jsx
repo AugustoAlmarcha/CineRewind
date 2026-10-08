@@ -1,75 +1,142 @@
 import React from 'react';
-import { Flame } from 'lucide-react';
-import { FloatingEmojis } from '../../SpotifyDecorations';
-import LogoCineRewind from './LogoCineRewind';
+import { Crown, Sparkles, Flame, Tv, ArrowRight } from 'lucide-react';
 
 export default function SlideTopSerie({ stats, obtenerUrlImagenSegura, onSiguiente }) {
+  const topSerie = stats?.topSerie;
+  const titulo = topSerie?.titulo || 'Tu Serie Favorita';
+  const episodios = topSerie?.episodios_vistos || stats?.totalEpisodios || 0;
+  const posterUrl = topSerie?.poster_path ? obtenerUrlImagenSegura(topSerie.poster_path) : null;
+
   return (
-    <div className="w-full h-full flex flex-col items-center justify-between text-center bg-gradient-to-br from-[#065f46] via-[#059669] to-[#022c22] rounded-3xl p-2 sm:p-4 md:p-5 relative overflow-hidden text-white shadow-2xl select-none">
-      <FloatingEmojis emojis={['📺', '🛋️', '🍕', '🌙', '🔥']} count={8} />
-      
-      {/* 1. CABECERA */}
-      <div className="relative z-10 flex flex-col items-center shrink-0 pt-0.5">
-        <LogoCineRewind tamano="md" />
-        <span className="px-3.5 py-0.5 rounded-full bg-[#facc15] text-black text-[10px] sm:text-xs font-black uppercase mt-1 shadow-lg">
-          #1 SERIE MÁS MARATONEADA EN {stats.anio}
+    <div className="w-full h-full flex flex-col items-center justify-between text-center bg-gradient-to-b from-[#181305] via-[#0d0b04] to-[#040406] rounded-3xl p-3 sm:p-5 relative overflow-hidden text-white shadow-2xl select-none">
+      <style>{`
+        @keyframes goldenAura {
+          0%, 100% {
+            opacity: 0.35;
+            transform: scale(0.95);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1.08);
+          }
+        }
+        @keyframes float3DPoster {
+          0%, 100% {
+            transform: translateY(0px) rotateY(-3deg) rotateX(2deg);
+          }
+          50% {
+            transform: translateY(-8px) rotateY(3deg) rotateX(-2deg);
+          }
+        }
+      `}</style>
+
+      {/* 1. RESPLANDOR DORADO DE ALFOMBRA ROJA Y FESTIVAL */}
+      <div 
+        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[360px] sm:w-[520px] h-[360px] sm:h-[520px] rounded-full bg-amber-500/20 blur-[110px] pointer-events-none -z-0"
+        style={{ animation: 'goldenAura 8s ease-in-out infinite' }}
+      />
+      <div className="absolute -bottom-20 -left-10 w-64 h-64 rounded-full bg-yellow-600/10 blur-3xl pointer-events-none -z-0" />
+
+      {/* 2. CABECERA: BRANDING EDITORIAL (#MiCineRewindAño) */}
+      <div className="relative z-10 flex flex-col items-center shrink-0 pt-1">
+        <span className="text-base sm:text-lg font-black tracking-tight text-white drop-shadow-md mb-1">
+          #MiCineRewindAño
         </span>
+        <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/30 text-[10px] sm:text-xs font-mono font-black text-amber-300">
+          <Crown className="w-3.5 h-3.5 text-amber-400" />
+          <span>LA SERIE SUPREMA DE TU AÑO</span>
+        </div>
       </div>
 
-      {/* 2. CONTENIDO PRINCIPAL */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center my-auto w-full max-w-lg min-h-0 px-2">
-        <h3 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tight">
-          La que no pudiste soltar
-        </h3>
-        <p className="text-[11px] sm:text-xs text-emerald-200 mb-3 font-medium italic">
-          "Aquel botón de 'Siguiente episodio en 5 segundos' fue tu perdición 🍿"
-        </p>
+      {/* 3. HERO: SPOTLIGHT DE LA SERIE #1 CON PÓSTER FLOTANTE 3D */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center w-full max-w-sm sm:max-w-md min-h-0 px-2 my-auto">
+        <div className="mb-2 text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight uppercase leading-tight">
+            Tu Gran Obsesión
+          </h2>
+          <p className="text-[11px] sm:text-xs text-amber-200/80 font-medium">
+            La historia que dominó tu pantalla este año.
+          </p>
+        </div>
 
-        {stats.topSerie ? (
-          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl bg-black/85 backdrop-blur-xl border-2 sm:border-3 border-[#facc15] shadow-2xl w-full text-left">
-            <div className="w-24 sm:w-32 aspect-[2/3] rounded-xl overflow-hidden bg-zinc-900 shrink-0 border-2 border-amber-400 shadow-xl relative">
-              <img 
-                src={obtenerUrlImagenSegura(stats.topSerie.poster_path)} 
-                alt="" 
-                crossOrigin="anonymous" 
-                aria-hidden="true" 
-                className="absolute inset-0 w-full h-full object-cover blur-sm opacity-35 scale-110" 
-              />
-              <img 
-                src={obtenerUrlImagenSegura(stats.topSerie.poster_path)} 
-                alt={stats.topSerie.titulo} 
-                crossOrigin="anonymous" 
-                className="relative z-10 w-full h-full object-contain p-0.5" 
-                onError={(e) => { e.target.style.display = 'none'; }}
-              />
+        {topSerie ? (
+          <div className="relative w-full max-w-[310px] sm:max-w-[350px] p-3.5 sm:p-4 rounded-3xl bg-zinc-950/85 border border-amber-400/40 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] flex flex-col items-center text-center">
+            {/* PÓSTER CON EFECTO 3D Y AMBIENT BACKLIGHT */}
+            <div 
+              className="relative w-28 sm:w-36 aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 border-2 border-amber-400/70 shadow-[0_15px_35px_rgba(245,158,11,0.3)] mb-3"
+              style={{ animation: 'float3DPoster 7s ease-in-out infinite' }}
+            >
+              {posterUrl ? (
+                <>
+                  <img 
+                    src={posterUrl} 
+                    alt="" 
+                    crossOrigin="anonymous" 
+                    aria-hidden="true" 
+                    className="absolute inset-0 w-full h-full object-cover blur-sm opacity-40 scale-110" 
+                  />
+                  <img 
+                    src={posterUrl} 
+                    alt={titulo} 
+                    crossOrigin="anonymous" 
+                    className="relative z-10 w-full h-full object-cover" 
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                </>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center p-2 text-zinc-500">
+                  <Tv className="w-8 h-8 mb-1 text-amber-400" />
+                  <span className="text-[10px] font-bold">Sin Póster</span>
+                </div>
+              )}
             </div>
-            <div className="space-y-1.5 flex-1 min-w-0">
-              <span className="text-[9px] font-mono uppercase text-amber-400 font-bold block">TÍTULO OFICIAL</span>
-              <h4 className="text-lg sm:text-xl font-black text-white leading-tight uppercase truncate">{stats.topSerie.titulo}</h4>
-              <div className="p-2 rounded-xl bg-zinc-900 border border-white/10 text-xs font-mono">
-                <span className="text-zinc-400 block text-[9px]">EPISODIOS DEVORADOS</span>
-                <strong className="text-base sm:text-lg font-black text-emerald-400">
-                  {stats.topSerie.episodios_vistos || stats.totalEpisodios} capítulos
-                </strong>
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-rose-400 font-bold">
-                <Flame className="w-3.5 h-3.5" />
-                <span>Maratón estelar de tu año</span>
-              </div>
+
+            {/* TÍTULO OFICIAL */}
+            <div className="w-full px-1">
+              <span className="text-[9px] font-mono uppercase text-amber-400 font-bold tracking-wider block mb-0.5">
+                SERIE MÁS MARATONEADA
+              </span>
+              <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight leading-snug line-clamp-2">
+                {titulo}
+              </h3>
             </div>
+
+            {/* MÉTRICA DE CAPÍTULOS ENORME */}
+            <div className="mt-2.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-400/15 to-amber-500/10 border border-amber-400/30 w-full">
+              <div className="flex items-center justify-center gap-1.5">
+                <Flame className="w-4 h-4 text-amber-400" />
+                <span className="text-lg sm:text-2xl font-black text-amber-300 font-mono">
+                  {episodios}
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-white uppercase tracking-wide">
+                  capítulos
+                </span>
+              </div>
+              <span className="text-[10px] sm:text-[11px] text-zinc-400 block mt-0.5">
+                {episodios >= 40 
+                  ? 'Más de dos temporadas completas devoradas' 
+                  : 'Una maratón inolvidable en tu historial'}
+              </span>
+            </div>
+
+            {/* Cita cinematográfica con estilo */}
+            <p className="text-[11px] sm:text-xs text-zinc-300 italic mt-2.5">
+              "El botón de 'Siguiente episodio en 5 segundos' fue tu perdición."
+            </p>
           </div>
         ) : (
-          <p className="text-sm text-zinc-300">No registraste series en este año.</p>
+          <p className="text-sm text-zinc-400">No registraste series en este año.</p>
         )}
       </div>
 
-      {/* 3. BOTÓN */}
+      {/* 4. BOTÓN DE ACCIÓN */}
       <div className="relative z-10 shrink-0 pb-1 sm:pb-2 pt-1">
         <button 
           onClick={onSiguiente} 
-          className="px-8 sm:px-10 py-2.5 sm:py-3 rounded-2xl bg-[#facc15] hover:bg-[#eab308] text-black font-black text-xs sm:text-sm uppercase cursor-pointer shadow-xl transition-all hover:scale-105 active:scale-95"
+          className="group inline-flex items-center gap-2 px-8 sm:px-10 py-2.5 sm:py-3 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 text-black font-black text-xs sm:text-sm uppercase tracking-wide cursor-pointer shadow-[0_10px_30px_rgba(245,158,11,0.35)] transition-all hover:scale-105 active:scale-95"
         >
-          Continuar a los Sobres de Honor →
+          <span>Abrir los Sobres de Honor</span>
+          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
         </button>
       </div>
     </div>
