@@ -1408,6 +1408,66 @@ const asignarAcompananteLoteSerie = async (req, res) => {
   }
 };
 
+// ========================================================
+// ELIMINAR CALIFICACIÓN / RESEÑA DE SERIE O TEMPORADA
+// ========================================================
+const eliminarCalificacionSerie = async (req, res) => {
+  const { id } = req.params;
+  const usuario_id = req.usuario?.id;
+  if (!usuario_id) return res.status(401).json({ error: 'No autorizado' });
+
+  const califIdNum = parseInt(id, 10);
+  if (isNaN(califIdNum)) {
+    return res.status(400).json({ error: 'ID inválido' });
+  }
+
+  try {
+    const r = await pool.query(
+      `DELETE FROM calificaciones_series WHERE id = $1 AND usuario_id = $2 RETURNING *`,
+      [califIdNum, usuario_id]
+    );
+    if (r.rowCount === 0) {
+      return res.status(404).json({ error: 'Calificación no encontrada' });
+    }
+    return res.json({ ok: true, mensaje: 'Reseña de serie eliminada con éxito' });
+  } catch (err) {
+    console.error('Error al eliminar calificación de serie:', err);
+    return res.status(500).json({ error: 'Error al eliminar calificación de serie' });
+  }
+};
+
+// ========================================================
+// ELIMINAR RESEÑA Y CALIFICACIÓN DE VISUALIZACIÓN (PELÍCULA / CAPÍTULO)
+// Deja la obra en el historial pero borra las estrellas y el texto de la reseña
+// ========================================================
+const eliminarReseniaVisualizacion = async (req, res) => {
+  const { id } = req.params;
+  const usuario_id = req.usuario?.id;
+  if (!usuario_id) return res.status(401).json({ error: 'No autorizado' });
+
+  const visualizacionIdNum = parseInt(id, 10);
+  if (isNaN(visualizacionIdNum)) {
+    return res.status(400).json({ error: 'ID inválido' });
+  }
+
+  try {
+    const r = await pool.query(
+      `UPDATE historial_visualizaciones 
+       SET calificacion = NULL, resenia = NULL 
+       WHERE id = $1 AND usuario_id = $2 
+       RETURNING *`,
+      [visualizacionIdNum, usuario_id]
+    );
+    if (r.rowCount === 0) {
+      return res.status(404).json({ error: 'Visualización no encontrada' });
+    }
+    return res.json({ ok: true, mensaje: 'Reseña eliminada con éxito' });
+  } catch (err) {
+    console.error('Error al eliminar reseña de visualización:', err);
+    return res.status(500).json({ error: 'Error al eliminar reseña' });
+  }
+};
+
 module.exports = {
   registrarVisualizacion,
   obtenerTimeline,
@@ -1428,5 +1488,7 @@ module.exports = {
   completarTemporadaSerie,
   completarSerieTotal,
   limpiarDuplicadosSerie,
-  asignarAcompananteLoteSerie
+  asignarAcompananteLoteSerie,
+  eliminarCalificacionSerie,
+  eliminarReseniaVisualizacion,
 };

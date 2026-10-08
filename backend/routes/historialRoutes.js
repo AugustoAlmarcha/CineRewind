@@ -26,6 +26,8 @@ const {
   completarSerieTotal,
   limpiarDuplicadosSerie,
   asignarAcompananteLoteSerie,
+  eliminarCalificacionSerie,
+  eliminarReseniaVisualizacion,
 } = require('../controllers/historialController');
 
 
@@ -95,6 +97,8 @@ router.patch('/:id/resenia', verificarToken, actualizarReseniaYCalificacion);
 /* =========================================================================
    5. RUTAS DE ELIMINACIÓN
    ========================================================================= */
+router.delete('/calificaciones-series/:id', verificarToken, eliminarCalificacionSerie);
+router.delete('/:id/resenia', verificarToken, eliminarReseniaVisualizacion);
 router.delete('/lote/eliminar', verificarToken, eliminarLoteVisualizaciones);
 router.delete('/:id', verificarToken, eliminarVisualizacion);
 

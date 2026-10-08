@@ -671,6 +671,7 @@ export default function Perfil() {
                   esMiPerfil={esMiPerfil}
                   onAbrirDetalle={(item) => esMiPerfil && setItemDetalle(item)}
                   onActualizado={cargarDatosPerfil}
+                  dispararToast={dispararToast}
                 />
               )
             )}

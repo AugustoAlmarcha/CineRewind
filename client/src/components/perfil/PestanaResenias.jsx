@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Film, 
   Star, 
@@ -14,16 +15,20 @@ import {
   Tv,
   Users,
   Edit3,
-  Award
+  Award,
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { formatearFecha } from '../../utils/fechas';
 import ModalCalificarSerie from '../modal/ModalCalificarSerie';
+import { eliminarReseniaAPI } from '../../api';
 
 export default function PestanaResenias({ 
   resenias = [], 
   esMiPerfil = false, 
   onAbrirDetalle,
-  onActualizado
+  onActualizado,
+  dispararToast
 }) {
   const contenedorRef = useRef(null);
 
@@ -34,6 +39,8 @@ export default function PestanaResenias({
   const [filtroEstrellas, setFiltroEstrellas] = useState('todas'); // 'todas' | '5' | '4' | '3' | '2' | '1'
   const [orden, setOrden] = useState('recientes'); // 'recientes' | 'antiguas' | 'mayor_nota' | 'menor_nota' | 'alfabetico'
   const [itemCalificarSerie, setItemCalificarSerie] = useState(null);
+  const [itemAEliminar, setItemAEliminar] = useState(null);
+  const [eliminando, setEliminando] = useState(false);
 
   // Paginación
   const [pagina, setPagina] = useState(1);
@@ -160,6 +167,34 @@ export default function PestanaResenias({
       return [1, '...', totalPaginas - 4, totalPaginas - 3, totalPaginas - 2, totalPaginas - 1, totalPaginas];
     }
     return [1, '...', pagina - 1, pagina, pagina + 1, '...', totalPaginas];
+  };
+
+  const handleConfirmarEliminarResenia = async () => {
+    if (!itemAEliminar) return;
+    setEliminando(true);
+    try {
+      await eliminarReseniaAPI(itemAEliminar);
+      if (dispararToast) {
+        dispararToast({
+          tipo: 'exito',
+          mensaje: 'Reseña eliminada correctamente. La obra sigue guardada en tu historial.'
+        });
+      }
+      setItemAEliminar(null);
+      if (onActualizado) {
+        await onActualizado();
+      }
+    } catch (error) {
+      console.error('Error al eliminar reseña:', error);
+      if (dispararToast) {
+        dispararToast({
+          tipo: 'error',
+          mensaje: error?.message || 'Error al eliminar la reseña'
+        });
+      }
+    } finally {
+      setEliminando(false);
+    }
   };
 
   // Estado vacío inicial (sin ninguna reseña en el diario)
@@ -460,13 +495,29 @@ export default function PestanaResenias({
                     </div>
 
 
-                    {/* Medalla de Nota Dorada */}
-                    {tieneCalif && (
-                      <div className="bg-amber-400/10 border border-amber-400/30 text-amber-400 font-black px-3 py-1 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 shadow-sm shrink-0">
-                        <span className="text-amber-400">★</span>
-                        <span>{calif}</span>
-                      </div>
-                    )}
+                    {/* Medalla de Nota Dorada y Botón Eliminar Reseña */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {tieneCalif && (
+                        <div className="bg-amber-400/10 border border-amber-400/30 text-amber-400 font-black px-3 py-1 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 shadow-sm shrink-0">
+                          <span className="text-amber-400">★</span>
+                          <span>{calif}</span>
+                        </div>
+                      )}
+
+                      {esMiPerfil && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setItemAEliminar(item);
+                          }}
+                          className="p-1.5 sm:p-2 rounded-xl text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition cursor-pointer"
+                          title="Eliminar reseña"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2]" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Opinión escrita o bloque de estrellas visual */}
@@ -615,6 +666,67 @@ export default function PestanaResenias({
             if (onActualizado) onActualizado();
           }}
         />
+      )}
+
+      {/* Modal de confirmación para eliminar reseña (Sin alertas nativas de Windows/navegador) */}
+      {itemAEliminar && createPortal(
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fadeIn"
+          onClick={() => {
+            if (!eliminando) setItemAEliminar(null);
+          }}
+        >
+          <div 
+            className="bg-[#121218] border border-white/10 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-white space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Ícono de advertencia */}
+            <div className="w-12 h-12 rounded-2xl bg-rose-600/10 text-rose-500 flex items-center justify-center mx-auto border border-rose-500/20 shadow-inner">
+              <Trash2 className="w-6 h-6 stroke-[2]" />
+            </div>
+
+            {/* Textos */}
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-black tracking-tight text-white">¿Eliminar reseña?</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Se borrarán la calificación y tu comentario de <span className="font-bold text-white">"{itemAEliminar.titulo}"</span>.
+                <br className="hidden sm:inline" />
+                {' '}
+                {itemAEliminar.es_serie_completa || itemAEliminar.tipo_categoria === 'serie_completa' || itemAEliminar.es_temporada || itemAEliminar.tipo_categoria === 'temporada'
+                  ? 'Podrás volver a calificarla cuando quieras.'
+                  : 'La obra seguirá guardada en tu historial de visualizaciones.'}
+              </p>
+            </div>
+
+            {/* Acciones */}
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                disabled={eliminando}
+                onClick={() => setItemAEliminar(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-zinc-300 hover:bg-white/5 transition cursor-pointer disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={eliminando}
+                onClick={handleConfirmarEliminarResenia}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-xs font-bold text-white shadow-lg shadow-rose-600/20 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {eliminando ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Eliminando...</span>
+                  </>
+                ) : (
+                  'Eliminar'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

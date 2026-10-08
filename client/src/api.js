@@ -804,4 +804,38 @@ export const desvincularAcompananteCovisionesAPI = async ({
   }
   return res.json();
 };
+
+export const eliminarReseniaAPI = async (item) => {
+  if (!item) throw new Error('Elemento inválido');
+
+  const esSerieOTemp = item.tipo_categoria === 'serie_completa' || 
+                       item.tipo_categoria === 'temporada' || 
+                       item.es_serie_completa || 
+                       item.es_temporada;
+
+  if (esSerieOTemp) {
+    const idCalif = item.id || item.visualizacion_id;
+    const res = await fetch(`/api/historial/calificaciones-series/${idCalif}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al eliminar la calificación de la serie');
+    }
+    return res.json();
+  } else {
+    // Es película o capítulo del timeline
+    const idVisualizacion = item.id || item.visualizacion_id;
+    const res = await fetch(`/api/historial/${idVisualizacion}/resenia`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al eliminar la reseña');
+    }
+    return res.json();
+  }
+};
 
