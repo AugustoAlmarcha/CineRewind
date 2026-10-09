@@ -129,7 +129,15 @@ export default function BarraConfiguracionRegistro({
   const esOtraFecha = !esHoy && !esAyer && !noRecuerdaFecha;
 
   return (
-    <div ref={barraRef} className="space-y-2">
+    <div ref={barraRef} className="space-y-1.5">
+      {/* Micro-aviso visible en rojo arriba de la fecha para no desplazar los chips de plataforma y amigos */}
+      {esHoy && (
+        <div className="flex items-center gap-1.5 text-[10.5px] sm:text-xs font-bold text-rose-600 dark:text-rose-400 select-none animate-fadeIn pl-1">
+          <span>💡</span>
+          <span>¿La viste otro día? Puedes cambiarla aquí tocando <strong>"Ayer"</strong> u <strong>"Otra fecha"</strong></span>
+        </div>
+      )}
+
       {/* 1. TIRA HORIZONTAL DE MICRO-CHIPS */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin select-none">
         
@@ -184,15 +192,6 @@ export default function BarraConfiguracionRegistro({
             {panelActivo === 'fecha' ? <ChevronUp className="w-3 h-3 opacity-60" /> : <ChevronDown className="w-3 h-3 opacity-60" />}
           </button>
         </div>
-
-        {/* Micro-aviso visible en rojo para avisar que se puede cambiar la fecha si fue vista otro día */}
-        {esHoy && (
-          <div className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/25 px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 shadow-xs animate-pulse">
-            <span>💡</span>
-            <span>¿La viste otro día? Tocá <strong>"Ayer"</strong> u <strong>"Otra fecha"</strong></span>
-          </div>
-        )}
-
 
         {/* Chip Plataforma */}
         <button
