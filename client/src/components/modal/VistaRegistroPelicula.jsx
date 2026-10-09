@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Clock, Star, Film, Users, Clapperboard, Check, ChevronDown, ChevronUp, Ticket, ExternalLink, Calendar } from 'lucide-react';
 import { obtenerFechaHoyLocal, obtenerFechaAyerLocal, NOMBRES_MESES } from '../../utils/fechas';
+import CalificadorEstrellas from '../common/CalificadorEstrellas';
 
 export default function VistaRegistroPelicula({
   obra,
@@ -243,41 +244,13 @@ export default function VistaRegistroPelicula({
         </div>
       )}
 
-      {/* 5. Calificación opcional directa antes de guardar */}
+      {/* 5. Calificación con soporte completo de decimales (3.4, 3.5, 4.5, etc.) */}
       {setCalificacion && (
-        <div className="p-2 sm:p-3.5 rounded-2xl bg-neutral-200/40 dark:bg-white/[0.02] border border-neutral-300 dark:border-white/5 flex items-center justify-between gap-2 text-left">
-          <div>
-            <p className="text-[11px] sm:text-xs font-bold text-neutral-800 dark:text-neutral-200">
-              ¿Quieres calificarla ahora? <span className="text-neutral-400 font-normal">(Opcional)</span>
-            </p>
-            <p className="text-[9px] sm:text-[10px] text-neutral-500 dark:text-neutral-400">
-              {calificacion > 0 ? (
-                <span className="text-rose-500 font-semibold">{etiquetasEstrellas[calificacion]}</span>
-              ) : (
-                'Puedes asignarle estrellas o dejarlo para después'
-              )}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-0.5 sm:gap-1">
-            {[1, 2, 3, 4, 5].map((estrella) => (
-              <button
-                key={estrella}
-                type="button"
-                onClick={() => setCalificacion(calificacion === estrella ? 0 : estrella)}
-                className="p-1 text-neutral-400 hover:text-amber-400 transition cursor-pointer active:scale-90"
-                title={`${estrella} estrellas`}
-              >
-                <Star
-                  className={`w-5 h-5 sm:w-6 sm:h-6 transition ${
-                    estrella <= calificacion
-                      ? 'fill-amber-400 text-amber-400 drop-shadow'
-                      : 'text-neutral-400 dark:text-neutral-600 hover:text-amber-300'
-                  }`}
-                />
-              </button>
-            ))}
-          </div>
+        <div className="pt-1">
+          <CalificadorEstrellas
+            valor={calificacion}
+            onChange={setCalificacion}
+          />
         </div>
       )}
 
@@ -290,6 +263,13 @@ export default function VistaRegistroPelicula({
             {noRecuerdaFecha ? 'Estreno original' : textoFechaLegible}
           </strong>
         </div>
+
+        {!noRecuerdaFecha && (
+          <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center justify-center gap-1">
+            <span>💡</span>
+            <span>¿La viste otro día? Puedes cambiar la fecha arriba tocando <strong>"Ayer"</strong> u <strong>"Otra fecha"</strong>.</span>
+          </p>
+        )}
 
         <div>
           <button

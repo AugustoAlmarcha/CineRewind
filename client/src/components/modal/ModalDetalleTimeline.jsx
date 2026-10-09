@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   guardarReseniaAPI, 
   obtenerDetalleEpisodioAPI,
@@ -51,8 +51,26 @@ export default function ModalDetalleTimeline({
   const [modalCalificarSerieAbierto, setModalCalificarSerieAbierto] = useState(false);
 
   // Sección desplegable activa (estilo pills compactos como ModalRegistrar)
-
   const [seccionExpandida, setSeccionExpandida] = useState(null);
+  const dateInputRef = useRef(null);
+
+  const abrirSelectorFecha = (e) => {
+    if (e) e.stopPropagation();
+    setSeccionExpandida((prev) => (prev === 'fecha' ? null : 'fecha'));
+    setTimeout(() => {
+      if (dateInputRef.current) {
+        if (typeof dateInputRef.current.showPicker === 'function') {
+          try {
+            dateInputRef.current.showPicker();
+          } catch {
+            dateInputRef.current.focus();
+          }
+        } else {
+          dateInputRef.current.focus();
+        }
+      }
+    }, 100);
+  };
 
   const formatearFecha = (fechaStr) => {
     return formatearFechaLarga(fechaStr);
@@ -214,13 +232,13 @@ export default function ModalDetalleTimeline({
                 {item.fecha_visto && (
                   <button
                     type="button"
-                    onClick={() => setSeccionExpandida(seccionExpandida === 'fecha' ? null : 'fecha')}
+                    onClick={abrirSelectorFecha}
                     className="text-[11px] text-neutral-600 dark:text-neutral-400 hover:text-rose-500 font-medium cursor-pointer transition flex items-center gap-1.5 group"
-                    title="Clic para cambiar la fecha"
+                    title="Toca para cambiar la fecha"
                   >
                     <Calendar className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                     <span>{formatearFecha(fechaVisto || item.fecha_visto)}</span>
-                    <span className="text-[9px] opacity-70 group-hover:opacity-100 group-hover:underline">(cambiar)</span>
+                    <span className="text-[9px] font-bold text-rose-500 bg-rose-500/10 dark:bg-rose-500/20 px-1 rounded border border-rose-500/20 group-hover:underline">(cambiar)</span>
                   </button>
                 )}
                 {item.plataforma && (
@@ -292,133 +310,84 @@ export default function ModalDetalleTimeline({
               </div>
             </div>
 
-            {/* 2. BARRA DE OPCIONES COMPACTAS (Estilo ModalRegistrar: Plataforma, Acompañantes, Reparto, Sinopsis) */}
+            {/* 2. BARRA DE OPCIONES COMPACTAS (Paneles se abren hacia arriba sobre la opinión) */}
             <div className="pt-2 border-t border-neutral-200 dark:border-white/10 space-y-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* Botón Fecha */}
-                <button
-                  type="button"
-                  onClick={() => setSeccionExpandida(seccionExpandida === 'fecha' ? null : 'fecha')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
-                    seccionExpandida === 'fecha'
-                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
-                      : fechaVisto && fechaVisto !== (item.fecha_visto ? item.fecha_visto.split('T')[0] : '')
-                      ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-600 dark:text-amber-400'
-                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>{fechaVisto ? formatearFecha(fechaVisto) : 'Fecha'}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'fecha' ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Botón Plataforma */}
-                <button
-                  type="button"
-                  onClick={() => setSeccionExpandida(seccionExpandida === 'plataforma' ? null : 'plataforma')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
-                    seccionExpandida === 'plataforma'
-                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
-                      : plataforma
-                      ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-300 dark:border-rose-500/30 text-rose-600 dark:text-rose-400'
-                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Tv className="w-3.5 h-3.5" />
-                  <span>{plataforma || 'Plataforma'}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'plataforma' ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Botón Acompañantes */}
-                <button
-                  type="button"
-                  onClick={() => setSeccionExpandida(seccionExpandida === 'amigos' ? null : 'amigos')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
-                    seccionExpandida === 'amigos'
-                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
-                      : totalAcompanantes > 0
-                      ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-300 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400'
-                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>
-                    {totalAcompanantes > 0 
-                      ? `Acompañantes (${totalAcompanantes})` 
-                      : 'Acompañantes'}
-                  </span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'amigos' ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Botón Reparto */}
-                <button
-                  type="button"
-                  onClick={() => setSeccionExpandida(seccionExpandida === 'reparto' ? null : 'reparto')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
-                    seccionExpandida === 'reparto'
-                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
-                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Clapperboard className="w-3.5 h-3.5" />
-                  <span>Reparto {actores.length > 0 ? `(${actores.length})` : ''}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'reparto' ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Botón Sinopsis */}
-                {sinopsisTexto && (
-                  <button
-                    type="button"
-                    onClick={() => setSeccionExpandida(seccionExpandida === 'sinopsis' ? null : 'sinopsis')}
-                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
-                      seccionExpandida === 'sinopsis'
-                        ? 'bg-rose-600/15 border-rose-500 text-rose-500'
-                        : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                    }`}
-                  >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>Sinopsis</span>
-                    <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'sinopsis' ? 'rotate-180' : ''}`} />
-                  </button>
-                )}
-              </div>
 
               {/* PANEL DESPLEGABLE: CAMBIAR FECHA */}
               {seccionExpandida === 'fecha' && (
-                <div className="space-y-3 p-4 rounded-2xl bg-neutral-100/70 dark:bg-white/5 border border-neutral-200 dark:border-white/10 animate-fadeIn">
+                <div className="space-y-3 p-4 rounded-2xl bg-neutral-100/90 dark:bg-[#1a1a24] border-2 border-rose-500/30 shadow-xl animate-fadeIn">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                      Fecha en que la viste
-                    </label>
                     <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-rose-500" />
+                      <label className="text-xs font-black text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
+                        Fecha en que la viste
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => setFechaVisto(obtenerFechaHoyLocal())}
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white transition cursor-pointer"
+                        className={`text-xs font-bold px-3 py-1 rounded-xl transition cursor-pointer border ${
+                          fechaVisto === obtenerFechaHoyLocal()
+                            ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                            : 'bg-neutral-200/80 dark:bg-white/10 text-neutral-800 dark:text-neutral-200 border-transparent hover:bg-rose-600 hover:text-white'
+                        }`}
                       >
                         Hoy
                       </button>
                       <button
                         type="button"
                         onClick={() => setFechaVisto(obtenerFechaAyerLocal())}
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white transition cursor-pointer"
+                        className={`text-xs font-bold px-3 py-1 rounded-xl transition cursor-pointer border ${
+                          fechaVisto === obtenerFechaAyerLocal()
+                            ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                            : 'bg-neutral-200/80 dark:bg-white/10 text-neutral-800 dark:text-neutral-200 border-transparent hover:bg-rose-600 hover:text-white'
+                        }`}
                       >
                         Ayer
                       </button>
                     </div>
                   </div>
 
-                  <input
-                    type="date"
-                    value={fechaVisto}
-                    max={obtenerFechaHoyLocal()}
-                    onChange={(e) => setFechaVisto(e.target.value)}
-                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs font-bold text-neutral-900 dark:text-white focus:outline-none focus:border-rose-500 cursor-pointer"
-                  />
+                  {/* Campo de fecha táctil de alto contraste y clickeable en cualquier parte */}
+                  <div
+                    onClick={() => {
+                      if (dateInputRef.current) {
+                        try {
+                          dateInputRef.current.showPicker();
+                        } catch {
+                          dateInputRef.current.focus();
+                        }
+                      }
+                    }}
+                    className="relative flex items-center justify-between bg-white dark:bg-black/70 border-2 border-neutral-300 dark:border-white/20 hover:border-rose-500 dark:hover:border-rose-500 rounded-xl px-3.5 py-2.5 transition cursor-pointer shadow-inner group"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Calendar className="w-5 h-5 text-rose-500 shrink-0 group-hover:scale-110 transition-transform" />
+                      <span className="text-xs sm:text-sm font-black text-neutral-900 dark:text-white truncate">
+                        {fechaVisto ? formatearFecha(fechaVisto) : 'Toca para abrir calendario'}
+                      </span>
+                    </div>
+
+                    <span className="text-[10px] uppercase font-black text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 shrink-0">
+                      Cambiar 📅
+                    </span>
+
+                    <input
+                      ref={dateInputRef}
+                      type="date"
+                      value={fechaVisto}
+                      max={obtenerFechaHoyLocal()}
+                      onChange={(e) => setFechaVisto(e.target.value)}
+                      style={{ colorScheme: 'dark' }}
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                    />
+                  </div>
 
                   {fechaVisto && fechaVisto !== (item.fecha_visto ? item.fecha_visto.split('T')[0] : '') && (
-                    <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">
-                      Al guardar, se moverá automáticamente a esta fecha en tu diario.
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
+                      <span>⚡</span>
+                      <span>Al guardar, se moverá automáticamente al <strong>{formatearFecha(fechaVisto)}</strong> en tu diario.</span>
                     </p>
                   )}
                 </div>
@@ -559,6 +528,96 @@ export default function ModalDetalleTimeline({
                   </p>
                 </div>
               )}
+
+              {/* BARRA DE MICRO-CHIPS (UBICADOS ABAJO DEL PANEL PARA QUE EL PANEL ABRA HACIA ARRIBA) */}
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                {/* Botón Fecha */}
+                <button
+                  type="button"
+                  onClick={abrirSelectorFecha}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                    seccionExpandida === 'fecha'
+                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                      : fechaVisto && fechaVisto !== (item.fecha_visto ? item.fecha_visto.split('T')[0] : '')
+                      ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-600 dark:text-amber-400'
+                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{fechaVisto ? formatearFecha(fechaVisto) : 'Fecha'}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'fecha' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Botón Plataforma */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionExpandida(seccionExpandida === 'plataforma' ? null : 'plataforma')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                    seccionExpandida === 'plataforma'
+                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                      : plataforma
+                      ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-300 dark:border-rose-500/30 text-rose-600 dark:text-rose-400'
+                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Tv className="w-3.5 h-3.5" />
+                  <span>{plataforma || 'Plataforma'}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'plataforma' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Botón Acompañantes */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionExpandida(seccionExpandida === 'amigos' ? null : 'amigos')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                    seccionExpandida === 'amigos'
+                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                      : totalAcompanantes > 0
+                      ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-300 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400'
+                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>
+                    {totalAcompanantes > 0 
+                      ? `Acompañantes (${totalAcompanantes})` 
+                      : 'Acompañantes'}
+                  </span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'amigos' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Botón Reparto */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionExpandida(seccionExpandida === 'reparto' ? null : 'reparto')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                    seccionExpandida === 'reparto'
+                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Clapperboard className="w-3.5 h-3.5" />
+                  <span>Reparto {actores.length > 0 ? `(${actores.length})` : ''}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'reparto' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Botón Sinopsis */}
+                {sinopsisTexto && (
+                  <button
+                    type="button"
+                    onClick={() => setSeccionExpandida(seccionExpandida === 'sinopsis' ? null : 'sinopsis')}
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                      seccionExpandida === 'sinopsis'
+                        ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                        : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Sinopsis</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'sinopsis' ? 'rotate-180' : ''}`} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import LogoPlataforma from '../common/LogoPlataforma';
+import CalificadorEstrellas from '../common/CalificadorEstrellas';
 import { obtenerAmigosAPI } from '../../api';
 import { Users, Info, X, Check, Trash2, Layers, Zap, Star } from 'lucide-react';
 
@@ -325,33 +326,65 @@ export default function ViendoCard({
               )}
             </div>
 
-            {/* Opinar / Calificar en escritorio (fila compacta) */}
-            <div className="p-1.5 px-2.5 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-0.5 shrink-0" title="Calificar">
-                {[1, 2, 3, 4, 5].map((estrella) => (
-                  <button
-                    key={estrella}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCalificacionEpisodio(calificacionEpisodio === estrella ? 0 : estrella);
-                    }}
-                    className={`p-0.5 rounded transition cursor-pointer ${
-                      calificacionEpisodio >= estrella ? 'text-amber-400' : 'text-neutral-600 hover:text-amber-300'
-                    }`}
-                  >
-                    <Star className={`w-3.5 h-3.5 ${calificacionEpisodio >= estrella ? 'fill-amber-400' : ''}`} />
-                  </button>
-                ))}
+            {/* Opinar / Calificar en escritorio (fila compacta con soporte de medias estrellas y decimales) */}
+            <div className="p-1.5 px-2.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-0.5 shrink-0" title="Toca izquierda para media estrella, derecha para entera">
+                  {[1, 2, 3, 4, 5].map((index) => {
+                    const fillPercentage = Math.min(100, Math.max(0, (calificacionEpisodio - (index - 1)) * 100));
+                    return (
+                      <div
+                        key={index}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const { left, width } = e.currentTarget.getBoundingClientRect();
+                          const isHalf = (e.clientX - left) < width / 2;
+                          const nuevo = isHalf ? index - 0.5 : index;
+                          setCalificacionEpisodio(nuevo === calificacionEpisodio ? 0 : nuevo);
+                        }}
+                        className="relative text-base select-none cursor-pointer transition-transform hover:scale-110 leading-none"
+                        title={`Seleccionar ${index - 0.5} o ${index}`}
+                      >
+                        <span className="text-neutral-600">★</span>
+                        <span 
+                          className="absolute top-0 left-0 overflow-hidden text-amber-400 whitespace-nowrap"
+                          style={{ width: `${fillPercentage}%` }}
+                        >
+                          ★
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {calificacionEpisodio > 0 && (
+                    <span className="text-[10px] font-black text-amber-400 ml-1">
+                      ★ {Number(calificacionEpisodio).toFixed(1)}
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={opinionEpisodio}
+                  onChange={(e) => setOpinionEpisodio(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="Opinión rápida (opcional)..."
+                  className="flex-1 min-w-0 px-2 py-0.5 text-[11px] rounded-lg bg-black/50 border border-white/10 text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500"
+                />
               </div>
-              <input
-                type="text"
-                value={opinionEpisodio}
-                onChange={(e) => setOpinionEpisodio(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                placeholder="Opinión rápida (opcional)..."
-                className="flex-1 min-w-0 px-2 py-0.5 text-[11px] rounded-lg bg-black/50 border border-white/10 text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500"
-              />
+
+              {/* Slider de ajuste fino con decimales (3.4, 3.5, 4.5, etc.) */}
+              {calificacionEpisodio > 0 && (
+                <div className="flex items-center gap-2 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="range"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={calificacionEpisodio}
+                    onChange={(e) => setCalificacionEpisodio(parseFloat(e.target.value))}
+                    className="w-full accent-rose-600 h-1 cursor-pointer"
+                  />
+                </div>
+              )}
             </div>
 
             <button
@@ -541,41 +574,12 @@ export default function ViendoCard({
                 )}
               </div>
 
-              {/* Sección para Calificar y Opinar antes de marcar visto en móvil */}
-              <div className="p-3 rounded-2xl bg-black/40 border border-white/10 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-300">
-                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                    <span>Calificar capítulo:</span>
-                  </div>
-                  {calificacionEpisodio > 0 && (
-                    <span className="text-amber-400 font-black text-xs">
-                      ★ {calificacionEpisodio}/5
-                    </span>
-                  )}
-                </div>
-
-                {/* 5 estrellas interactivas */}
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((estrella) => (
-                    <button
-                      key={estrella}
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCalificacionEpisodio(calificacionEpisodio === estrella ? 0 : estrella);
-                      }}
-                      className={`p-1.5 rounded-xl transition cursor-pointer active:scale-90 ${
-                        calificacionEpisodio >= estrella
-                          ? 'text-amber-400 bg-amber-400/10'
-                          : 'text-neutral-500 hover:text-amber-300 hover:bg-white/5'
-                      }`}
-                      title={`${estrella} estrella${estrella > 1 ? 's' : ''}`}
-                    >
-                      <Star className={`w-5 h-5 ${calificacionEpisodio >= estrella ? 'fill-amber-400' : ''}`} />
-                    </button>
-                  ))}
-                </div>
+              {/* Sección para Calificar con decimales y Opinar antes de marcar visto en móvil */}
+              <div className="space-y-2">
+                <CalificadorEstrellas
+                  valor={calificacionEpisodio}
+                  onChange={setCalificacionEpisodio}
+                />
 
                 {/* Campo para opinión / reseña breve */}
                 <textarea

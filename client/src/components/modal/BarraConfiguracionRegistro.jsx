@@ -172,7 +172,7 @@ export default function BarraConfiguracionRegistro({
           <button
             type="button"
             onClick={() => togglePanel('fecha')}
-            className={`h-7 px-2.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+            className={`h-7 px-2.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all cursor-pointer relative ${
               panelActivo === 'fecha' || esOtraFecha || noRecuerdaFecha
                 ? 'bg-rose-600 text-white shadow-xs'
                 : 'text-neutral-700 dark:text-neutral-300 hover:text-rose-600 dark:hover:text-white'
@@ -184,6 +184,14 @@ export default function BarraConfiguracionRegistro({
             {panelActivo === 'fecha' ? <ChevronUp className="w-3 h-3 opacity-60" /> : <ChevronDown className="w-3 h-3 opacity-60" />}
           </button>
         </div>
+
+        {/* Micro-aviso visible en rojo para avisar que se puede cambiar la fecha si fue vista otro día */}
+        {esHoy && (
+          <div className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/25 px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 shadow-xs animate-pulse">
+            <span>💡</span>
+            <span>¿La viste otro día? Tocá <strong>"Ayer"</strong> u <strong>"Otra fecha"</strong></span>
+          </div>
+        )}
 
 
         {/* Chip Plataforma */}
