@@ -9,8 +9,8 @@ import CalificadorEstrellas from '../common/CalificadorEstrellas';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
 import ModalCalificarSerie from './ModalCalificarSerie';
 import SelectorAmigosEtiquetar from './SelectorAmigosEtiquetar';
-import { Tv, Users, Clapperboard, BookOpen, ChevronDown, Calendar, Award, Star } from 'lucide-react';
-import { obtenerFechaHoyLocal, obtenerFechaAyerLocal, formatearFechaLarga } from '../../utils/fechas';
+import { Tv, Users, Clapperboard, BookOpen, ChevronDown, Calendar, Award, Star, X } from 'lucide-react';
+import { obtenerFechaHoyLocal, obtenerFechaAyerLocal, formatearFechaLarga, NOMBRES_MESES } from '../../utils/fechas';
 
 
 const PLATAFORMAS_DISPONIBLES = [
@@ -52,24 +52,53 @@ export default function ModalDetalleTimeline({
 
   // Sección desplegable activa (estilo pills compactos como ModalRegistrar)
   const [seccionExpandida, setSeccionExpandida] = useState(null);
-  const dateInputRef = useRef(null);
+  const [mostrarCalendarioCustom, setMostrarCalendarioCustom] = useState(false);
+  const [mesNavegacion, setMesNavegacion] = useState(new Date().getMonth());
+  const [anioNavegacion, setAnioNavegacion] = useState(new Date().getFullYear());
 
-  const abrirSelectorFecha = (e) => {
+  const alternarSeccionFecha = (e) => {
     if (e) e.stopPropagation();
     setSeccionExpandida((prev) => (prev === 'fecha' ? null : 'fecha'));
-    setTimeout(() => {
-      if (dateInputRef.current) {
-        if (typeof dateInputRef.current.showPicker === 'function') {
-          try {
-            dateInputRef.current.showPicker();
-          } catch {
-            dateInputRef.current.focus();
-          }
-        } else {
-          dateInputRef.current.focus();
-        }
+  };
+
+  useEffect(() => {
+    if (fechaVisto) {
+      const partes = fechaVisto.split('-');
+      if (partes.length >= 2) {
+        setAnioNavegacion(Number(partes[0]));
+        setMesNavegacion(Number(partes[1]) - 1);
       }
-    }, 100);
+    }
+  }, [fechaVisto]);
+
+  const diasEnElMes = useMemo(() => {
+    return new Date(anioNavegacion, mesNavegacion + 1, 0).getDate();
+  }, [anioNavegacion, mesNavegacion]);
+
+  const primerDiaSemana = useMemo(() => {
+    return new Date(anioNavegacion, mesNavegacion, 1).getDay();
+  }, [anioNavegacion, mesNavegacion]);
+
+  const cambiarMes = (delta) => {
+    let nuevoMes = mesNavegacion + delta;
+    let nuevoAnio = anioNavegacion;
+    if (nuevoMes < 0) {
+      nuevoMes = 11;
+      nuevoAnio -= 1;
+    } else if (nuevoMes > 11) {
+      nuevoMes = 0;
+      nuevoAnio += 1;
+    }
+    setMesNavegacion(nuevoMes);
+    setAnioNavegacion(nuevoAnio);
+  };
+
+  const seleccionarDia = (dia) => {
+    const mesStr = String(mesNavegacion + 1).padStart(2, '0');
+    const diaStr = String(dia).padStart(2, '0');
+    const nuevaFecha = `${anioNavegacion}-${mesStr}-${diaStr}`;
+    setFechaVisto(nuevaFecha);
+    setMostrarCalendarioCustom(false);
   };
 
   const formatearFecha = (fechaStr) => {
@@ -232,7 +261,7 @@ export default function ModalDetalleTimeline({
                 {item.fecha_visto && (
                   <button
                     type="button"
-                    onClick={abrirSelectorFecha}
+                    onClick={alternarSeccionFecha}
                     className="text-[11px] text-neutral-600 dark:text-neutral-400 hover:text-rose-500 font-medium cursor-pointer transition flex items-center gap-1.5 group"
                     title="Toca para cambiar la fecha"
                   >
@@ -310,12 +339,104 @@ export default function ModalDetalleTimeline({
               </div>
             </div>
 
-            {/* 2. BARRA DE OPCIONES COMPACTAS (Paneles se abren hacia arriba sobre la opinión) */}
+            {/* 2. BARRA DE OPCIONES COMPACTAS (Se abren hacia abajo) */}
             <div className="pt-2 border-t border-neutral-200 dark:border-white/10 space-y-3">
+
+              {/* BARRA DE MICRO-CHIPS (UBICADOS ARRIBA PARA QUE LOS PANELES DESPLEGABLES SE ABRAN HACIA ABAJO) */}
+              <div className="flex items-center gap-2 flex-wrap pb-1">
+                {/* Botón Fecha */}
+                <button
+                  type="button"
+                  onClick={alternarSeccionFecha}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                    seccionExpandida === 'fecha'
+                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                      : fechaVisto && fechaVisto !== (item.fecha_visto ? item.fecha_visto.split('T')[0] : '')
+                      ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-600 dark:text-amber-400'
+                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{fechaVisto ? formatearFecha(fechaVisto) : 'Fecha'}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${seccionExpandida === 'fecha' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Botón Plataforma */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionExpandida(seccionExpandida === 'plataforma' ? null : 'plataforma')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                    seccionExpandida === 'plataforma'
+                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                      : plataforma
+                      ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-300 dark:border-rose-500/30 text-rose-600 dark:text-rose-400'
+                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Tv className="w-3.5 h-3.5" />
+                  <span>{plataforma || 'Plataforma'}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${seccionExpandida === 'plataforma' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Botón Acompañantes */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionExpandida(seccionExpandida === 'amigos' ? null : 'amigos')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                    seccionExpandida === 'amigos'
+                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                      : totalAcompanantes > 0
+                      ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-300 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400'
+                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>
+                    {totalAcompanantes > 0 
+                      ? `Acompañantes (${totalAcompanantes})` 
+                      : 'Acompañantes'}
+                  </span>
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${seccionExpandida === 'amigos' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Botón Reparto */}
+                <button
+                  type="button"
+                  onClick={() => setSeccionExpandida(seccionExpandida === 'reparto' ? null : 'reparto')}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                    seccionExpandida === 'reparto'
+                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Clapperboard className="w-3.5 h-3.5" />
+                  <span>Reparto {actores.length > 0 ? `(${actores.length})` : ''}</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${seccionExpandida === 'reparto' ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Botón Sinopsis */}
+                {sinopsisTexto && (
+                  <button
+                    type="button"
+                    onClick={() => setSeccionExpandida(seccionExpandida === 'sinopsis' ? null : 'sinopsis')}
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
+                      seccionExpandida === 'sinopsis'
+                        ? 'bg-rose-600/15 border-rose-500 text-rose-500'
+                        : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Sinopsis</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${seccionExpandida === 'sinopsis' ? 'rotate-180' : ''}`} />
+                  </button>
+                )}
+              </div>
+
+              {/* PANELES DESPLEGABLES (RENDERIZADOS HACIA ABAJO DE LOS CHIPS) */}
 
               {/* PANEL DESPLEGABLE: CAMBIAR FECHA */}
               {seccionExpandida === 'fecha' && (
-                <div className="space-y-3 p-4 rounded-2xl bg-neutral-100/90 dark:bg-[#1a1a24] border-2 border-rose-500/30 shadow-xl animate-fadeIn">
+                <div className="space-y-3 p-4 rounded-2xl bg-neutral-100/90 dark:bg-[#1a1a24] border border-neutral-300 dark:border-white/10 shadow-lg animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-rose-500" />
@@ -326,22 +447,28 @@ export default function ModalDetalleTimeline({
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => setFechaVisto(obtenerFechaHoyLocal())}
+                        onClick={() => {
+                          setFechaVisto(obtenerFechaHoyLocal());
+                          setMostrarCalendarioCustom(false);
+                        }}
                         className={`text-xs font-bold px-3 py-1 rounded-xl transition cursor-pointer border ${
                           fechaVisto === obtenerFechaHoyLocal()
                             ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                            : 'bg-neutral-200/80 dark:bg-white/10 text-neutral-800 dark:text-neutral-200 border-transparent hover:bg-rose-600 hover:text-white'
+                            : 'bg-neutral-200/80 dark:bg-white/10 text-neutral-800 dark:text-neutral-200 border-transparent hover:bg-neutral-300 dark:hover:bg-white/15'
                         }`}
                       >
                         Hoy
                       </button>
                       <button
                         type="button"
-                        onClick={() => setFechaVisto(obtenerFechaAyerLocal())}
+                        onClick={() => {
+                          setFechaVisto(obtenerFechaAyerLocal());
+                          setMostrarCalendarioCustom(false);
+                        }}
                         className={`text-xs font-bold px-3 py-1 rounded-xl transition cursor-pointer border ${
                           fechaVisto === obtenerFechaAyerLocal()
                             ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                            : 'bg-neutral-200/80 dark:bg-white/10 text-neutral-800 dark:text-neutral-200 border-transparent hover:bg-rose-600 hover:text-white'
+                            : 'bg-neutral-200/80 dark:bg-white/10 text-neutral-800 dark:text-neutral-200 border-transparent hover:bg-neutral-300 dark:hover:bg-white/15'
                         }`}
                       >
                         Ayer
@@ -349,43 +476,119 @@ export default function ModalDetalleTimeline({
                     </div>
                   </div>
 
-                  {/* Campo de fecha táctil de alto contraste y clickeable en cualquier parte */}
+                  {/* Tarjeta interactiva con la fecha actual que abre/cierra el calendario custom */}
                   <div
-                    onClick={() => {
-                      if (dateInputRef.current) {
-                        try {
-                          dateInputRef.current.showPicker();
-                        } catch {
-                          dateInputRef.current.focus();
-                        }
-                      }
-                    }}
-                    className="relative flex items-center justify-between bg-white dark:bg-black/70 border-2 border-neutral-300 dark:border-white/20 hover:border-rose-500 dark:hover:border-rose-500 rounded-xl px-3.5 py-2.5 transition cursor-pointer shadow-inner group"
+                    onClick={() => setMostrarCalendarioCustom((prev) => !prev)}
+                    className="flex items-center justify-between bg-white dark:bg-black/50 border border-neutral-300 dark:border-white/15 hover:border-rose-500 dark:hover:border-rose-500 rounded-2xl p-3.5 transition cursor-pointer shadow-sm group select-none"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Calendar className="w-5 h-5 text-rose-500 shrink-0 group-hover:scale-110 transition-transform" />
-                      <span className="text-xs sm:text-sm font-black text-neutral-900 dark:text-white truncate">
-                        {fechaVisto ? formatearFecha(fechaVisto) : 'Toca para abrir calendario'}
-                      </span>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 group-hover:scale-105 transition-transform shrink-0">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[10px] uppercase font-bold text-neutral-500 dark:text-neutral-400 block truncate">
+                          Fecha seleccionada
+                        </span>
+                        <span className="text-xs sm:text-sm font-black text-neutral-900 dark:text-white capitalize truncate block">
+                          {fechaVisto ? formatearFecha(fechaVisto) : 'Sin fecha asignada'}
+                        </span>
+                      </div>
                     </div>
 
-                    <span className="text-[10px] uppercase font-black text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20 shrink-0">
-                      Cambiar 📅
-                    </span>
-
-                    <input
-                      ref={dateInputRef}
-                      type="date"
-                      value={fechaVisto}
-                      max={obtenerFechaHoyLocal()}
-                      onChange={(e) => setFechaVisto(e.target.value)}
-                      style={{ colorScheme: 'dark' }}
-                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
-                    />
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-rose-500 bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20 group-hover:bg-rose-500 group-hover:text-white transition shrink-0">
+                      <span>{mostrarCalendarioCustom ? 'Ocultar calendario' : 'Cambiar día 🗓️'}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${mostrarCalendarioCustom ? 'rotate-180' : ''}`} />
+                    </div>
                   </div>
 
+                  {/* Calendario Custom Interactivo (Estilo oscuro elegante CineRewind) */}
+                  {mostrarCalendarioCustom && (
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#121218] border border-neutral-300 dark:border-white/10 shadow-lg space-y-3 animate-fadeIn">
+                      {/* Cabecera del calendario con Navegación de Mes y Año */}
+                      <div className="flex items-center justify-between border-b border-neutral-200 dark:border-white/10 pb-2.5 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => cambiarMes(-1)}
+                          className="w-8 h-8 rounded-xl bg-neutral-100 dark:bg-white/5 hover:bg-rose-600 hover:text-white text-neutral-700 dark:text-neutral-300 flex items-center justify-center font-black transition cursor-pointer shrink-0 text-sm"
+                          title="Mes anterior"
+                        >
+                          ‹
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={mesNavegacion}
+                            onChange={(e) => setMesNavegacion(Number(e.target.value))}
+                            className="bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white font-bold text-xs rounded-xl px-2.5 py-1.5 outline-none border border-neutral-300 dark:border-white/10 cursor-pointer"
+                          >
+                            {NOMBRES_MESES.map((nombre, idx) => (
+                              <option key={nombre} value={idx} className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">
+                                {nombre}
+                              </option>
+                            ))}
+                          </select>
+
+                          <select
+                            value={anioNavegacion}
+                            onChange={(e) => setAnioNavegacion(Number(e.target.value))}
+                            className="bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white font-bold text-xs rounded-xl px-2.5 py-1.5 outline-none border border-neutral-300 dark:border-white/10 cursor-pointer"
+                          >
+                            {Array.from({ length: (new Date().getFullYear() - 1950) + 1 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                              <option key={y} value={y} className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white">
+                                {y}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => cambiarMes(1)}
+                          className="w-8 h-8 rounded-xl bg-neutral-100 dark:bg-white/5 hover:bg-rose-600 hover:text-white text-neutral-700 dark:text-neutral-300 flex items-center justify-center font-black transition cursor-pointer shrink-0 text-sm"
+                          title="Mes siguiente"
+                        >
+                          ›
+                        </button>
+                      </div>
+
+                      {/* Nombres de los días */}
+                      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-neutral-400 dark:text-neutral-500 py-1">
+                        <span>DOM</span><span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span>
+                      </div>
+
+                      {/* Grilla de Días del Mes */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {Array.from({ length: primerDiaSemana }).map((_, idx) => (
+                          <div key={`esp-${idx}`} />
+                        ))}
+                        {Array.from({ length: diasEnElMes }).map((_, idx) => {
+                          const dia = idx + 1;
+                          const mesStr = String(mesNavegacion + 1).padStart(2, '0');
+                          const diaStr = String(dia).padStart(2, '0');
+                          const fechaStrIter = `${anioNavegacion}-${mesStr}-${diaStr}`;
+                          const esSeleccionado = fechaVisto === fechaStrIter;
+
+                          return (
+                            <button
+                              key={dia}
+                              type="button"
+                              onClick={() => seleccionarDia(dia)}
+                              className={`h-8 rounded-xl text-xs font-bold flex items-center justify-center transition cursor-pointer ${
+                                esSeleccionado
+                                  ? 'bg-rose-600 text-white font-black shadow-md scale-105 ring-2 ring-rose-500/40'
+                                  : 'hover:bg-neutral-200 dark:hover:bg-white/10 text-neutral-800 dark:text-neutral-200'
+                              }`}
+                            >
+                              {dia}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {fechaVisto && fechaVisto !== (item.fecha_visto ? item.fecha_visto.split('T')[0] : '') && (
-                    <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5 pt-1">
                       <span>⚡</span>
                       <span>Al guardar, se moverá automáticamente al <strong>{formatearFecha(fechaVisto)}</strong> en tu diario.</span>
                     </p>
@@ -528,96 +731,6 @@ export default function ModalDetalleTimeline({
                   </p>
                 </div>
               )}
-
-              {/* BARRA DE MICRO-CHIPS (UBICADOS ABAJO DEL PANEL PARA QUE EL PANEL ABRA HACIA ARRIBA) */}
-              <div className="flex items-center gap-2 flex-wrap pt-1">
-                {/* Botón Fecha */}
-                <button
-                  type="button"
-                  onClick={abrirSelectorFecha}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
-                    seccionExpandida === 'fecha'
-                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
-                      : fechaVisto && fechaVisto !== (item.fecha_visto ? item.fecha_visto.split('T')[0] : '')
-                      ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-600 dark:text-amber-400'
-                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>{fechaVisto ? formatearFecha(fechaVisto) : 'Fecha'}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'fecha' ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Botón Plataforma */}
-                <button
-                  type="button"
-                  onClick={() => setSeccionExpandida(seccionExpandida === 'plataforma' ? null : 'plataforma')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
-                    seccionExpandida === 'plataforma'
-                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
-                      : plataforma
-                      ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-300 dark:border-rose-500/30 text-rose-600 dark:text-rose-400'
-                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Tv className="w-3.5 h-3.5" />
-                  <span>{plataforma || 'Plataforma'}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'plataforma' ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Botón Acompañantes */}
-                <button
-                  type="button"
-                  onClick={() => setSeccionExpandida(seccionExpandida === 'amigos' ? null : 'amigos')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
-                    seccionExpandida === 'amigos'
-                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
-                      : totalAcompanantes > 0
-                      ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-300 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400'
-                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>
-                    {totalAcompanantes > 0 
-                      ? `Acompañantes (${totalAcompanantes})` 
-                      : 'Acompañantes'}
-                  </span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'amigos' ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Botón Reparto */}
-                <button
-                  type="button"
-                  onClick={() => setSeccionExpandida(seccionExpandida === 'reparto' ? null : 'reparto')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
-                    seccionExpandida === 'reparto'
-                      ? 'bg-rose-600/15 border-rose-500 text-rose-500'
-                      : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Clapperboard className="w-3.5 h-3.5" />
-                  <span>Reparto {actores.length > 0 ? `(${actores.length})` : ''}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'reparto' ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Botón Sinopsis */}
-                {sinopsisTexto && (
-                  <button
-                    type="button"
-                    onClick={() => setSeccionExpandida(seccionExpandida === 'sinopsis' ? null : 'sinopsis')}
-                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
-                      seccionExpandida === 'sinopsis'
-                        ? 'bg-rose-600/15 border-rose-500 text-rose-500'
-                        : 'bg-neutral-100 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                    }`}
-                  >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>Sinopsis</span>
-                    <ChevronDown className={`w-3 h-3 transition-transform ${seccionExpandida === 'sinopsis' ? 'rotate-180' : ''}`} />
-                  </button>
-                )}
-              </div>
             </div>
           </div>
 
