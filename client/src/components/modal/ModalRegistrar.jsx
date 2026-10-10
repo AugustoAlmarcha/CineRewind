@@ -223,11 +223,67 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     };
   }, [tmdbIdReal, temporadaSeleccionada, esSerie, usuario?.id]);
 
+  const calcularFechaEstreno = (obraObj = obraActual, temporadaData = datosTemporada, eps = episodiosSeleccionados) => {
+    // 1. Si es serie y se seleccionó un único episodio, intentar usar la fecha de emisión de ese episodio
+    if (esSerie && Array.isArray(eps) && eps.length === 1 && temporadaData?.episodios) {
+      const epEncontrado = temporadaData.episodios.find((e) => e.episodio_numero === eps[0]);
+      const fechaEp = epEncontrado?.fecha_estreno || epEncontrado?.air_date;
+      if (fechaEp && /^\d{4}-\d{2}-\d{2}/.test(fechaEp)) {
+        return fechaEp.substring(0, 10);
+      }
+    }
+
+    // 2. Si es serie y la temporada tiene fecha de estreno
+    if (esSerie) {
+      const fechaTemp = temporadaData?.fecha_estreno || temporadaData?.air_date;
+      if (fechaTemp && /^\d{4}-\d{2}-\d{2}/.test(fechaTemp)) {
+        return fechaTemp.substring(0, 10);
+      }
+    }
+
+    // 3. Fecha de estreno de la película o estreno general de la serie
+    const fecha = obraObj?.fecha_estreno || 
+                  obraObj?.release_date || 
+                  obraObj?.first_air_date || 
+                  fichaDetalle?.fecha_estreno || 
+                  fichaDetalle?.release_date || 
+                  fichaDetalle?.first_air_date || 
+                  obra?.fecha_estreno || 
+                  obra?.release_date || 
+                  obra?.first_air_date;
+
+    if (fecha && /^\d{4}-\d{2}-\d{2}/.test(fecha)) {
+      return fecha.substring(0, 10);
+    }
+
+    // 4. Fallback si solo tenemos el año (por si TMDb no tiene fecha exacta)
+    const anio = obraObj?.anio || fichaDetalle?.anio || obra?.anio;
+    if (anio && /^\d{4}$/.test(String(anio).trim())) {
+      return `${String(anio).trim()}-01-01`;
+    }
+
+    return '2020-01-01';
+  };
+
   const handleToggleNoRecuerda = () => {
     const nuevoEstado = !noRecuerdaFecha;
     setNoRecuerdaFecha(nuevoEstado);
-    setFechaVisto(nuevoEstado ? (obraActual?.anio ? `${obraActual.anio}-01-01` : '2020-01-01') : obtenerFechaHoyLocal());
+    if (nuevoEstado) {
+      setFechaVisto(calcularFechaEstreno(obraActual, datosTemporada, episodiosSeleccionados));
+    } else {
+      setFechaVisto(obtenerFechaHoyLocal());
+    }
   };
+
+  // Si "no recuerdo fecha" está activo, sincronizar con la fecha exacta apenas cargue la ficha o temporada
+  useEffect(() => {
+    if (noRecuerdaFecha) {
+      const fechaCalculada = calcularFechaEstreno(obraActual, datosTemporada, episodiosSeleccionados);
+      if (fechaCalculada) {
+        setFechaVisto(fechaCalculada);
+      }
+    }
+  }, [fichaDetalle, datosTemporada, episodiosSeleccionados, noRecuerdaFecha]);
 
   const toggleSeleccionEpisodio = (num) => {
     setErrorRegistro(null);
@@ -262,9 +318,16 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
 
     try {
       const fotosMapa = {};
+      const fechasMapa = {};
       datosTemporada?.episodios?.forEach((ep) => {
         if (episodiosSeleccionados.includes(ep.episodio_numero)) {
           fotosMapa[ep.episodio_numero] = ep.still_path;
+          if (noRecuerdaFecha) {
+            const fEp = ep.fecha_estreno || ep.air_date;
+            if (fEp && /^\d{4}-\d{2}-\d{2}/.test(fEp)) {
+              fechasMapa[ep.episodio_numero] = fEp.substring(0, 10);
+            }
+          }
         }
       });
 
@@ -278,6 +341,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         episodios: episodiosSeleccionados,
         fecha_visto: fechaVisto,
         fotos_episodios: fotosMapa,
+        fechas_episodios: Object.keys(fechasMapa).length > 0 ? fechasMapa : undefined,
         total_episodios_temporada: datosTemporada?.episodios?.length || null,
         amigos_etiquetados: amigosSeleccionados,
         visto_con_texto: vistoConTexto.trim() || null,
@@ -502,7 +566,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                 {episodiosSeleccionados.length} {episodiosSeleccionados.length === 1 ? 'capítulo seleccionado' : 'capítulos seleccionados'}
               </span>
               <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
-                📅 Con fecha: <strong className="text-neutral-700 dark:text-neutral-300">{noRecuerdaFecha ? 'Estreno' : (fechaVisto === obtenerFechaHoyLocal() ? 'Hoy' : fechaVisto === obtenerFechaAyerLocal() ? 'Ayer' : formatearFecha(fechaVisto))}</strong>
+                📅 Con fecha: <strong className="text-neutral-700 dark:text-neutral-300">{noRecuerdaFecha ? `Estreno (${formatearFecha(fechaVisto)})` : (fechaVisto === obtenerFechaHoyLocal() ? 'Hoy' : fechaVisto === obtenerFechaAyerLocal() ? 'Ayer' : formatearFecha(fechaVisto))}</strong>
               </span>
             </div>
             <button 

@@ -68,11 +68,20 @@ export default function BarraConfiguracionRegistro({
     setPanelActivo(panelActivo === tipo ? null : tipo);
   };
 
+  const fechaEstrenoCorta = React.useMemo(() => {
+    if (!fechaVisto) return '';
+    const partes = String(fechaVisto).split('-');
+    if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    return fechaVisto;
+  }, [fechaVisto]);
+
   const textoFechaChip = React.useMemo(() => {
-    if (noRecuerdaFecha) return 'Estreno';
-    if (!fechaVisto) return 'Fecha';
+    if (!fechaVisto) return noRecuerdaFecha ? 'Estreno' : 'Fecha';
     const partes = String(fechaVisto).split('-');
     if (partes.length === 3) {
+      if (noRecuerdaFecha) {
+        return `Estreno (${partes[2]}/${partes[1]}/${partes[0]})`;
+      }
       const hoy = new Date();
       const esHoy = 
         hoy.getFullYear() === Number(partes[0]) &&
@@ -102,6 +111,7 @@ export default function BarraConfiguracionRegistro({
     const mesStr = String(mesNavegacion + 1).padStart(2, '0');
     const diaStr = String(dia).padStart(2, '0');
     setFechaVisto(`${anioNavegacion}-${mesStr}-${diaStr}`);
+    if (noRecuerdaFecha && onToggleNoRecuerda) onToggleNoRecuerda();
     setPanelActivo(null);
   };
 
@@ -188,7 +198,7 @@ export default function BarraConfiguracionRegistro({
             title="Elegir otra fecha o usar fecha de estreno"
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>{noRecuerdaFecha ? 'Estreno' : (esOtraFecha ? textoFechaChip : 'Otra fecha')}</span>
+            <span>{noRecuerdaFecha ? textoFechaChip : (esOtraFecha ? textoFechaChip : 'Otra fecha')}</span>
             {panelActivo === 'fecha' ? <ChevronUp className="w-3 h-3 opacity-60" /> : <ChevronDown className="w-3 h-3 opacity-60" />}
           </button>
         </div>
@@ -310,7 +320,7 @@ export default function BarraConfiguracionRegistro({
                       : 'bg-neutral-200 dark:bg-white/10 text-neutral-600 dark:text-neutral-400'
                   }`}
                 >
-                  {noRecuerdaFecha ? '✓ Usando fecha de estreno' : 'No recuerdo cuándo la vi'}
+                  {noRecuerdaFecha ? `✓ Usando fecha de estreno ${fechaEstrenoCorta ? `(${fechaEstrenoCorta})` : ''}` : 'No recuerdo cuándo la vi'}
                 </button>
               </div>
 

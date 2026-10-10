@@ -306,6 +306,7 @@ const registrarLoteVisualizaciones = async (req, res) => {
     episodios, 
     fecha_visto, 
     fotos_episodios, 
+    fechas_episodios,
     total_episodios_temporada,
     amigos_etiquetados,
     visto_con_texto,
@@ -338,12 +339,13 @@ const registrarLoteVisualizaciones = async (req, res) => {
 
     for (const ep of episodiosNumeros) {
       const fotoEp = fotos_episodios && fotos_episodios[ep] ? fotos_episodios[ep] : null;
+      const fechaEpisodio = (fechas_episodios && fechas_episodios[ep]) ? fechas_episodios[ep] : fecha_visto;
       const esFinTemp = Boolean(totalRealTemp && ep === totalRealTemp);
 
       const existe = await pool.query(
         `SELECT id FROM historial_visualizaciones 
          WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5`,
-        [usuario_id, obra_id, tempNum, ep, fecha_visto]
+        [usuario_id, obra_id, tempNum, ep, fechaEpisodio]
       );
 
       let visualizacionId;
@@ -357,7 +359,7 @@ const registrarLoteVisualizaciones = async (req, res) => {
           [
             usuario_id, 
             obra_id, 
-            fecha_visto, 
+            fechaEpisodio, 
             plataforma || null, 
             tempNum, 
             ep, 

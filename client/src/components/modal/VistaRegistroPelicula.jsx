@@ -260,7 +260,7 @@ export default function VistaRegistroPelicula({
           <Calendar className="w-3.5 h-3.5 text-rose-500" />
           <span>Se guardará con fecha:</span>
           <strong className="text-neutral-900 dark:text-white font-black">
-            {noRecuerdaFecha ? 'Estreno original' : textoFechaLegible}
+            {noRecuerdaFecha ? `Estreno original (${textoFechaLegible})` : textoFechaLegible}
           </strong>
         </div>
 

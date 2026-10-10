@@ -50,6 +50,9 @@ const buscarPeliculas = async (req, res) => {
         tmdb_id: item.id,
         tipo: item.media_type === 'movie' ? 'pelicula' : 'serie',
         titulo: item.title || item.name,
+        fecha_estreno: item.release_date || item.first_air_date || null,
+        release_date: item.release_date || null,
+        first_air_date: item.first_air_date || null,
         anio: (item.release_date || item.first_air_date || '').substring(0, 4),
         sinopsis: item.overview || 'Sin descripción disponible.',
         poster_path: item.poster_path
@@ -105,6 +108,9 @@ const obtenerDetallePelicula = async (req, res) => {
       tmdb_id: data.id,
       tipo: endpointTipo === 'tv' ? 'serie' : 'pelicula',
       titulo: data.title || data.name,
+      fecha_estreno: data.release_date || data.first_air_date || null,
+      release_date: data.release_date || null,
+      first_air_date: data.first_air_date || null,
       anio: (data.release_date || data.first_air_date || '').substring(0, 4),
       sinopsis: data.overview,
       poster_path: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
@@ -171,12 +177,16 @@ const obtenerDetalleTemporada = async (req, res) => {
       sinopsis: ep.overview || 'Sin descripción disponible.',
       still_path: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : null,
       duracion: ep.runtime,
+      fecha_estreno: ep.air_date || null,
+      air_date: ep.air_date || null,
     }));
 
     res.json({
       temporada_numero: data.season_number,
       nombre: data.name,
       poster_temporada: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : null,
+      fecha_estreno: data.air_date || null,
+      air_date: data.air_date || null,
       episodios,
     });
   } catch (error) {
@@ -217,6 +227,8 @@ const obtenerDetalleEpisodioCompleto = async (req, res) => {
       sinopsis: data.overview || 'Sin descripción disponible.',
       still_path: data.still_path ? `https://image.tmdb.org/t/p/w780${data.still_path}` : null,
       calificacion_tmdb: data.vote_average,
+      fecha_estreno: data.air_date || null,
+      air_date: data.air_date || null,
       actores: elencoTotal.slice(0, 20).map((a) => ({
         id: a.id,
         nombre: a.name,
@@ -320,6 +332,9 @@ const obtenerTendencias = async (req, res) => {
       tmdb_id: item.id,
       tipo: endpointTipo === 'tv' ? 'serie' : 'pelicula',
       titulo: item.title || item.name,
+      fecha_estreno: item.release_date || item.first_air_date || null,
+      release_date: item.release_date || null,
+      first_air_date: item.first_air_date || null,
       anio: (item.release_date || item.first_air_date || '').substring(0, 4),
       sinopsis: item.overview || 'Sin descripción disponible.',
       poster_path: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : null,
@@ -362,6 +377,9 @@ const obtenerFilmografiaActor = async (req, res) => {
         id: it.id,
         titulo: it.title || it.name,
         tipo: it.media_type === 'tv' ? 'serie' : 'pelicula',
+        fecha_estreno: it.release_date || it.first_air_date || null,
+        release_date: it.release_date || null,
+        first_air_date: it.first_air_date || null,
         anio: (it.release_date || it.first_air_date || '').substring(0, 4),
         poster_path: `https://image.tmdb.org/t/p/w500${it.poster_path}`,
         sinopsis: it.overview,

@@ -220,6 +220,12 @@ export default function ModalDetalleTimeline({
 
   const totalAcompanantes = amigosSeleccionados.length + (vistoConTexto?.trim() ? 1 : 0);
 
+  const fechaEstrenoObra = detalle?.fecha_estreno || 
+                           detalle?.release_date || 
+                           detalle?.first_air_date || 
+                           detalle?.air_date || 
+                           obraActual?.fecha_estreno;
+
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
@@ -473,6 +479,23 @@ export default function ModalDetalleTimeline({
                       >
                         Ayer
                       </button>
+                      {fechaEstrenoObra && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFechaVisto(fechaEstrenoObra.substring(0, 10));
+                            setMostrarCalendarioCustom(false);
+                          }}
+                          className={`text-xs font-bold px-3 py-1 rounded-xl transition cursor-pointer border ${
+                            fechaVisto === fechaEstrenoObra.substring(0, 10)
+                              ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                              : 'bg-neutral-200/80 dark:bg-white/10 text-neutral-800 dark:text-neutral-200 border-transparent hover:bg-neutral-300 dark:hover:bg-white/15'
+                          }`}
+                          title={`Estreno original (${fechaEstrenoObra.substring(0, 10)})`}
+                        >
+                          Estreno
+                        </button>
+                      )}
                     </div>
                   </div>
 
