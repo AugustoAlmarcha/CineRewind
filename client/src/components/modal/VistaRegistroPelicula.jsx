@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Clock, Star, Film, Users, Clapperboard, Check, ChevronDown, ChevronUp, Ticket, ExternalLink, Calendar, Sparkles } from 'lucide-react';
 import { obtenerFechaHoyLocal, obtenerFechaAyerLocal, NOMBRES_MESES } from '../../utils/fechas';
 import CalificadorEstrellas from '../common/CalificadorEstrellas';
@@ -19,6 +19,7 @@ export default function VistaRegistroPelicula({
   const [mostrarTodoElenco, setMostrarTodoElenco] = useState(false);
   const [sinopsisExpandida, setSinopsisExpandida] = useState(false);
   const repartoCarruselRef = useDragScroll();
+  const seccionInfoRef = useRef(null);
 
   const duracion = detalle?.duracion_minutos || obra?.duracion_minutos;
   const generos = detalle?.generos || obra?.generos || [];
@@ -61,11 +62,15 @@ export default function VistaRegistroPelicula({
     window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
   };
 
+  const irASinopsisYReparto = () => {
+    seccionInfoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
-    <div className="space-y-4 max-w-2xl mx-auto pb-16 sm:pb-4 animate-fadeIn select-none">
+    <div className="space-y-2.5 sm:space-y-4 max-w-2xl mx-auto pb-16 sm:pb-4 animate-fadeIn select-none">
       
       {/* 1. SECCIÓN PRINCIPAL DE REGISTRO & PUNTUACIÓN (VISIBILIDAD PRIORITARIA) */}
-      <div className="p-3.5 sm:p-5 rounded-3xl bg-white dark:bg-[#181820] border border-neutral-300/80 dark:border-white/10 shadow-sm space-y-3.5">
+      <div className="p-2.5 sm:p-5 rounded-3xl bg-white dark:bg-[#181820] border border-neutral-300/80 dark:border-white/10 shadow-sm space-y-2 sm:space-y-3.5">
         
         {/* Calificador interactivo */}
         {setCalificacion && (
@@ -77,13 +82,28 @@ export default function VistaRegistroPelicula({
           </div>
         )}
 
-        {/* Indicador de fecha clara en que se vio */}
-        <div className="flex items-center justify-center gap-1.5 text-xs text-neutral-600 dark:text-neutral-400 font-medium">
-          <Calendar className="w-3.5 h-3.5 text-rose-500" />
-          <span>Fecha en que la viste:</span>
-          <strong className="text-neutral-900 dark:text-white font-black">
-            {noRecuerdaFecha ? `Estreno original (${textoFechaLegible})` : textoFechaLegible}
-          </strong>
+        {/* Indicador de fecha clara en que se vio + atajo a Reparto en celular */}
+        <div className="flex items-center justify-between sm:justify-center gap-2 text-[11px] sm:text-xs text-neutral-600 dark:text-neutral-400 font-medium px-0.5">
+          <div className="flex items-center gap-1 min-w-0 truncate">
+            <Calendar className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+            <span className="hidden sm:inline">Fecha en que la viste:</span>
+            <span className="sm:hidden">Fecha:</span>
+            <strong className="text-neutral-900 dark:text-white font-black truncate">
+              {noRecuerdaFecha ? `Estreno (${textoFechaLegible})` : textoFechaLegible}
+            </strong>
+          </div>
+
+          {(sinopsis || reparto.length > 0) && (
+            <button
+              type="button"
+              onClick={irASinopsisYReparto}
+              className="sm:hidden flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-bold text-[10px] shrink-0 active:scale-95 transition cursor-pointer"
+            >
+              <Users className="w-3 h-3" />
+              <span>Reparto y Sinopsis</span>
+              <ChevronDown className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
         {/* Botón Principal de Registro */}
@@ -91,7 +111,7 @@ export default function VistaRegistroPelicula({
           type="button"
           disabled={guardando}
           onClick={onGuardar}
-          className="w-full bg-gradient-to-r from-rose-600 via-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 active:scale-98 text-white font-black py-3 sm:py-3.5 px-6 rounded-2xl shadow-xl shadow-rose-900/25 transition-all duration-200 cursor-pointer disabled:opacity-50 text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2"
+          className="w-full bg-gradient-to-r from-rose-600 via-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 active:scale-98 text-white font-black py-2.5 sm:py-3.5 px-4 sm:px-6 rounded-2xl shadow-xl shadow-rose-900/25 transition-all duration-200 cursor-pointer disabled:opacity-50 text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2"
         >
           <Check className="w-4 h-4 stroke-[3]" />
           <span>{guardando ? 'Guardando en tu Timeline...' : 'Registrar Película en Mi Historial'}</span>
@@ -99,39 +119,39 @@ export default function VistaRegistroPelicula({
       </div>
 
       {/* 2. TAGLINE Y BADGES ESENCIALES */}
-      <div className="space-y-2">
+      <div className="space-y-1.5 sm:space-y-2">
         {tagline && (
-          <p className="text-center text-[11px] sm:text-xs font-medium italic text-amber-600 dark:text-amber-400/90 tracking-wide">
+          <p className="text-center text-[11px] sm:text-xs font-medium italic text-amber-600 dark:text-amber-400/90 tracking-wide line-clamp-1 sm:line-clamp-none">
             “{tagline}”
           </p>
         )}
 
-        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-2">
           {duracionTexto && (
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-200/70 dark:bg-white/5 border border-neutral-300 dark:border-white/10 text-[11px] font-bold text-neutral-700 dark:text-neutral-300 shadow-xs">
-              <Clock className="w-3.5 h-3.5 text-rose-500" />
+            <div className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-neutral-200/70 dark:bg-white/5 border border-neutral-300 dark:border-white/10 text-[10px] sm:text-[11px] font-bold text-neutral-700 dark:text-neutral-300 shadow-xs">
+              <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-rose-500" />
               <span>{duracionTexto}</span>
             </div>
           )}
 
           {califTmdb && Number(califTmdb) > 0 && (
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-200/70 dark:bg-white/5 border border-neutral-300 dark:border-white/10 text-[11px] font-bold text-neutral-700 dark:text-neutral-300 shadow-xs">
-              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+            <div className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-neutral-200/70 dark:bg-white/5 border border-neutral-300 dark:border-white/10 text-[10px] sm:text-[11px] font-bold text-neutral-700 dark:text-neutral-300 shadow-xs">
+              <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-amber-400 text-amber-400" />
               <span>{Number(califTmdb).toFixed(1)} / 10 TMDb</span>
             </div>
           )}
 
           {director && (
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-neutral-200/70 dark:bg-white/5 border border-neutral-300 dark:border-white/10 text-[11px] font-bold text-neutral-700 dark:text-neutral-300 shadow-xs">
-              <Clapperboard className="w-3.5 h-3.5 text-neutral-400" />
-              <span className="truncate max-w-[150px] sm:max-w-[200px]">Dir. {director}</span>
+            <div className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-neutral-200/70 dark:bg-white/5 border border-neutral-300 dark:border-white/10 text-[10px] sm:text-[11px] font-bold text-neutral-700 dark:text-neutral-300 shadow-xs">
+              <Clapperboard className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-neutral-400" />
+              <span className="truncate max-w-[140px] sm:max-w-[200px]">Dir. {director}</span>
             </div>
           )}
 
           {generos.slice(0, 3).map((gen, idx) => (
             <span
               key={`gen-${idx}`}
-              className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/20 text-rose-600 dark:text-rose-400 shadow-xs"
+              className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-bold bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/20 text-rose-600 dark:text-rose-400 shadow-xs"
             >
               {gen}
             </span>
@@ -141,10 +161,10 @@ export default function VistaRegistroPelicula({
             <button
               type="button"
               onClick={abrirGoogleCine}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[11px] font-bold text-amber-600 dark:text-amber-400 shadow-xs transition cursor-pointer select-none active:scale-95"
+              className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[10px] sm:text-[11px] font-bold text-amber-600 dark:text-amber-400 shadow-xs transition cursor-pointer select-none active:scale-95"
               title="Buscar funciones y horarios en cines de tu zona en Google"
             >
-              <Ticket className="w-3.5 h-3.5 text-amber-500" />
+              <Ticket className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-500" />
               <span>Cines en tu zona</span>
               <ExternalLink className="w-2.5 h-2.5 opacity-70" />
             </button>
@@ -153,8 +173,9 @@ export default function VistaRegistroPelicula({
       </div>
 
       {/* 3. SINOPSIS COMPACTA Y PLEGABLE */}
+      <div ref={seccionInfoRef} className="space-y-2.5 sm:space-y-4">
       {sinopsis && (
-        <div className="bg-neutral-200/40 dark:bg-white/[0.03] p-3 sm:p-4 rounded-2xl border border-neutral-300/80 dark:border-white/5 space-y-1">
+        <div className="bg-neutral-200/40 dark:bg-white/[0.03] p-2.5 sm:p-4 rounded-2xl border border-neutral-300/80 dark:border-white/5 space-y-1">
           <div className="flex items-center justify-between">
             <h4 className="text-[11px] font-black uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
               <Film className="w-3.5 h-3.5 text-rose-500" />
@@ -250,17 +271,17 @@ export default function VistaRegistroPelicula({
           ) : (
             <div 
               ref={repartoCarruselRef}
-              className="flex items-center gap-3.5 overflow-x-auto pb-3 scrollbar-thin pt-1 cursor-grab"
+              className="flex items-center gap-2.5 sm:gap-3.5 overflow-x-auto pb-3 scrollbar-thin pt-1 cursor-grab"
             >
               {reparto.slice(0, 14).map((actor, idx) => (
                 <button
                   key={actor.id || idx}
                   type="button"
                   onClick={() => onSeleccionarActor && onSeleccionarActor(actor)}
-                  className="flex flex-col items-center text-center p-2.5 rounded-2xl bg-white dark:bg-[#181820] hover:border-rose-500 border border-neutral-300/80 dark:border-white/10 transition group cursor-pointer shadow-xs shrink-0 w-28 sm:w-32"
+                  className="flex flex-col items-center text-center p-2 sm:p-2.5 rounded-2xl bg-white dark:bg-[#181820] hover:border-rose-500 border border-neutral-300/80 dark:border-white/10 transition group cursor-pointer shadow-xs shrink-0 w-24 sm:w-32"
                   title={`Ver filmografía de ${actor.nombre}`}
                 >
-                  <div className="w-24 h-32 sm:w-28 sm:h-36 rounded-xl overflow-hidden bg-neutral-200 dark:bg-neutral-800 shrink-0 shadow-md border border-black/10 dark:border-white/10 group-hover:scale-105 transition-transform">
+                  <div className="w-20 h-26 sm:w-28 sm:h-36 rounded-xl overflow-hidden bg-neutral-200 dark:bg-neutral-800 shrink-0 shadow-md border border-black/10 dark:border-white/10 group-hover:scale-105 transition-transform">
                     {actor.foto ? (
                       <img
                         src={actor.foto}
@@ -274,12 +295,12 @@ export default function VistaRegistroPelicula({
                       </div>
                     )}
                   </div>
-                  <div className="mt-2 w-full min-w-0 px-0.5">
-                    <p className="text-xs font-black text-neutral-900 dark:text-white truncate group-hover:text-rose-500 transition-colors">
+                  <div className="mt-1.5 sm:mt-2 w-full min-w-0 px-0.5">
+                    <p className="text-[11px] sm:text-xs font-black text-neutral-900 dark:text-white truncate group-hover:text-rose-500 transition-colors">
                       {actor.nombre}
                     </p>
                     {actor.personaje && (
-                      <p className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold truncate mt-0.5">
+                      <p className="text-[10px] sm:text-[11px] text-rose-600 dark:text-rose-400 font-semibold truncate mt-0.5">
                         {actor.personaje}
                       </p>
                     )}
@@ -290,6 +311,7 @@ export default function VistaRegistroPelicula({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

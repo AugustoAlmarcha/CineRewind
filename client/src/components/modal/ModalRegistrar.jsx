@@ -725,12 +725,12 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
       }`}>
         
         {/* Cabecera Principal */}
-        <div className="p-3.5 sm:p-4 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between gap-3 bg-[#fcfaf7] dark:bg-[#141418] z-20 flex-shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="p-2.5 sm:p-4 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between gap-2.5 sm:gap-3 bg-[#fcfaf7] dark:bg-[#141418] z-20 flex-shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <img 
               src={obraActual?.poster_path} 
               alt={obraActual?.titulo} 
-              className="w-10 h-14 sm:w-12 sm:h-16 object-cover rounded-xl shadow-md border border-black/10 dark:border-white/10 flex-shrink-0" 
+              className="w-9 h-12 sm:w-12 sm:h-16 object-cover rounded-xl shadow-md border border-black/10 dark:border-white/10 flex-shrink-0" 
             />
             <div className="min-w-0">
               <span className="text-[10px] font-black text-rose-600 dark:text-rose-500 uppercase tracking-widest block">
@@ -825,7 +825,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         <div className={`overflow-y-auto flex-1 min-h-0 ${
           esSerie 
             ? 'p-3.5 sm:p-5 space-y-4 pb-24 sm:pb-8' 
-            : 'p-3 sm:p-5 space-y-3.5 pb-28 sm:pb-8'
+            : 'p-2.5 sm:p-5 space-y-2.5 sm:space-y-3.5 pb-24 sm:pb-8'
         }`}>
           {/* Barra de Ajustes Unificada (Fecha, Plataforma, Acompañantes) */}
           <BarraConfiguracionRegistro

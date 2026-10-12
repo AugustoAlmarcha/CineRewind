@@ -476,13 +476,13 @@ export default function ViendoCard({
       {estaActivo && typeof document !== 'undefined' && createPortal(
         <div 
           onClick={() => onCerrarActivo && onCerrarActivo()}
-          className="sm:hidden fixed inset-0 z-[9999] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+          className="sm:hidden fixed inset-0 z-[9999] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] flex flex-col animate-scaleUp max-h-[92vh] overflow-y-auto"
+            className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-[#16161c] flex flex-col animate-scaleUp max-h-[90dvh] overflow-y-auto"
           >
-            <div className="w-full h-44 sm:aspect-video bg-neutral-900 relative overflow-hidden flex-shrink-0">
+            <div className="w-full h-32 bg-neutral-900 relative overflow-hidden flex-shrink-0">
               {fotoCapituloUrl ? (
                 <img
                   src={fotoCapituloUrl}
@@ -496,7 +496,7 @@ export default function ViendoCard({
               )}
 
               {/* Encabezado sobre la foto en celular: solo logo y botón cerrar X para no tapar la foto */}
-              <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-10">
+              <div className="absolute top-2.5 left-3 right-3 flex justify-between items-center z-10">
                 <LogoPlataforma nombre={serie.plataforma} />
 
                 {/* Botón Cerrar ventana */}
@@ -506,7 +506,7 @@ export default function ViendoCard({
                     e.stopPropagation();
                     if (onCerrarActivo) onCerrarActivo();
                   }}
-                  className="w-9 h-9 rounded-full bg-black/80 hover:bg-white/20 text-white flex items-center justify-center border border-white/35 cursor-pointer shadow-lg transition backdrop-blur-md active:scale-90"
+                  className="w-8 h-8 rounded-full bg-black/80 hover:bg-white/20 text-white flex items-center justify-center border border-white/35 cursor-pointer shadow-lg transition backdrop-blur-md active:scale-90"
                   title="Cerrar"
                 >
                   <X className="w-4 h-4 stroke-[2.5]" />
@@ -514,23 +514,25 @@ export default function ViendoCard({
               </div>
 
               <div className="absolute bottom-2 left-3">
-                <span className="bg-black/80 backdrop-blur-md text-[10px] font-black text-neutral-300 px-2.5 py-0.5 rounded-md border border-white/10">
+                <span className="bg-black/80 backdrop-blur-md text-[10px] font-black text-neutral-300 px-2 py-0.5 rounded-md border border-white/10">
                   SIGUIENTE EPISODIO
                 </span>
               </div>
             </div>
 
-            <div className="p-4 space-y-3 bg-[#16161c]">
-              <div>
-                <h3 className="text-base font-black text-white leading-tight truncate">{serie.titulo}</h3>
-                <p className="text-xs font-bold text-rose-500 mt-0.5">
-                  Temporada {proximaTemporada} · Episodio {proximoEpisodio}
-                  {amigosSeleccionados.length > 0 && (
-                    <span className="text-neutral-400 font-normal ml-2">
-                      (con {amigosSeleccionados.length} amigo{amigosSeleccionados.length > 1 ? 's' : ''})
-                    </span>
-                  )}
-                </p>
+            <div className="p-3 space-y-2 bg-[#16161c]">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-black text-white leading-tight truncate">{serie.titulo}</h3>
+                  <p className="text-[11px] font-bold text-rose-500 mt-0.5">
+                    Temporada {proximaTemporada} · Episodio {proximoEpisodio}
+                    {amigosSeleccionados.length > 0 && (
+                      <span className="text-neutral-400 font-normal ml-1.5">
+                        (con {amigosSeleccionados.length} amigo{amigosSeleccionados.length > 1 ? 's' : ''})
+                      </span>
+                    )}
+                  </p>
+                </div>
               </div>
 
               {/* Botonera de acciones celular (Amigos, Info, Descartar) en la zona negra */}
@@ -542,14 +544,14 @@ export default function ViendoCard({
                     e.stopPropagation();
                     setMenuAmigosAbierto(!menuAmigosAbierto);
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer backdrop-blur-md active:scale-90 border ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer backdrop-blur-md active:scale-90 border ${
                     amigosSeleccionados.length > 0
                       ? 'bg-rose-600 border-rose-400 text-white shadow-md'
                       : 'bg-black/70 text-neutral-200 border-white/25 hover:bg-black/90'
                   }`}
                   title="Etiquetar amigos"
                 >
-                  <Users className="w-4 h-4 text-neutral-200" />
+                  <Users className="w-3.5 h-3.5 text-neutral-200" />
                   <span>{amigosSeleccionados.length > 0 ? `${amigosSeleccionados.length} amigos` : 'Amigos'}</span>
                 </button>
 
@@ -560,10 +562,10 @@ export default function ViendoCard({
                     e.stopPropagation();
                     if (onVerInfoEpisodio) onVerInfoEpisodio(serie);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition cursor-pointer shadow-md backdrop-blur-md active:scale-90 border border-rose-400/40"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition cursor-pointer shadow-md backdrop-blur-md active:scale-90 border border-rose-400/40"
                   title="Ver actores y sinopsis"
                 >
-                  <Info className="w-4 h-4" />
+                  <Info className="w-3.5 h-3.5" />
                   <span>Info</span>
                 </button>
 
@@ -575,10 +577,10 @@ export default function ViendoCard({
                     if (onCerrarActivo) onCerrarActivo();
                     if (onDescartar) onDescartar(serie.obra_id || serie.id);
                   }}
-                  className="p-2.5 rounded-xl bg-black/70 text-rose-400 hover:text-white hover:bg-rose-600 border border-white/25 flex items-center justify-center cursor-pointer transition backdrop-blur-md active:scale-90 ml-auto"
+                  className="p-2 rounded-xl bg-black/70 text-rose-400 hover:text-white hover:bg-rose-600 border border-white/25 flex items-center justify-center cursor-pointer transition backdrop-blur-md active:scale-90 ml-auto"
                   title="Quitar de Viendo Actualmente"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
 
                 {/* Menú de amigos en móvil */}
@@ -642,41 +644,78 @@ export default function ViendoCard({
                 )}
               </div>
 
-              {/* Sección para Calificar con decimales y Opinar antes de marcar visto en móvil */}
-              <div className="space-y-2">
-                <CalificadorEstrellas
-                  valor={calificacionEpisodio}
-                  onChange={setCalificacionEpisodio}
+              {/* Sección compacta para Calificar y Opinar en móvil */}
+              <div className="p-2.5 rounded-2xl bg-black/50 border border-white/10 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400">
+                    Tu Puntuación
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((index) => {
+                      const fillPercentage = Math.min(100, Math.max(0, (calificacionEpisodio - (index - 1)) * 100));
+                      return (
+                        <div
+                          key={index}
+                          onClick={(e) => {
+                            const { left, width } = e.currentTarget.getBoundingClientRect();
+                            const isHalf = (e.clientX - left) < width / 2;
+                            const nuevo = isHalf ? index - 0.5 : index;
+                            setCalificacionEpisodio(nuevo === calificacionEpisodio ? 0 : nuevo);
+                          }}
+                          className="relative text-xl select-none cursor-pointer leading-none"
+                        >
+                          <span className="text-neutral-700">★</span>
+                          <span 
+                            className="absolute top-0 left-0 overflow-hidden text-amber-400 whitespace-nowrap"
+                            style={{ width: `${fillPercentage}%` }}
+                          >
+                            ★
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <span className="text-xs font-black text-amber-400 min-w-[52px] text-right">
+                    ★ {calificacionEpisodio > 0 ? calificacionEpisodio.toFixed(1) : '0.0'}/5
+                  </span>
+                </div>
+
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="5" 
+                  step="0.1"
+                  value={calificacionEpisodio} 
+                  onChange={(e) => setCalificacionEpisodio(parseFloat(e.target.value))}
+                  className="w-full h-1.5 accent-rose-600 cursor-pointer block"
                 />
 
-                {/* Campo para opinión / reseña breve */}
-                <textarea
+                <input
+                  type="text"
                   value={opinionEpisodio}
                   onChange={(e) => setOpinionEpisodio(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  placeholder="Tu opinión o veredicto de este capítulo (opcional)..."
-                  rows={2}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-black/60 border border-white/10 text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500 transition resize-none font-medium"
+                  placeholder="Tu opinión breve de este capítulo (opcional)..."
+                  className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-black/60 border border-white/10 text-white placeholder-neutral-500 focus:outline-none focus:border-rose-500 transition font-medium"
                 />
               </div>
 
               {/* Selector de fecha en que se vio en móvil */}
-              <div className="p-2.5 rounded-2xl bg-black/50 border border-white/10 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+              <div className="p-2 rounded-2xl bg-black/50 border border-white/10 space-y-1" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-rose-400" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-rose-400" />
                     <span>¿Cuándo lo viste?</span>
                   </span>
-                  <span className="text-[11px] font-bold text-rose-300">
+                  <span className="text-[10px] font-bold text-rose-300">
                     {esHoy ? `Hoy (${formatearFecha(fechaHoy)})` : esAyer ? `Ayer (${formatearFecha(fechaAyer)})` : formatearFecha(fechaVisto)}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5 bg-black/60 p-1 rounded-xl border border-white/10">
+                <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10">
                   <button
                     type="button"
                     onClick={() => { setFechaVisto(fechaHoy); setMostrarInputFecha(false); }}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center ${
+                    className={`flex-1 py-1 rounded-lg text-xs font-black transition cursor-pointer text-center ${
                       esHoy ? 'bg-rose-600 text-white shadow-xs' : 'text-neutral-400 hover:text-white'
                     }`}
                   >
@@ -685,7 +724,7 @@ export default function ViendoCard({
                   <button
                     type="button"
                     onClick={() => setFechaVisto(fechaAyer)}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center ${
+                    className={`flex-1 py-1 rounded-lg text-xs font-black transition cursor-pointer text-center ${
                       esAyer ? 'bg-rose-600 text-white shadow-xs' : 'text-neutral-400 hover:text-white'
                     }`}
                   >
@@ -702,7 +741,7 @@ export default function ViendoCard({
                         <button
                           type="button"
                           onClick={toggle}
-                          className={`w-full py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center flex items-center justify-center gap-1 ${
+                          className={`w-full py-1 rounded-lg text-xs font-black transition cursor-pointer text-center flex items-center justify-center gap-1 ${
                             esOtraFecha || abierto ? 'bg-rose-600 text-white shadow-xs' : 'text-neutral-400 hover:text-white'
                           }`}
                         >
@@ -719,7 +758,7 @@ export default function ViendoCard({
                 type="button"
                 disabled={avanzando}
                 onClick={handleBotonAvanzar}
-                className={`w-full py-3 px-4 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-2 shadow-lg ${
+                className={`w-full py-2.5 px-4 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-2 shadow-lg ${
                   avanzando
                     ? 'bg-rose-900/50 text-white/50 cursor-not-allowed'
                     : 'bg-rose-600 hover:bg-rose-700 active:scale-95 text-white'
@@ -736,7 +775,7 @@ export default function ViendoCard({
                   if (onCerrarActivo) onCerrarActivo();
                   if (onAbrirDetalle) onAbrirDetalle(serie);
                 }}
-                className="w-full py-2.5 px-3 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 border border-white/10 bg-white/5 text-neutral-300 hover:text-white hover:bg-white/10"
+                className="w-full py-2 px-3 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 border border-white/10 bg-white/5 text-neutral-300 hover:text-white hover:bg-white/10"
               >
                 <Layers className="w-3.5 h-3.5 text-rose-500" />
                 <span>Ver todas las temporadas y episodios</span>

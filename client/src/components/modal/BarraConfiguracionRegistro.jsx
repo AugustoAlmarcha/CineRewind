@@ -129,17 +129,17 @@ export default function BarraConfiguracionRegistro({
   const esOtraFecha = !esHoy && !esAyer && !noRecuerdaFecha;
 
   return (
-    <div ref={barraRef} className="space-y-3 bg-neutral-100/70 dark:bg-white/[0.03] p-3.5 sm:p-4 rounded-2xl border border-neutral-200 dark:border-white/10 select-none">
+    <div ref={barraRef} className="space-y-2 sm:space-y-3 bg-neutral-100/70 dark:bg-white/[0.03] p-2.5 sm:p-4 rounded-2xl border border-neutral-200 dark:border-white/10 select-none">
       
       {/* 1. SECCIÓN DE FECHA CONTEXTUAL COMPACTA */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-start flex-wrap gap-2.5 sm:gap-3">
-          <span className="text-[11px] font-black uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+      <div className="space-y-1">
+        <div className="flex items-center justify-start flex-wrap gap-2 sm:gap-3">
+          <span className="hidden sm:inline text-[11px] font-black uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
             {esSerie ? '¿Cuándo lo viste?:' : '¿Cuándo la viste?:'}
           </span>
 
           {/* Opciones directas: Hoy / Ayer / Calendario / Estreno TMDb */}
-          <div className="flex items-center gap-1 bg-neutral-200/80 dark:bg-white/5 p-1 rounded-xl border border-neutral-300/80 dark:border-white/10 flex-wrap">
+          <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-1 bg-neutral-200/80 dark:bg-white/5 p-1 rounded-xl border border-neutral-300/80 dark:border-white/10 flex-wrap">
             <button
               type="button"
               onClick={() => {

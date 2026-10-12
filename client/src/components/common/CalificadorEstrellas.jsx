@@ -10,18 +10,42 @@ export default function CalificadorEstrellas({ valor, onChange }) {
   };
 
   return (
-    <div className="space-y-3 bg-neutral-100 dark:bg-white/5 p-4 rounded-2xl border border-neutral-200 dark:border-white/5">
-      <div className="flex items-center justify-between">
-        <label className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+    <div className="space-y-2 sm:space-y-3 bg-neutral-100 dark:bg-white/5 p-2.5 sm:p-4 rounded-2xl border border-neutral-200 dark:border-white/5">
+      <div className="flex items-center justify-between gap-2">
+        <label className="text-[11px] sm:text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider shrink-0">
           Tu Puntuación
         </label>
-        <span className="text-lg font-black text-amber-500">
+
+        {/* Estrellas compactas en la misma fila para celular */}
+        <div className="flex sm:hidden items-center gap-1">
+          {[1, 2, 3, 4, 5].map((index) => {
+            const fillPercentage = Math.min(100, Math.max(0, (valor - (index - 1)) * 100));
+            return (
+              <div
+                key={index}
+                onClick={(e) => handleStarClick(e, index)}
+                className="relative text-xl select-none cursor-pointer leading-none"
+                title={`Seleccionar ${index - 0.5} o ${index}`}
+              >
+                <span className="text-neutral-300 dark:text-neutral-700">★</span>
+                <span 
+                  className="absolute top-0 left-0 overflow-hidden text-amber-400 whitespace-nowrap"
+                  style={{ width: `${fillPercentage}%` }}
+                >
+                  ★
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        <span className="text-sm sm:text-lg font-black text-amber-500 shrink-0">
           ★ {valor > 0 ? valor.toFixed(1) : '0.0'} / 5.0
         </span>
       </div>
 
-      {/* 5 Estrellas clickeables por mitades */}
-      <div className="flex justify-center gap-2 py-1">
+      {/* 5 Estrellas grandes en fila dedicada para PC */}
+      <div className="hidden sm:flex justify-center gap-2 py-1">
         {[1, 2, 3, 4, 5].map((index) => {
           const fillPercentage = Math.min(100, Math.max(0, (valor - (index - 1)) * 100));
           return (
@@ -51,7 +75,7 @@ export default function CalificadorEstrellas({ valor, onChange }) {
         step="0.1"
         value={valor} 
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full accent-rose-600 cursor-pointer"
+        className="w-full h-1.5 sm:h-2 accent-rose-600 cursor-pointer block"
       />
     </div>
   );
