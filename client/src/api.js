@@ -135,11 +135,32 @@ export const registrarLoteAPI = async (datos) => {
   return res.json();
 };
 
+export const registrarTemporadasMultiplesAPI = async (datos) => {
+  const res = await fetch('/api/historial/series/registrar-temporadas-multiples', {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(datos),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Error al registrar temporadas múltiples');
+  }
+  return res.json();
+};
+
 export const obtenerEpisodiosVistosAPI = async (usuarioId, tmdbId, temporada) => {
   const res = await fetch(`/api/historial/vistos/${usuarioId}/${tmdbId}/${temporada}`, {
     headers: getHeaders()
   });
   if (!res.ok) throw new Error('Error al cargar capítulos vistos');
+  return res.json();
+};
+
+export const obtenerProgresoTemporadasSerieAPI = async (tmdbId) => {
+  const res = await fetch(`/api/historial/series/progreso/${tmdbId}`, {
+    headers: getHeaders()
+  });
+  if (!res.ok) return {};
   return res.json();
 };
 

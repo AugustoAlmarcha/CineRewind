@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Calendar } from 'lucide-react';
 
 export default function TimelineScrubber({ puntos = [] }) {
   const [hoverIndex, setHoverIndex] = useState(null);
@@ -57,7 +58,7 @@ export default function TimelineScrubber({ puntos = [] }) {
               {/* Tooltip flotante */}
               {isHovered && (
                 <div className="absolute right-8 top-1/2 -translate-y-1/2 bg-neutral-900 border border-white/20 text-white text-xs font-black py-1.5 px-3 rounded-xl shadow-2xl whitespace-nowrap flex items-center gap-2 pointer-events-none animate-fadeIn z-50">
-                  <span className="text-rose-500">{punto.icono || '📅'}</span>
+                  <span className="text-rose-500 flex items-center">{punto.icono || <Calendar className="w-3.5 h-3.5" />}</span>
                   <span>{punto.etiqueta}</span>
                   {punto.subtexto && (
                     <span className="text-[10px] text-neutral-400 font-bold">

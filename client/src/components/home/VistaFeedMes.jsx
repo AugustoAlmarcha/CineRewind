@@ -1,6 +1,6 @@
 import React from 'react';
 import TimelineScrubber from './TimelineScrubber';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Calendar } from 'lucide-react';
 
 const MESES_NOMBRES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -40,7 +40,7 @@ export default function VistaFeedMes({
       id: `dia-seccion-${fecha}`,
       etiqueta: `${d} de ${nombreMes}`,
       subtexto: `${diaSemana}, ${obras.length} obras`,
-      icono: '📌',
+      icono: <Calendar className="w-3.5 h-3.5" />,
     };
   });
 

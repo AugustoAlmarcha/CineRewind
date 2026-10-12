@@ -54,6 +54,8 @@ const buscarPeliculas = async (req, res) => {
         release_date: item.release_date || null,
         first_air_date: item.first_air_date || null,
         anio: (item.release_date || item.first_air_date || '').substring(0, 4),
+        titulo_original: item.original_title || item.original_name || null,
+        voto_promedio: item.vote_average ? Number(item.vote_average.toFixed(1)) : null,
         sinopsis: item.overview || 'Sin descripción disponible.',
         poster_path: item.poster_path
           ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
@@ -108,6 +110,7 @@ const obtenerDetallePelicula = async (req, res) => {
       tmdb_id: data.id,
       tipo: endpointTipo === 'tv' ? 'serie' : 'pelicula',
       titulo: data.title || data.name,
+      titulo_original: data.original_title || data.original_name || null,
       fecha_estreno: data.release_date || data.first_air_date || null,
       release_date: data.release_date || null,
       first_air_date: data.first_air_date || null,
@@ -126,6 +129,8 @@ const obtenerDetallePelicula = async (req, res) => {
           temporada: s.season_number,
           episodios: s.episode_count,
           nombre: s.name,
+          fecha_estreno: s.air_date || null,
+          poster_path: s.poster_path ? `https://image.tmdb.org/t/p/w500${s.poster_path}` : null,
         })),
       calificacion: data.vote_average ? Number(data.vote_average.toFixed(1)) : null,
       director,
@@ -177,6 +182,7 @@ const obtenerDetalleTemporada = async (req, res) => {
       sinopsis: ep.overview || 'Sin descripción disponible.',
       still_path: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : null,
       duracion: ep.runtime,
+      calificacion: ep.vote_average ? Number(ep.vote_average.toFixed(1)) : null,
       fecha_estreno: ep.air_date || null,
       air_date: ep.air_date || null,
     }));

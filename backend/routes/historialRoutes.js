@@ -11,6 +11,7 @@ const {
   eliminarVisualizacion,
   registrarLoteVisualizaciones,
   obtenerEpisodiosVistosTemporada,
+  obtenerProgresoTemporadasSerie,
   actualizarReseniaYCalificacion,
   eliminarLoteVisualizaciones,
   actualizarPlataformaSerie,
@@ -24,6 +25,7 @@ const {
   obtenerCalificacionesSeriesUsuario,
   completarTemporadaSerie,
   completarSerieTotal,
+  registrarTemporadasMultiples,
   limpiarDuplicadosSerie,
   asignarAcompananteLoteSerie,
   eliminarCalificacionSerie,
@@ -60,6 +62,7 @@ router.delete('/viendo-actualmente/:usuario_id/:obra_id', verificarToken, descar
    ========================================================================= */
 router.get('/timeline/:usuario_id', obtenerTimeline);
 router.get('/vistos/:usuario_id/:tmdb_id/:temporada', obtenerEpisodiosVistosTemporada);
+router.get('/series/progreso/:tmdb_id', verificarToken, obtenerProgresoTemporadasSerie);
 router.get('/catalogo-usuario', verificarToken, obtenerCatalogoUsuario);
 router.get('/estadisticas', extraerTokenOpcional, obtenerEstadisticasUsuario);
 router.get('/records', extraerTokenOpcional, obtenerRecordsUsuario);
@@ -88,6 +91,7 @@ router.post('/registrar-lote', verificarToken, registrarLoteVisualizaciones);
    ========================================================================= */
 router.post('/series/completar-temporada', verificarToken, completarTemporadaSerie);
 router.post('/series/completar-serie', verificarToken, completarSerieTotal);
+router.post('/series/registrar-temporadas-multiples', verificarToken, registrarTemporadasMultiples);
 router.post('/series/limpiar-duplicados', verificarToken, limpiarDuplicadosSerie);
 router.post('/series/asignar-acompanante-lote', verificarToken, asignarAcompananteLoteSerie);
 

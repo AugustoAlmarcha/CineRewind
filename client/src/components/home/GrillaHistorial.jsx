@@ -3,6 +3,7 @@ import VistaSerieTotal from './VistaSerieTotal';
 import VistaCatalogoTotal from './VistaCatalogoTotal';
 import VistaSelectorCarpetas from './VistaSelectorCarpetas';
 import VistaFeedMes from './VistaFeedMes';
+import TarjetaBusquedaDirecta from './TarjetaBusquedaDirecta';
 import { calcularProgresoSerie, obtenerInfoSaga } from '../../utils/seriesProgreso';
 
 export default function GrillaHistorial({
@@ -70,13 +71,45 @@ export default function GrillaHistorial({
     return true;
   };
 
+  // Helper para normalizar texto (sin tildes/acentos, sin signos de puntuación como puntos o guiones, y en minúsculas)
+  const normalizar = (txt) => {
+    if (!txt) return '';
+    return String(txt)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[.,:;!?'"¿¡\-_/\\()[\]{}~`@#$%^&*+=<>]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Helper para verificar si un registro coincide con la búsqueda (en español o título original en inglés, tolerante a acentos y puntuación)
+  const pasaFiltroBusqueda = (item) => {
+    if (!busquedaHistorial || !busquedaHistorial.trim()) return true;
+    const term = normalizar(busquedaHistorial);
+    if (!term) return true;
+
+    const titNorm = normalizar(item.titulo);
+    const origNorm = normalizar(item.titulo_original);
+
+    const matchTitulo = titNorm.includes(term);
+    const matchOriginal = origNorm.includes(term);
+
+    // Coincidencia compacta (sin espacios para buscar por ej "drhouse" o "spiderman")
+    const termCompact = term.replace(/\s+/g, '');
+    const matchTituloCompact = termCompact.length >= 3 && titNorm.replace(/\s+/g, '').includes(termCompact);
+    const matchOriginalCompact = termCompact.length >= 3 && origNorm.replace(/\s+/g, '').includes(termCompact);
+
+    return Boolean(matchTitulo || matchOriginal || matchTituloCompact || matchOriginalCompact);
+  };
+
   // 1. Catálogo unificado Total Histórico (con soporte para Series, Sagas y Películas)
   const obrasTotalesUnificadas = useMemo(() => {
     if (!vistaTotal) return [];
     const mapaObras = {};
 
     timelineCompleto.forEach((item) => {
-      if (busquedaHistorial && !item.titulo?.toLowerCase().includes(busquedaHistorial.toLowerCase())) {
+      if (!pasaFiltroBusqueda(item)) {
         return;
       }
       // Filtro social
@@ -269,10 +302,7 @@ export default function GrillaHistorial({
       items = arbolHistorial[anioSeleccionado]?.[mesSeleccionado] || [];
     }
     return items.filter((item) => {
-      if (busquedaHistorial.trim() && !item.titulo?.toLowerCase().includes(busquedaHistorial.trim().toLowerCase())) {
-        return false;
-      }
-      return pasaFiltroAmigos(item);
+      return pasaFiltroBusqueda(item) && pasaFiltroAmigos(item);
     });
   }, [arbolHistorial, anioSeleccionado, mesSeleccionado, busquedaHistorial, soloConAmigos, amigosFiltro]);
 
@@ -316,6 +346,15 @@ export default function GrillaHistorial({
 
   // CASO 2: Catálogo general Total Histórico
   if (vistaTotal) {
+    if (obrasTotalesUnificadas.length === 0 && busquedaHistorial && busquedaHistorial.trim()) {
+      return (
+        <TarjetaBusquedaDirecta 
+          busqueda={busquedaHistorial} 
+          onAbrirRegistrar={onAbrirRegistrar} 
+        />
+      );
+    }
+
     return (
       <VistaCatalogoTotal 
         obras={obrasTotalesUnificadas}
@@ -334,7 +373,7 @@ export default function GrillaHistorial({
   if (!anioSeleccionado) {
     const carpetasAnios = listaAnios.map((anio) => {
       const meses = arbolHistorial[anio] || {};
-      const items = Object.values(meses).flat().filter(pasaFiltroAmigos);
+      const items = Object.values(meses).flat().filter((it) => pasaFiltroAmigos(it) && pasaFiltroBusqueda(it));
       return {
         id: anio,
         valor: anio,
@@ -342,12 +381,32 @@ export default function GrillaHistorial({
         subtexto: `${items.length} ${items.length === 1 ? 'obra' : 'obras'}`,
         items
       };
-    }).filter((c) => c.items.length > 0 || !soloConAmigos);
+    }).filter((c) => {
+      if (busquedaHistorial && busquedaHistorial.trim()) {
+        return c.items.length > 0;
+      }
+      return c.items.length > 0 || !soloConAmigos;
+    });
+
+    if (carpetasAnios.length === 0 && busquedaHistorial && busquedaHistorial.trim()) {
+      return (
+        <TarjetaBusquedaDirecta 
+          busqueda={busquedaHistorial} 
+          onAbrirRegistrar={onAbrirRegistrar} 
+        />
+      );
+    }
 
     return (
       <VistaSelectorCarpetas 
         carpetas={carpetasAnios}
-        tituloVacio={soloConAmigos ? "No tienes registros compartidos con esos amigos." : "No hay registros en tu historial todavía."}
+        tituloVacio={
+          busquedaHistorial && busquedaHistorial.trim()
+            ? `No se encontraron registros de "${busquedaHistorial.trim()}" en tu historial.`
+            : soloConAmigos 
+              ? "No tienes registros compartidos con esos amigos." 
+              : "No hay registros en tu historial todavía."
+        }
         onSeleccionar={onSeleccionarAnio}
         modoSeleccion={modoSeleccion}
         seleccionadosParaBorrar={seleccionadosParaBorrar}
@@ -360,10 +419,10 @@ export default function GrillaHistorial({
   // CASO 4: Selector de Meses
   if (mesSeleccionado === null) {
     const mesesObj = arbolHistorial[anioSeleccionado] || {};
-    const todosItemsAnio = Object.values(mesesObj).flat().filter(pasaFiltroAmigos);
+    const todosItemsAnio = Object.values(mesesObj).flat().filter((it) => pasaFiltroAmigos(it) && pasaFiltroBusqueda(it));
 
     const carpetasMeses = Array.from({ length: 12 }, (_, index) => {
-      const items = (mesesObj[index] || []).filter(pasaFiltroAmigos);
+      const items = (mesesObj[index] || []).filter((it) => pasaFiltroAmigos(it) && pasaFiltroBusqueda(it));
       const nombreMes = new Date(2024, index, 1).toLocaleDateString('es-ES', { month: 'long' });
       return {
         id: index,
@@ -391,10 +450,25 @@ export default function GrillaHistorial({
     }
     carpetasConTodoElAnio.push(...carpetasMeses);
 
+    if (carpetasConTodoElAnio.length === 0 && busquedaHistorial && busquedaHistorial.trim()) {
+      return (
+        <TarjetaBusquedaDirecta 
+          busqueda={busquedaHistorial} 
+          onAbrirRegistrar={onAbrirRegistrar} 
+        />
+      );
+    }
+
     return (
       <VistaSelectorCarpetas 
         carpetas={carpetasConTodoElAnio}
-        tituloVacio={soloConAmigos ? `Sin registros compartidos con esos amigos en ${anioSeleccionado}.` : `No hay registros en ${anioSeleccionado}.`}
+        tituloVacio={
+          busquedaHistorial && busquedaHistorial.trim()
+            ? `No se encontraron registros de "${busquedaHistorial.trim()}" en ${anioSeleccionado}.`
+            : soloConAmigos 
+              ? `Sin registros compartidos con esos amigos en ${anioSeleccionado}.` 
+              : `No hay registros en ${anioSeleccionado}.`
+        }
         onSeleccionar={onSeleccionarMes}
         modoSeleccion={modoSeleccion}
         seleccionadosParaBorrar={seleccionadosParaBorrar}
@@ -405,6 +479,15 @@ export default function GrillaHistorial({
   }
 
   // CASO 5: Feed del Mes (Diario por Fechas)
+  if (gruposPorDia.length === 0 && busquedaHistorial && busquedaHistorial.trim()) {
+    return (
+      <TarjetaBusquedaDirecta 
+        busqueda={busquedaHistorial} 
+        onAbrirRegistrar={onAbrirRegistrar} 
+      />
+    );
+  }
+
   const nombresMesesLista = [
     'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'

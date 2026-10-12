@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS obras_catalogo (
     tmdb_id INTEGER UNIQUE NOT NULL,
     tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('pelicula', 'serie')),
     titulo VARCHAR(255) NOT NULL,
+    titulo_original VARCHAR(255),
     poster_path TEXT,
     total_temporadas INTEGER,
     total_episodios INTEGER,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import TimelineScrubber from './TimelineScrubber';
-import { Award, Star, Trash2, CheckCircle2, AlertTriangle, RotateCcw, Loader2, Plus, ArrowLeft, Users } from 'lucide-react';
+import { Award, Star, Trash2, CheckCircle2, AlertTriangle, RotateCcw, Loader2, Plus, ArrowLeft, Users, Tv, Film, Clapperboard } from 'lucide-react';
 import ModalCalificarSerie from '../modal/ModalCalificarSerie';
 import ModalGestionTemporada from '../modal/ModalGestionTemporada';
 import ModalAsignarAcompananteSerie from '../modal/ModalAsignarAcompananteSerie';
@@ -193,7 +193,7 @@ export default function VistaSerieTotal({
       id: `serie-fecha-${fecha}`,
       etiqueta: `${d} ${nombreMes} ${y}`,
       subtexto,
-      icono: esSerie ? '🎬' : (esSaga ? '🍿' : '🎥'),
+      icono: esSerie ? <Tv className="w-3.5 h-3.5" /> : (esSaga ? <Film className="w-3.5 h-3.5" /> : <Clapperboard className="w-3.5 h-3.5" />),
     };
   });
 

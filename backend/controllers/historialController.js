@@ -31,6 +31,7 @@ const registrarVisualizacion = async (req, res) => {
     amigos_etiquetados,
     visto_con_texto,
     calificacion,
+    titulo_original,
   } = req.body;
 
   if (!tmdb_id || !tipo || !titulo || !fecha_visto) {
@@ -43,10 +44,11 @@ const registrarVisualizacion = async (req, res) => {
 
   try {
     const queryObra = `
-      INSERT INTO obras_catalogo (tmdb_id, tipo, titulo, poster_path)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO obras_catalogo (tmdb_id, tipo, titulo, poster_path, titulo_original)
+      VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (tmdb_id) DO UPDATE SET 
         titulo = EXCLUDED.titulo,
+        titulo_original = COALESCE(EXCLUDED.titulo_original, obras_catalogo.titulo_original),
         poster_path = COALESCE(EXCLUDED.poster_path, obras_catalogo.poster_path)
       RETURNING id;
     `;
@@ -55,6 +57,7 @@ const registrarVisualizacion = async (req, res) => {
       tipo.toLowerCase(),
       titulo,
       posterNormalizado,
+      titulo_original || null,
     ]);
     const obra_id = resObra.rows[0].id;
 
@@ -167,6 +170,36 @@ const registrarVisualizacion = async (req, res) => {
 // ========================================================
 // 2. TIMELINE CRONOLÓGICO (INICIO Y RESEÑAS CON ESTRELLAS)
 // ========================================================
+let backfillTitulosEjecutado = false;
+const enriquecerTitulosOriginales = async () => {
+  if (backfillTitulosEjecutado) return;
+  backfillTitulosEjecutado = true;
+  try {
+    const faltantes = await pool.query(
+      `SELECT id, tmdb_id, tipo FROM obras_catalogo WHERE titulo_original IS NULL AND tmdb_id IS NOT NULL LIMIT 40`
+    );
+    const apiKey = process.env.TMDB_API_KEY;
+    if (!apiKey || !faltantes.rows || faltantes.rows.length === 0) return;
+
+    for (const fila of faltantes.rows) {
+      const endpoint = fila.tipo === 'serie' ? 'tv' : 'movie';
+      const url = `https://api.themoviedb.org/3/${endpoint}/${fila.tmdb_id}?api_key=${apiKey}&language=es-MX`;
+      try {
+        const resp = await fetch(url);
+        if (resp.ok) {
+          const d = await resp.json();
+          const orig = d.original_title || d.original_name;
+          if (orig) {
+            await pool.query(`UPDATE obras_catalogo SET titulo_original = $1 WHERE id = $2`, [orig, fila.id]);
+          }
+        }
+      } catch (e) {}
+    }
+  } catch (err) {
+    console.warn('[Timeline] Aviso backfill títulos originales:', err.message);
+  }
+};
+
 const obtenerTimeline = async (req, res) => {
   const usuario_id = req.params.usuario_id || req.usuario?.id;
   const { tipo } = req.query;
@@ -174,6 +207,9 @@ const obtenerTimeline = async (req, res) => {
   if (!usuario_id) {
     return res.status(400).json({ error: 'ID de usuario requerido' });
   }
+
+  // Ejecución en segundo plano sin demorar la respuesta
+  enriquecerTitulosOriginales().catch(() => {});
 
   try {
     let query = `
@@ -194,6 +230,7 @@ const obtenerTimeline = async (req, res) => {
         o.tmdb_id,
         o.tipo,
         o.titulo,
+        o.titulo_original,
         o.poster_path AS poster_serie,
         o.poster_path AS poster_obra,
         o.total_temporadas,
@@ -310,6 +347,7 @@ const registrarLoteVisualizaciones = async (req, res) => {
     total_episodios_temporada,
     amigos_etiquetados,
     visto_con_texto,
+    titulo_original,
   } = req.body;
 
   if (!tmdb_id || !titulo || !temporada || !Array.isArray(episodios) || episodios.length === 0) {
@@ -327,16 +365,18 @@ const registrarLoteVisualizaciones = async (req, res) => {
 
   try {
     const queryObra = `
-      INSERT INTO obras_catalogo (tmdb_id, tipo, titulo, poster_path)
-      VALUES ($1, 'serie', $2, $3)
+      INSERT INTO obras_catalogo (tmdb_id, tipo, titulo, poster_path, titulo_original)
+      VALUES ($1, 'serie', $2, $3, $4)
       ON CONFLICT (tmdb_id) DO UPDATE SET 
         titulo = EXCLUDED.titulo,
+        titulo_original = COALESCE(EXCLUDED.titulo_original, obras_catalogo.titulo_original),
         poster_path = COALESCE(EXCLUDED.poster_path, obras_catalogo.poster_path)
       RETURNING id;
     `;
-    const resObra = await pool.query(queryObra, [tmdb_id, titulo, posterNormalizado]);
+    const resObra = await pool.query(queryObra, [tmdb_id, titulo, posterNormalizado, titulo_original || null]);
     const obra_id = resObra.rows[0].id;
 
+    const idsProcesados = [];
     for (const ep of episodiosNumeros) {
       const fotoEp = fotos_episodios && fotos_episodios[ep] ? fotos_episodios[ep] : null;
       const fechaEpisodio = (fechas_episodios && fechas_episodios[ep]) ? fechas_episodios[ep] : fecha_visto;
@@ -373,6 +413,8 @@ const registrarLoteVisualizaciones = async (req, res) => {
         visualizacionId = existe.rows[0].id;
       }
 
+      idsProcesados.push(visualizacionId);
+
       if (Array.isArray(amigos_etiquetados) && amigos_etiquetados.length > 0) {
         for (const amigoId of amigos_etiquetados) {
           const idAmigoNum = parseInt(amigoId, 10);
@@ -408,7 +450,8 @@ const registrarLoteVisualizaciones = async (req, res) => {
 
     res.status(201).json({ 
       mensaje: `Se procesaron ${episodios.length} capítulos exitosamente.`,
-      ultimo_capitulo: maxEpisodioEnviado 
+      ultimo_capitulo: maxEpisodioEnviado,
+      ids: idsProcesados
     });
   } catch (error) {
     console.error('Error al registrar lote de episodios:', error.message);
@@ -429,7 +472,7 @@ const obtenerEpisodiosVistosTemporada = async (req, res) => {
 
   try {
     const query = `
-      SELECT h.episodio 
+      SELECT DISTINCT h.episodio 
       FROM historial_visualizaciones h
       INNER JOIN obras_catalogo o ON h.obra_id = o.id
       WHERE h.usuario_id = $1 AND o.tmdb_id = $2 AND h.temporada = $3;
@@ -1481,6 +1524,230 @@ const eliminarReseniaVisualizacion = async (req, res) => {
   }
 };
 
+// ========================================================
+// 17. REGISTRAR MÚLTIPLES TEMPORADAS COMPLETAS EN LOTE
+// ========================================================
+const registrarTemporadasMultiples = async (req, res) => {
+  const usuario_id = req.usuario?.id;
+  if (!usuario_id) return res.status(401).json({ error: 'No autorizado' });
+
+  const {
+    tmdb_id,
+    titulo,
+    poster_path,
+    plataforma,
+    temporadas,
+    usar_fechas_estreno = false,
+    fecha_visto = null,
+    distribucion = null,
+    fechas_distribuidas = null,
+    amigos_etiquetados = [],
+    visto_con_texto = null,
+    titulo_original = null,
+  } = req.body;
+
+  if (!tmdb_id || !titulo || !Array.isArray(temporadas) || temporadas.length === 0) {
+    return res.status(400).json({ error: 'Faltan parámetros requeridos (tmdb_id, titulo, temporadas)' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const posterNormalizado = poster_path
+      ? (poster_path.startsWith('http') ? poster_path : `https://image.tmdb.org/t/p/w500${poster_path.startsWith('/') ? poster_path : `/${poster_path}`}`)
+      : null;
+
+    const qObra = `
+      INSERT INTO obras_catalogo (tmdb_id, tipo, titulo, poster_path, titulo_original)
+      VALUES ($1, 'serie', $2, $3, $4)
+      ON CONFLICT (tmdb_id) DO UPDATE SET 
+        titulo = EXCLUDED.titulo,
+        titulo_original = COALESCE(EXCLUDED.titulo_original, obras_catalogo.titulo_original),
+        poster_path = COALESCE(EXCLUDED.poster_path, obras_catalogo.poster_path)
+      RETURNING id;
+    `;
+    const resObra = await client.query(qObra, [tmdb_id, titulo, posterNormalizado, titulo_original || null]);
+    const obra_id = resObra.rows[0].id;
+
+    let totalInsertados = 0;
+    const idsProcesados = [];
+    let globalEpisodioIndex = 0;
+    const apiKey = process.env.TMDB_API_KEY;
+    const temporadasOrdenadas = [...temporadas].map(Number).sort((a, b) => a - b);
+
+    for (const tempNum of temporadasOrdenadas) {
+      if (isNaN(tempNum) || tempNum <= 0) continue;
+
+      let episodiosData = [];
+      if (apiKey) {
+        const url = `https://api.themoviedb.org/3/tv/${tmdb_id}/season/${tempNum}?api_key=${apiKey}&language=es-MX`;
+        try {
+          const resp = await fetch(url);
+          if (resp.ok) {
+            const dataJson = await resp.json();
+            if (dataJson && Array.isArray(dataJson.episodes)) {
+              episodiosData = dataJson.episodes;
+            }
+          }
+        } catch (e) {
+          console.warn(`Error al obtener episodios para T${tempNum}:`, e.message);
+        }
+      }
+
+      if (episodiosData.length === 0) continue;
+      const totalCaps = episodiosData.length;
+
+      for (const ep of episodiosData) {
+        const epNum = ep.episode_number;
+        const fotoEp = ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : null;
+        let fechaEp = fecha_visto;
+
+        if (distribucion && distribucion.fecha_inicio) {
+          const capPorTanda = Math.max(1, parseInt(distribucion.capitulos_por_tanda, 10) || 1);
+          const diasInterv = Math.max(1, parseInt(distribucion.dias_intervalo, 10) || 1);
+          const tanda = Math.floor(globalEpisodioIndex / capPorTanda);
+          const diasAAgregar = tanda * diasInterv;
+
+          const [y, m, d] = String(distribucion.fecha_inicio).substring(0, 10).split('-').map(Number);
+          const cur = new Date(y, m - 1, d);
+          cur.setDate(cur.getDate() + diasAAgregar);
+          const yr = cur.getFullYear();
+          const mo = String(cur.getMonth() + 1).padStart(2, '0');
+          const da = String(cur.getDate()).padStart(2, '0');
+          fechaEp = `${yr}-${mo}-${da}`;
+          globalEpisodioIndex++;
+        } else if (fechas_distribuidas && fechas_distribuidas[`${tempNum}_${epNum}`]) {
+          fechaEp = fechas_distribuidas[`${tempNum}_${epNum}`];
+        } else if (usar_fechas_estreno) {
+          if (ep.air_date && /^\d{4}-\d{2}-\d{2}/.test(ep.air_date)) {
+            fechaEp = ep.air_date.substring(0, 10);
+          } else if (fecha_visto) {
+            fechaEp = fecha_visto;
+          } else {
+            fechaEp = new Date().toISOString().substring(0, 10);
+          }
+        }
+
+        if (!fechaEp) {
+          fechaEp = new Date().toISOString().substring(0, 10);
+        }
+
+        const esFinTemp = epNum === totalCaps;
+
+        const existe = await client.query(
+          `SELECT id FROM historial_visualizaciones 
+           WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5`,
+          [usuario_id, obra_id, tempNum, epNum, fechaEp]
+        );
+
+        let visualizacionId;
+        if (existe.rows.length === 0) {
+          const ins = await client.query(
+            `INSERT INTO historial_visualizaciones 
+               (usuario_id, obra_id, fecha_visto, plataforma, temporada, episodio, foto_episodio, es_final_temporada, visto_con_texto)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING id;`,
+            [
+              usuario_id,
+              obra_id,
+              fechaEp,
+              plataforma || null,
+              tempNum,
+              epNum,
+              fotoEp,
+              esFinTemp,
+              visto_con_texto ? String(visto_con_texto).trim() : null
+            ]
+          );
+          visualizacionId = ins.rows[0].id;
+          totalInsertados++;
+        } else {
+          visualizacionId = existe.rows[0].id;
+        }
+
+        idsProcesados.push(visualizacionId);
+
+        if (Array.isArray(amigos_etiquetados) && amigos_etiquetados.length > 0) {
+          for (const amigoId of amigos_etiquetados) {
+            const idAmigoNum = parseInt(amigoId, 10);
+            if (idAmigoNum && idAmigoNum !== usuario_id) {
+              await client.query(
+                `INSERT INTO covisualizaciones (visualizacion_id, amigo_id, estado)
+                 VALUES ($1, $2, 'pendiente')
+                 ON CONFLICT (visualizacion_id, amigo_id) DO NOTHING;`,
+                [visualizacionId, idAmigoNum]
+              );
+            }
+          }
+        }
+      }
+    }
+
+    await client.query(
+      `INSERT INTO seguimiento_series (usuario_id, obra_id, activo, actualizado_en)
+       VALUES ($1, $2, true, CURRENT_TIMESTAMP)
+       ON CONFLICT (usuario_id, obra_id) DO UPDATE SET 
+         activo = true,
+         actualizado_en = CURRENT_TIMESTAMP;`,
+      [usuario_id, obra_id]
+    );
+
+    await client.query('COMMIT');
+    res.json({
+      ok: true,
+      mensaje: `¡Se registraron ${temporadas.length} temporadas (${totalInsertados} capítulos nuevos)!`,
+      total_insertados: totalInsertados,
+      ids: idsProcesados,
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al registrar temporadas múltiples:', error);
+    res.status(500).json({ error: 'Error al registrar temporadas múltiples' });
+  } finally {
+    client.release();
+  }
+};
+
+// ========================================================
+// 18. OBTENER PROGRESO POR TEMPORADA DE UNA SERIE (Para el usuario activo)
+// Devuelve cuántos episodios únicos vio el usuario en cada temporada: { 1: 22, 2: 24, 3: 5 }
+// ========================================================
+const obtenerProgresoTemporadasSerie = async (req, res) => {
+  const usuario_id = req.usuario?.id;
+  const { tmdb_id } = req.params;
+
+  if (!usuario_id || !tmdb_id) {
+    return res.status(400).json({ error: 'Faltan parámetros requeridos' });
+  }
+
+  const tmdbIdNum = parseInt(tmdb_id, 10);
+  if (isNaN(tmdbIdNum)) {
+    return res.status(400).json({ error: 'tmdb_id inválido' });
+  }
+
+  try {
+    const q = `
+      SELECT h.temporada, COUNT(DISTINCT h.episodio) as total_vistos
+      FROM historial_visualizaciones h
+      INNER JOIN obras_catalogo o ON h.obra_id = o.id
+      WHERE h.usuario_id = $1 AND o.tmdb_id = $2 AND h.temporada IS NOT NULL
+      GROUP BY h.temporada;
+    `;
+    const resultado = await pool.query(q, [usuario_id, tmdbIdNum]);
+    
+    const progreso = {};
+    resultado.rows.forEach((r) => {
+      progreso[Number(r.temporada)] = Number(r.total_vistos);
+    });
+
+    res.json(progreso);
+  } catch (error) {
+    console.error('Error al obtener progreso de temporadas de la serie:', error);
+    res.status(500).json({ error: 'Error al consultar progreso de la serie' });
+  }
+};
+
 module.exports = {
   registrarVisualizacion,
   obtenerTimeline,
@@ -1489,7 +1756,9 @@ module.exports = {
   obtenerRecordsUsuario,
   obtenerCatalogoUsuario,
   registrarLoteVisualizaciones,
+  registrarTemporadasMultiples,
   obtenerEpisodiosVistosTemporada,
+  obtenerProgresoTemporadasSerie,
   actualizarReseniaYCalificacion,
   eliminarLoteVisualizaciones,
   actualizarPlataformaSerie,

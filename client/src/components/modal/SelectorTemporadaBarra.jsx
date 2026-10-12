@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star } from 'lucide-react';
+import { Star, Check, RotateCcw, Info, Calendar } from 'lucide-react';
 
 export default function SelectorTemporadaBarra({
   listaTemporadas,
@@ -8,10 +8,13 @@ export default function SelectorTemporadaBarra({
   faltantesCount,
   onMarcarRestantes,
   onAbrirCalificarTemporada,
-  notaEspecial
+  notaEspecial,
+  episodiosSeleccionadosCount = 0,
+  onAbrirDistribuir,
+  panelDistribuirAbierto = false,
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 select-none">
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         {/* Botones de número de temporada con scroll elegante */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-elegante max-w-full">
@@ -45,14 +48,38 @@ export default function SelectorTemporadaBarra({
             </button>
           )}
 
+          {episodiosSeleccionadosCount > 1 && onAbrirDistribuir && (
+            <button
+              type="button"
+              onClick={onAbrirDistribuir}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 flex-shrink-0 active:scale-95 shadow-xs border ${
+                panelDistribuirAbierto
+                  ? 'bg-rose-600 border-rose-600 text-white'
+                  : 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/30 text-rose-600 dark:text-rose-400'
+              }`}
+              title="Distribuir fechas automáticamente por ritmo (1 por semana, 1 por día, etc.)"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Distribuir fechas ({episodiosSeleccionadosCount})</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onMarcarRestantes}
-            className="px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-neutral-200/80 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/20 transition cursor-pointer flex-shrink-0"
+            className="px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-neutral-200/80 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/20 transition cursor-pointer flex-shrink-0 flex items-center gap-1.5"
           >
-            {faltantesCount > 0 
-              ? `✓ Marcar restantes (${faltantesCount})` 
-              : '↺ Marcar completa'}
+            {faltantesCount > 0 ? (
+              <>
+                <Check className="w-3.5 h-3.5" />
+                <span>Marcar restantes ({faltantesCount})</span>
+              </>
+            ) : (
+              <>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Marcar completa</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -60,7 +87,7 @@ export default function SelectorTemporadaBarra({
       {/* Nota explicativa de formato si la serie tiene discrepancias de temporadas */}
       {notaEspecial && (
         <div className="flex items-start gap-2 p-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs animate-fadeIn">
-          <span className="text-sm shrink-0">ℹ️</span>
+          <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
           <div className="leading-snug">
             <span className="font-bold mr-1">Nota de formato:</span>
             <span>{typeof notaEspecial === 'string' ? notaEspecial : notaEspecial.nota}</span>
@@ -69,4 +96,4 @@ export default function SelectorTemporadaBarra({
       )}
     </div>
   );
-}
+}

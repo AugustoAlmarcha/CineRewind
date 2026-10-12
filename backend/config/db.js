@@ -51,13 +51,14 @@ if (hasExternalPostgres) {
       eventListeners.error.forEach((cb) => cb(err, client));
     });
 
-    // Asegurar columnas de metadatos de series en obras_catalogo
+    // Asegurar columnas de metadatos de series y título original en obras_catalogo
     realPool.query(`
       ALTER TABLE obras_catalogo 
       ADD COLUMN IF NOT EXISTS total_temporadas INTEGER,
       ADD COLUMN IF NOT EXISTS total_episodios INTEGER,
       ADD COLUMN IF NOT EXISTS estado_serie VARCHAR(50),
-      ADD COLUMN IF NOT EXISTS seasons_info JSONB;
+      ADD COLUMN IF NOT EXISTS seasons_info JSONB,
+      ADD COLUMN IF NOT EXISTS titulo_original TEXT;
     `).catch((err) => {
       console.warn('[Database] Aviso de migración de columnas:', err.message);
     });

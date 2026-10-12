@@ -38,7 +38,9 @@ import {
   enviarSolicitudAmistadAPI,
   responderSolicitudAmistadAPI,
   eliminarAmigoAPI,
-  obtenerCalificacionesSeriesUsuarioAPI
+  obtenerCalificacionesSeriesUsuarioAPI,
+  eliminarVisualizacionAPI,
+  eliminarLoteAPI
 } from '../api';
 
 
@@ -747,7 +749,35 @@ export default function Perfil() {
         <ModalRegistrar
           obra={obraParaRegistrar}
           onClose={() => setObraParaRegistrar(null)}
-          onRegistroCompletado={cargarDatosPerfil}
+          onRegistroCompletado={(info) => {
+            cargarDatosPerfil();
+            if (!info?.mantenerAbierto) {
+              setObraParaRegistrar(null);
+            }
+            if (info?.ids && Array.isArray(info.ids) && info.ids.length > 0) {
+              const cant = info.ids.length;
+              window.dispatchEvent(new CustomEvent('cinerewind:mostrar-toast-deshacer', {
+                detail: {
+                  id: `${info.ids[0]}-${cant}-${Date.now()}`,
+                  titulo: info.titulo || 'Registro guardado',
+                  mensaje: info.mensaje || 'Registro guardado en tu historial',
+                  subtexto: 'Toca deshacer si lo marcaste por error',
+                  onDeshacer: async () => {
+                    try {
+                      if (cant === 1) {
+                        await eliminarVisualizacionAPI(info.ids[0]);
+                      } else {
+                        await eliminarLoteAPI(info.ids);
+                      }
+                      cargarDatosPerfil();
+                    } catch (errUndo) {
+                      console.error('Error al deshacer registro:', errUndo);
+                    }
+                  }
+                }
+              }));
+            }
+          }}
           onCambiarObra={(nueva) => setObraParaRegistrar(nueva)}
         />
       )}

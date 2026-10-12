@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { obtenerAmigosAPI } from '../../api';
+import { Users, Check, X } from 'lucide-react';
 
 export default function SelectorAmigosEtiquetar({
   amigosSeleccionados = [],
@@ -38,11 +39,12 @@ export default function SelectorAmigosEtiquetar({
   };
 
   return (
-    <div className="p-4 bg-white/50 dark:bg-[#181820]/70 border border-neutral-200 dark:border-white/10 rounded-2xl space-y-3.5">
+    <div className="p-4 bg-white/50 dark:bg-[#181820]/70 border border-neutral-200 dark:border-white/10 rounded-2xl space-y-3.5 select-none">
       {/* Título de la sección */}
       <div className="flex items-center justify-between">
         <label className="text-xs font-black uppercase tracking-wider text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
-          <span>👥</span> ¿Con quién lo viste?
+          <Users className="w-3.5 h-3.5 text-rose-500" />
+          <span>¿Con quién lo viste?</span>
         </label>
         {(amigosSeleccionados.length > 0 || vistoConTexto) && (
           <button
@@ -84,7 +86,7 @@ export default function SelectorAmigosEtiquetar({
                   )}
                 </div>
                 <span>@{amigo.username}</span>
-                {seleccionado && <span className="text-[10px]">✓</span>}
+                {seleccionado && <Check className="w-3 h-3 stroke-[3]" />}
               </button>
             );
           })}
@@ -102,7 +104,7 @@ export default function SelectorAmigosEtiquetar({
           {/* Chips de atajos rápidos sugeridos */}
           {setVistoConTexto && (
             <div className="flex items-center gap-1 flex-wrap">
-              {['Mamá', 'Papá', 'Hermana', 'Pareja', 'Familia'].map((sugerencia) => (
+              {['Pareja', 'Familia', 'Amigos', 'Compañero/a'].map((sugerencia) => (
                 <button
                   key={sugerencia}
                   type="button"
@@ -113,7 +115,7 @@ export default function SelectorAmigosEtiquetar({
                       setVistoConTexto(`${vistoConTexto}, ${sugerencia}`);
                     }
                   }}
-                  className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-neutral-200/70 dark:bg-white/5 hover:bg-rose-500/10 hover:text-rose-500 transition cursor-pointer text-neutral-600 dark:text-neutral-400"
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-neutral-200/70 dark:bg-white/5 hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition cursor-pointer text-neutral-600 dark:text-neutral-400"
                 >
                   +{sugerencia}
                 </button>
@@ -134,9 +136,9 @@ export default function SelectorAmigosEtiquetar({
             <button
               type="button"
               onClick={() => setVistoConTexto && setVistoConTexto('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 hover:text-neutral-900 dark:hover:text-white cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-900 dark:hover:text-white cursor-pointer p-0.5"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>

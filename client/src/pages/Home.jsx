@@ -446,6 +446,14 @@ export default function Home({ actualizarTrigger }) {
     cargarDatos();
   }, [cargarDatos, actualizarTrigger]);
 
+  useEffect(() => {
+    const handleActualizar = () => {
+      cargarDatos();
+    };
+    window.addEventListener('cinerewind:actualizar-datos', handleActualizar);
+    return () => window.removeEventListener('cinerewind:actualizar-datos', handleActualizar);
+  }, [cargarDatos]);
+
   const arbolHistorial = useMemo(() => {
     const mapa = {};
     timeline.forEach((item) => {
@@ -570,7 +578,7 @@ export default function Home({ actualizarTrigger }) {
     try {
       const pasaDeTemporada = serie.siguiente_temporada && Number(serie.siguiente_temporada) > Number(serie.temporada);
 
-      await avanzarCapituloAPI({
+      const resp = await avanzarCapituloAPI({
         usuario_id: usuario.id,
         obra_id: serie.obra_id,
         temporada: serie.siguiente_temporada ?? serie.temporada,
@@ -582,8 +590,60 @@ export default function Home({ actualizarTrigger }) {
         fecha_visto: extra?.fecha_visto || obtenerFechaHoyLocal(),
       });
       await cargarDatos();
+
+      const visId = resp?.visualizacion?.id || resp?.visualizacion_id || resp?.registro?.id;
+      if (visId) {
+        const tempNum = resp?.temporada_guardada || serie.siguiente_temporada || serie.temporada || 1;
+        const epNum = resp?.episodio_guardado || serie.siguiente_episodio || serie.episodio || 1;
+        window.dispatchEvent(new CustomEvent('cinerewind:mostrar-toast-deshacer', {
+          detail: {
+            id: visId,
+            titulo: serie.titulo,
+            mensaje: `T${tempNum} · E${epNum} de ${serie.titulo} registrado`,
+            subtexto: 'Toca deshacer si lo marcaste por error',
+            onDeshacer: async () => {
+              try {
+                await eliminarVisualizacionAPI(visId);
+                await cargarDatos();
+              } catch (errUndo) {
+                console.error('Error al deshacer visualización:', errUndo);
+              }
+            }
+          }
+        }));
+      }
     } catch (err) {
       console.error('Error al avanzar capítulo:', err);
+    }
+  };
+
+  const handleRegistroModalCompletado = async (info) => {
+    await cargarDatos();
+    if (!info?.mantenerAbierto) {
+      setSerieParaEditar(null);
+    }
+    if (info?.ids && Array.isArray(info.ids) && info.ids.length > 0) {
+      const cant = info.ids.length;
+      window.dispatchEvent(new CustomEvent('cinerewind:mostrar-toast-deshacer', {
+        detail: {
+          id: `${info.ids[0]}-${cant}-${Date.now()}`,
+          titulo: info.titulo || 'Registro guardado',
+          mensaje: info.mensaje || 'Registro guardado en tu historial',
+          subtexto: 'Toca deshacer si lo marcaste por error',
+          onDeshacer: async () => {
+            try {
+              if (cant === 1) {
+                await eliminarVisualizacionAPI(info.ids[0]);
+              } else {
+                await eliminarLoteAPI(info.ids);
+              }
+              await cargarDatos();
+            } catch (errUndo) {
+              console.error('Error al deshacer registro:', errUndo);
+            }
+          }
+        }
+      }));
     }
   };
 
@@ -916,7 +976,7 @@ export default function Home({ actualizarTrigger }) {
           />
 
           {/* 2. Mi Diario Cinemático y Total Histórico */}
-          <section id="seccion-historial" className="!mt-[35px] sm:!mt-[50px] space-y-3 scroll-mt-20 relative z-10">
+          <section id="seccion-historial" className="!mt-[35px] sm:!mt-[50px] space-y-3 scroll-mt-20 relative z-20">
             <HeaderHistorial 
               vistaTotal={vistaTotal}
               setVistaTotal={handleCambiarVistaTotal}
@@ -997,7 +1057,7 @@ export default function Home({ actualizarTrigger }) {
         <ModalRegistrar 
           obra={serieParaEditar} 
           onClose={() => setSerieParaEditar(null)} 
-          onRegistroCompletado={() => { cargarDatos(); setSerieParaEditar(null); }} 
+          onRegistroCompletado={handleRegistroModalCompletado} 
         />
       )}
 

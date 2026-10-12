@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { obtenerFilmografiaActorAPI, obtenerTimelineAPI, registrarVisualizacionAPI } from '../../api';
 import TarjetaFilmografia from './TarjetaFilmografia';
+import SelectorCalendarioPopover from './SelectorCalendarioPopover';
 import { CheckSquare, Check, Calendar, Tv, Sparkles, X, Users, Film } from 'lucide-react';
-import { obtenerFechaHoyLocal, obtenerFechaAyerLocal } from '../../utils/fechas';
+import { obtenerFechaHoyLocal, obtenerFechaAyerLocal, formatearFecha } from '../../utils/fechas';
 
 export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObra }) {
   const { usuario } = useAuth();
@@ -295,37 +296,72 @@ export default function ModalFilmografiaActor({ actor, onClose, onSeleccionarObr
                 </div>
               </div>
 
-              {/* Selector de fecha */}
+              {/* Selector de fecha con calendario propio CineRewind */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-black uppercase text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-rose-500" />
                     <span>Fecha de visualización</span>
                   </label>
-                  <div className="flex gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setFechaLote(obtenerFechaHoyLocal())}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white transition cursor-pointer"
-                    >
-                      Hoy
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFechaLote(obtenerFechaAyerLocal())}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-neutral-200 dark:bg-white/10 hover:bg-rose-600 hover:text-white transition cursor-pointer"
-                    >
-                      Ayer
-                    </button>
+                  <span className="text-[11px] font-bold text-rose-500">
+                    {fechaLote === obtenerFechaHoyLocal()
+                      ? `Hoy (${formatearFecha(fechaLote)})`
+                      : fechaLote === obtenerFechaAyerLocal()
+                      ? `Ayer (${formatearFecha(fechaLote)})`
+                      : formatearFecha(fechaLote)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-neutral-100 dark:bg-neutral-900/80 p-1 rounded-xl border border-neutral-200 dark:border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setFechaLote(obtenerFechaHoyLocal())}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer text-center ${
+                      fechaLote === obtenerFechaHoyLocal()
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Hoy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFechaLote(obtenerFechaAyerLocal())}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer text-center ${
+                      fechaLote === obtenerFechaAyerLocal()
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Ayer
+                  </button>
+                  <div className="flex-1">
+                    <SelectorCalendarioPopover
+                      fecha={fechaLote}
+                      onSeleccionarFecha={(f) => setFechaLote(f)}
+                      align="right"
+                      posicionVert="abajo"
+                      className="w-full"
+                      renderTrigger={({ abierto, toggle }) => {
+                        const esOtraFecha = fechaLote !== obtenerFechaHoyLocal() && fechaLote !== obtenerFechaAyerLocal();
+                        return (
+                          <button
+                            type="button"
+                            onClick={toggle}
+                            className={`w-full py-1.5 rounded-lg text-xs font-bold transition cursor-pointer text-center flex items-center justify-center gap-1 ${
+                              esOtraFecha || abierto
+                                ? 'bg-rose-600 text-white shadow-xs'
+                                : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                            }`}
+                          >
+                            <span>{esOtraFecha ? formatearFecha(fechaLote) : 'Otra fecha'}</span>
+                          </button>
+                        );
+                      }}
+                    />
                   </div>
                 </div>
-                <input
-                  type="date"
-                  value={fechaLote}
-                  max={obtenerFechaHoyLocal()}
-                  onChange={(e) => setFechaLote(e.target.value)}
-                  className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-bold text-neutral-900 dark:text-white focus:outline-none focus:border-rose-500 cursor-pointer"
-                />
+
                 <p className="text-[10px] text-neutral-500 dark:text-neutral-400">
                   {obrasSeleccionadas.some((o) => o.tipo?.toLowerCase() === 'serie')
                     ? 'Las series se registrarán con el Capítulo 1 (T1 · E1) e iniciarán su seguimiento en tu perfil.'

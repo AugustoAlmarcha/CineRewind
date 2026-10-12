@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom';
 import LogoPlataforma from '../common/LogoPlataforma';
 import CalificadorEstrellas from '../common/CalificadorEstrellas';
 import { obtenerAmigosAPI } from '../../api';
-import { Users, Info, X, Check, Trash2, Layers, Zap, Star } from 'lucide-react';
+import { obtenerFechaHoyLocal, obtenerFechaAyerLocal, formatearFecha } from '../../utils/fechas';
+import SelectorCalendarioPopover from '../modal/SelectorCalendarioPopover';
+import { Users, Info, X, Check, Trash2, Layers, Zap, Star, Calendar } from 'lucide-react';
 
 export default function ViendoCard({
   serie,
@@ -21,6 +23,17 @@ export default function ViendoCard({
   const [menuAmigosAbierto, setMenuAmigosAbierto] = useState(false);
   const [amigosDisponibles, setAmigosDisponibles] = useState([]);
   const [amigosSeleccionados, setAmigosSeleccionados] = useState([]);
+
+  // Estados de fecha de visualización
+  const fechaHoy = obtenerFechaHoyLocal();
+  const fechaAyer = obtenerFechaAyerLocal();
+  const [fechaVisto, setFechaVisto] = useState(fechaHoy);
+  const [mostrarInputFecha, setMostrarInputFecha] = useState(false);
+
+  const esHoy = fechaVisto === fechaHoy;
+  const esAyer = fechaVisto === fechaAyer;
+  const esOtraFecha = !esHoy && !esAyer;
+  const textoFechaEtiqueta = esHoy ? 'Hoy' : esAyer ? 'Ayer' : formatearFecha(fechaVisto);
 
   // Estados para opinar y calificar antes de marcar como visto
   const [calificacionEpisodio, setCalificacionEpisodio] = useState(0);
@@ -89,6 +102,7 @@ export default function ViendoCard({
         await onAvanzar(serie, amigosSeleccionados, {
           calificacion: calificacionEpisodio || null,
           resenia: opinionEpisodio.trim() || null,
+          fecha_visto: fechaVisto,
         });
         setAmigosSeleccionados([]);
         setMenuAmigosAbierto(false);
@@ -169,16 +183,16 @@ export default function ViendoCard({
           </div>
         </div>
 
-        {/* VISTA PREVIA ESCRITORIO (HOVER EN PC) */}
+        {/* VISTA PREVIA ESCRITORIO (HOVER EN PC) - CENTRADO VERTICAL PARA EXPANDIRSE ARRIBA Y ABAJO */}
         <div
           onClick={(e) => {
             e.stopPropagation();
             if (onAbrirDetalle) onAbrirDetalle(serie);
           }}
           onMouseLeave={() => setMenuAmigosAbierto(false)}
-          className={`hidden sm:flex absolute top-0 ${alineacionHorizontal} w-96 rounded-3xl shadow-2xl border border-white/20 bg-[#16161c] z-50 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 transition-all duration-300 ease-out flex-col`}
+          className={`hidden sm:flex absolute sm:top-1/2 sm:-translate-y-1/2 ${alineacionHorizontal} w-96 rounded-3xl shadow-2xl border border-white/20 bg-[#16161c] z-50 opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100 transition-all duration-300 ease-out flex-col`}
         >
-          <div className="w-full aspect-video bg-neutral-900 relative overflow-hidden flex-shrink-0 rounded-t-3xl">
+          <div className="w-full h-40 bg-neutral-900 relative overflow-hidden flex-shrink-0 rounded-t-3xl">
             {fotoCapituloUrl ? (
               <img
                 src={fotoCapituloUrl}
@@ -316,7 +330,7 @@ export default function ViendoCard({
                                 <span className="block text-[10px] text-neutral-400 font-mono truncate leading-none mt-0.5">@{amigo.username}</span>
                               </div>
                             </div>
-                            {seleccionado && <span className="text-xs font-black shrink-0 ml-1">✓</span>}
+                            {seleccionado && <Check className="w-3.5 h-3.5 text-white shrink-0 ml-1 stroke-[3]" />}
                           </button>
                         );
                       })}
@@ -387,6 +401,60 @@ export default function ViendoCard({
               )}
             </div>
 
+            {/* Selector de fecha en que se vio */}
+            <div className="p-2 rounded-xl bg-black/40 border border-white/10 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-rose-400" />
+                  <span>¿Cuándo lo viste?</span>
+                </span>
+                <span className="text-[10px] font-bold text-rose-300">
+                  {esHoy ? `Hoy (${formatearFecha(fechaHoy)})` : esAyer ? `Ayer (${formatearFecha(fechaAyer)})` : formatearFecha(fechaVisto)}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-lg border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setFechaVisto(fechaHoy)}
+                  className={`flex-1 py-1 rounded-md text-[11px] font-black transition cursor-pointer text-center ${
+                    esHoy ? 'bg-rose-600 text-white shadow-xs' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  Hoy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFechaVisto(fechaAyer)}
+                  className={`flex-1 py-1 rounded-md text-[11px] font-black transition cursor-pointer text-center ${
+                    esAyer ? 'bg-rose-600 text-white shadow-xs' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  Ayer
+                </button>
+                <div className="flex-1">
+                  <SelectorCalendarioPopover
+                    fecha={fechaVisto}
+                    onSeleccionarFecha={(f) => setFechaVisto(f)}
+                    align="right"
+                    posicionVert="arriba"
+                    className="w-full"
+                    renderTrigger={({ abierto, toggle }) => (
+                      <button
+                        type="button"
+                        onClick={toggle}
+                        className={`w-full py-1 rounded-md text-[11px] font-black transition cursor-pointer text-center flex items-center justify-center gap-1 ${
+                          esOtraFecha || abierto ? 'bg-rose-600 text-white shadow-xs' : 'text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        <span>{esOtraFecha ? formatearFecha(fechaVisto) : 'Otra fecha'}</span>
+                      </button>
+                    )}
+                  />
+                </div>
+              </div>
+            </div>
+
             <button
               type="button"
               disabled={avanzando}
@@ -398,7 +466,7 @@ export default function ViendoCard({
               }`}
             >
               <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>{avanzando ? 'Guardando...' : `Marcar T${proximaTemporada} E${proximoEpisodio} visto`}</span>
+              <span>{avanzando ? 'Guardando...' : `Marcar T${proximaTemporada} E${proximoEpisodio} visto (${textoFechaEtiqueta})`}</span>
             </button>
           </div>
         </div>
@@ -564,7 +632,7 @@ export default function ViendoCard({
                                   <span className="block text-[10px] text-neutral-400 font-mono truncate leading-none mt-0.5">@{amigo.username}</span>
                                 </div>
                               </div>
-                              {seleccionado && <span className="text-xs font-black shrink-0 ml-1">✓</span>}
+                              {seleccionado && <Check className="w-3.5 h-3.5 text-white shrink-0 ml-1 stroke-[3]" />}
                             </button>
                           );
                         })}
@@ -592,6 +660,60 @@ export default function ViendoCard({
                 />
               </div>
 
+              {/* Selector de fecha en que se vio en móvil */}
+              <div className="p-2.5 rounded-2xl bg-black/50 border border-white/10 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-rose-400" />
+                    <span>¿Cuándo lo viste?</span>
+                  </span>
+                  <span className="text-[11px] font-bold text-rose-300">
+                    {esHoy ? `Hoy (${formatearFecha(fechaHoy)})` : esAyer ? `Ayer (${formatearFecha(fechaAyer)})` : formatearFecha(fechaVisto)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-black/60 p-1 rounded-xl border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => { setFechaVisto(fechaHoy); setMostrarInputFecha(false); }}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center ${
+                      esHoy ? 'bg-rose-600 text-white shadow-xs' : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    Hoy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFechaVisto(fechaAyer)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center ${
+                      esAyer ? 'bg-rose-600 text-white shadow-xs' : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    Ayer
+                  </button>
+                  <div className="flex-1">
+                    <SelectorCalendarioPopover
+                      fecha={fechaVisto}
+                      onSeleccionarFecha={(f) => setFechaVisto(f)}
+                      align="right"
+                      posicionVert="arriba"
+                      className="w-full"
+                      renderTrigger={({ abierto, toggle }) => (
+                        <button
+                          type="button"
+                          onClick={toggle}
+                          className={`w-full py-1.5 rounded-lg text-xs font-black transition cursor-pointer text-center flex items-center justify-center gap-1 ${
+                            esOtraFecha || abierto ? 'bg-rose-600 text-white shadow-xs' : 'text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          <span>{esOtraFecha ? formatearFecha(fechaVisto) : 'Otra fecha'}</span>
+                        </button>
+                      )}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Botón para marcar el siguiente visto */}
               <button
                 type="button"
@@ -604,7 +726,7 @@ export default function ViendoCard({
                 }`}
               >
                 <Check className="w-4 h-4 stroke-[2.5]" />
-                <span>{avanzando ? 'Guardando...' : `Marcar T${proximaTemporada} E${proximoEpisodio} visto`}</span>
+                <span>{avanzando ? 'Guardando...' : `Marcar T${proximaTemporada} E${proximoEpisodio} visto (${textoFechaEtiqueta})`}</span>
               </button>
 
               {/* Botón directo para abrir el ModalRegistrar completo */}

@@ -3,11 +3,24 @@ import { createPortal } from 'react-dom';
 import { obtenerDetalleEpisodioAPI } from '../../api';
 import LogoPlataforma from '../common/LogoPlataforma';
 import ModalFilmografiaActor from './ModalFilmografiaActor';
+import SelectorCalendarioPopover from './SelectorCalendarioPopover';
+import { obtenerFechaHoyLocal, obtenerFechaAyerLocal, formatearFecha } from '../../utils/fechas';
+import { Users, Calendar, Check, X } from 'lucide-react';
 
 export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVisto, onSeleccionarObra }) {
   const [detalle, setDetalle] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [actorParaFilmografia, setActorParaFilmografia] = useState(null);
+
+  const fechaHoy = obtenerFechaHoyLocal();
+  const fechaAyer = obtenerFechaAyerLocal();
+  const [fechaVisto, setFechaVisto] = useState(fechaHoy);
+  const [mostrarInputFecha, setMostrarInputFecha] = useState(false);
+
+  const esHoy = fechaVisto === fechaHoy;
+  const esAyer = fechaVisto === fechaAyer;
+  const esOtraFecha = !esHoy && !esAyer;
+  const textoFechaEtiqueta = esHoy ? 'Hoy' : esAyer ? 'Ayer' : formatearFecha(fechaVisto);
 
   const temporada = serie.siguiente_temporada ?? serie.temporada;
   const episodio = serie.siguiente_episodio ?? (parseInt(serie.episodio, 10) + 1);
@@ -73,8 +86,9 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
                   type="button"
                   onClick={onClose} 
                   className="w-9 h-9 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition cursor-pointer border border-white/20 backdrop-blur-sm"
+                  title="Cerrar"
                 >
-                  ✕
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
@@ -106,8 +120,9 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
             {/* Elenco de Actores del Capítulo Clickeable */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-widest text-neutral-400 flex items-center gap-2">
-                  <span>🎭</span> Reparto del Capítulo ({detalle?.actores?.length || 0})
+                <span className="text-xs font-black uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-rose-500" />
+                  <span>Reparto del Capítulo ({detalle?.actores?.length || 0})</span>
                 </span>
                 <span className="text-[11px] text-neutral-400 font-semibold">Toca un actor para ver sus películas</span>
               </div>
@@ -131,7 +146,7 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
                           />
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center text-neutral-400 text-xs gap-1">
-                            <span className="text-xl">🎭</span>
+                            <Users className="w-6 h-6 text-neutral-600" />
                             <span className="text-[10px]">Sin foto</span>
                           </div>
                         )}
@@ -153,26 +168,74 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
             </div>
           </div>
 
-          {/* Botonera Inferior */}
-          <div className="p-4 border-t border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-[#0c0c0f] flex items-center justify-between">
-            <button 
-              type="button" 
-              onClick={onClose} 
-              className="px-4 py-2 rounded-xl border border-neutral-300 dark:border-white/10 text-xs font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/5 transition cursor-pointer"
-            >
-              Cerrar
-            </button>
-            
-            <button
-              type="button"
-              onClick={() => {
-                onMarcarVisto(serie);
-                onClose();
-              }}
-              className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-xs font-black uppercase tracking-wider text-white rounded-xl shadow-lg transition cursor-pointer flex items-center gap-1.5"
-            >
-              <span>✓</span> Marcar T{temporada} E{episodio} Visto
-            </button>
+          {/* Botonera Inferior con Selector de Fecha */}
+          <div className="p-4 border-t border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-[#0c0c0f] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            {/* Selector de Fecha */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-black uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-rose-500" />
+                <span>¿Cuándo lo viste?:</span>
+              </span>
+              <div className="flex items-center gap-1 bg-neutral-200/80 dark:bg-white/5 p-1 rounded-xl border border-neutral-300 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setFechaVisto(fechaHoy)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
+                    esHoy ? 'bg-rose-600 text-white shadow-xs' : 'text-neutral-700 dark:text-neutral-300 hover:text-rose-500'
+                  }`}
+                >
+                  Hoy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFechaVisto(fechaAyer)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
+                    esAyer ? 'bg-rose-600 text-white shadow-xs' : 'text-neutral-700 dark:text-neutral-300 hover:text-rose-500'
+                  }`}
+                >
+                  Ayer
+                </button>
+                <SelectorCalendarioPopover
+                  fecha={fechaVisto}
+                  onSeleccionarFecha={(f) => setFechaVisto(f)}
+                  align="left"
+                  posicionVert="arriba"
+                  renderTrigger={({ abierto, toggle }) => (
+                    <button
+                      type="button"
+                      onClick={toggle}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer flex items-center gap-1 ${
+                        esOtraFecha || abierto ? 'bg-rose-600 text-white shadow-xs' : 'text-neutral-700 dark:text-neutral-300 hover:text-rose-500'
+                      }`}
+                    >
+                      <span>{esOtraFecha ? formatearFecha(fechaVisto) : 'Otra fecha'}</span>
+                    </button>
+                  )}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="px-4 py-2 rounded-xl border border-neutral-300 dark:border-white/10 text-xs font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/5 transition cursor-pointer"
+              >
+                Cerrar
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  onMarcarVisto(serie, [], { fecha_visto: fechaVisto });
+                  onClose();
+                }}
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-xs font-black uppercase tracking-wider text-white rounded-xl shadow-lg transition cursor-pointer flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4 stroke-[2.5]" />
+                <span>Marcar T{temporada} E{episodio} Visto ({textoFechaEtiqueta})</span>
+              </button>
+            </div>
           </div>
 
         </div>
