@@ -1534,6 +1534,7 @@ const registrarTemporadasMultiples = async (req, res) => {
   const {
     tmdb_id,
     titulo,
+    titulo_original,
     poster_path,
     plataforma,
     temporadas,
@@ -1543,7 +1544,7 @@ const registrarTemporadasMultiples = async (req, res) => {
     fechas_distribuidas = null,
     amigos_etiquetados = [],
     visto_con_texto = null,
-    titulo_original = null,
+    omitir_ya_vistos = true,
   } = req.body;
 
   if (!tmdb_id || !titulo || !Array.isArray(temporadas) || temporadas.length === 0) {
@@ -1572,10 +1573,11 @@ const registrarTemporadasMultiples = async (req, res) => {
 
     let totalInsertados = 0;
     const idsProcesados = [];
-    let globalEpisodioIndex = 0;
     const apiKey = process.env.TMDB_API_KEY;
     const temporadasOrdenadas = [...temporadas].map(Number).sort((a, b) => a - b);
 
+    // 1. Recolectar todos los episodios de las temporadas seleccionadas
+    const listaEpisodiosCandidatos = [];
     for (const tempNum of temporadasOrdenadas) {
       if (isNaN(tempNum) || tempNum <= 0) continue;
 
@@ -1599,86 +1601,141 @@ const registrarTemporadasMultiples = async (req, res) => {
       const totalCaps = episodiosData.length;
 
       for (const ep of episodiosData) {
-        const epNum = ep.episode_number;
-        const fotoEp = ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : null;
-        let fechaEp = fecha_visto;
+        listaEpisodiosCandidatos.push({
+          tempNum,
+          epNum: ep.episode_number,
+          fotoEp: ep.still_path ? `https://image.tmdb.org/t/p/w500${ep.still_path}` : null,
+          air_date: ep.air_date,
+          esFinTemp: ep.episode_number === totalCaps,
+        });
+      }
+    }
 
-        if (distribucion && distribucion.fecha_inicio) {
-          const capPorTanda = Math.max(1, parseInt(distribucion.capitulos_por_tanda, 10) || 1);
-          const diasInterv = Math.max(1, parseInt(distribucion.dias_intervalo, 10) || 1);
-          const tanda = Math.floor(globalEpisodioIndex / capPorTanda);
-          const diasAAgregar = tanda * diasInterv;
+    // 2. Si se solicitó omitir ya vistos, verificar cuáles ya fueron registrados por el usuario
+    let episodiosAProcesar = listaEpisodiosCandidatos;
+    if (omitir_ya_vistos && listaEpisodiosCandidatos.length > 0) {
+      const vistosExistentes = await client.query(
+        `SELECT temporada, episodio FROM historial_visualizaciones 
+         WHERE usuario_id = $1 AND obra_id = $2`,
+        [usuario_id, obra_id]
+      );
+      const setYaVistos = new Set(
+        vistosExistentes.rows.map((r) => `${r.temporada}_${r.episodio}`)
+      );
+      episodiosAProcesar = listaEpisodiosCandidatos.filter(
+        (it) => !setYaVistos.has(`${it.tempNum}_${it.epNum}`)
+      );
+    }
 
-          const [y, m, d] = String(distribucion.fecha_inicio).substring(0, 10).split('-').map(Number);
-          const cur = new Date(y, m - 1, d);
-          cur.setDate(cur.getDate() + diasAAgregar);
-          const yr = cur.getFullYear();
-          const mo = String(cur.getMonth() + 1).padStart(2, '0');
-          const da = String(cur.getDate()).padStart(2, '0');
-          fechaEp = `${yr}-${mo}-${da}`;
-          globalEpisodioIndex++;
-        } else if (fechas_distribuidas && fechas_distribuidas[`${tempNum}_${epNum}`]) {
-          fechaEp = fechas_distribuidas[`${tempNum}_${epNum}`];
-        } else if (usar_fechas_estreno) {
-          if (ep.air_date && /^\d{4}-\d{2}-\d{2}/.test(ep.air_date)) {
-            fechaEp = ep.air_date.substring(0, 10);
-          } else if (fecha_visto) {
-            fechaEp = fecha_visto;
-          } else {
-            fechaEp = new Date().toISOString().substring(0, 10);
-          }
-        }
+    const totalEps = episodiosAProcesar.length;
 
-        if (!fechaEp) {
+    // Variables auxiliares para distribución por rango de fechas (Fecha Inicio a Fecha Fin)
+    let fInicioRango = null;
+    let diasTotalesRango = 0;
+    const esDistribucionRango = Boolean(
+      distribucion &&
+      distribucion.fecha_inicio &&
+      distribucion.fecha_fin &&
+      distribucion.tipo === 'rango'
+    );
+
+    if (esDistribucionRango) {
+      const [y1, m1, d1] = String(distribucion.fecha_inicio).substring(0, 10).split('-').map(Number);
+      const [y2, m2, d2] = String(distribucion.fecha_fin).substring(0, 10).split('-').map(Number);
+      fInicioRango = new Date(y1, m1 - 1, d1);
+      const fFin = new Date(y2, m2 - 1, d2);
+      const diffMs = Math.max(0, fFin.getTime() - fInicioRango.getTime());
+      diasTotalesRango = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    }
+
+    // 3. Procesar e insertar los episodios con su fecha calculada
+    for (let idx = 0; idx < totalEps; idx++) {
+      const epItem = episodiosAProcesar[idx];
+      const { tempNum, epNum, fotoEp, air_date, esFinTemp } = epItem;
+      let fechaEp = fecha_visto;
+
+      if (esDistribucionRango && fInicioRango) {
+        const offsetDias = totalEps <= 1
+          ? 0
+          : Math.min(diasTotalesRango, Math.round((idx * diasTotalesRango) / (totalEps - 1)));
+        const cur = new Date(fInicioRango);
+        cur.setDate(cur.getDate() + offsetDias);
+        const yr = cur.getFullYear();
+        const mo = String(cur.getMonth() + 1).padStart(2, '0');
+        const da = String(cur.getDate()).padStart(2, '0');
+        fechaEp = `${yr}-${mo}-${da}`;
+      } else if (distribucion && distribucion.fecha_inicio) {
+        const capPorTanda = Math.max(1, parseInt(distribucion.capitulos_por_tanda, 10) || 1);
+        const diasInterv = Math.max(1, parseInt(distribucion.dias_intervalo, 10) || 1);
+        const tanda = Math.floor(idx / capPorTanda);
+        const diasAAgregar = tanda * diasInterv;
+
+        const [y, m, d] = String(distribucion.fecha_inicio).substring(0, 10).split('-').map(Number);
+        const cur = new Date(y, m - 1, d);
+        cur.setDate(cur.getDate() + diasAAgregar);
+        const yr = cur.getFullYear();
+        const mo = String(cur.getMonth() + 1).padStart(2, '0');
+        const da = String(cur.getDate()).padStart(2, '0');
+        fechaEp = `${yr}-${mo}-${da}`;
+      } else if (fechas_distribuidas && fechas_distribuidas[`${tempNum}_${epNum}`]) {
+        fechaEp = fechas_distribuidas[`${tempNum}_${epNum}`];
+      } else if (usar_fechas_estreno) {
+        if (air_date && /^\d{4}-\d{2}-\d{2}/.test(air_date)) {
+          fechaEp = air_date.substring(0, 10);
+        } else if (fecha_visto) {
+          fechaEp = fecha_visto;
+        } else {
           fechaEp = new Date().toISOString().substring(0, 10);
         }
+      }
 
-        const esFinTemp = epNum === totalCaps;
+      if (!fechaEp) {
+        fechaEp = new Date().toISOString().substring(0, 10);
+      }
 
-        const existe = await client.query(
-          `SELECT id FROM historial_visualizaciones 
-           WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5`,
-          [usuario_id, obra_id, tempNum, epNum, fechaEp]
+      const existe = await client.query(
+        `SELECT id FROM historial_visualizaciones 
+         WHERE usuario_id = $1 AND obra_id = $2 AND temporada = $3 AND episodio = $4 AND fecha_visto = $5`,
+        [usuario_id, obra_id, tempNum, epNum, fechaEp]
+      );
+
+      let visualizacionId;
+      if (existe.rows.length === 0) {
+        const ins = await client.query(
+          `INSERT INTO historial_visualizaciones 
+             (usuario_id, obra_id, fecha_visto, plataforma, temporada, episodio, foto_episodio, es_final_temporada, visto_con_texto)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           RETURNING id;`,
+          [
+            usuario_id,
+            obra_id,
+            fechaEp,
+            plataforma || null,
+            tempNum,
+            epNum,
+            fotoEp,
+            esFinTemp,
+            visto_con_texto ? String(visto_con_texto).trim() : null
+          ]
         );
+        visualizacionId = ins.rows[0].id;
+        totalInsertados++;
+      } else {
+        visualizacionId = existe.rows[0].id;
+      }
 
-        let visualizacionId;
-        if (existe.rows.length === 0) {
-          const ins = await client.query(
-            `INSERT INTO historial_visualizaciones 
-               (usuario_id, obra_id, fecha_visto, plataforma, temporada, episodio, foto_episodio, es_final_temporada, visto_con_texto)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             RETURNING id;`,
-            [
-              usuario_id,
-              obra_id,
-              fechaEp,
-              plataforma || null,
-              tempNum,
-              epNum,
-              fotoEp,
-              esFinTemp,
-              visto_con_texto ? String(visto_con_texto).trim() : null
-            ]
-          );
-          visualizacionId = ins.rows[0].id;
-          totalInsertados++;
-        } else {
-          visualizacionId = existe.rows[0].id;
-        }
+      idsProcesados.push(visualizacionId);
 
-        idsProcesados.push(visualizacionId);
-
-        if (Array.isArray(amigos_etiquetados) && amigos_etiquetados.length > 0) {
-          for (const amigoId of amigos_etiquetados) {
-            const idAmigoNum = parseInt(amigoId, 10);
-            if (idAmigoNum && idAmigoNum !== usuario_id) {
-              await client.query(
-                `INSERT INTO covisualizaciones (visualizacion_id, amigo_id, estado)
-                 VALUES ($1, $2, 'pendiente')
-                 ON CONFLICT (visualizacion_id, amigo_id) DO NOTHING;`,
-                [visualizacionId, idAmigoNum]
-              );
-            }
+      if (Array.isArray(amigos_etiquetados) && amigos_etiquetados.length > 0) {
+        for (const amigoId of amigos_etiquetados) {
+          const idAmigoNum = parseInt(amigoId, 10);
+          if (idAmigoNum && idAmigoNum !== usuario_id) {
+            await client.query(
+              `INSERT INTO covisualizaciones (visualizacion_id, amigo_id, estado)
+               VALUES ($1, $2, 'pendiente')
+               ON CONFLICT (visualizacion_id, amigo_id) DO NOTHING;`,
+              [visualizacionId, idAmigoNum]
+            );
           }
         }
       }

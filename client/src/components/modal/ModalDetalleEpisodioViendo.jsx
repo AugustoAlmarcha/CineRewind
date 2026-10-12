@@ -54,11 +54,11 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
-        <div className="bg-[#fcfaf7] dark:bg-[#121216] border border-neutral-300 dark:border-white/10 rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white my-auto animate-fadeIn transition-colors">
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-4 overflow-y-auto">
+        <div className="bg-[#fcfaf7] dark:bg-[#121216] border border-neutral-300 dark:border-white/10 rounded-3xl max-w-3xl w-full h-[92dvh] sm:h-auto sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white my-auto animate-fadeIn transition-colors">
           
           {/* Cabecera Cinemática con Foto Grande */}
-          <div className="relative w-full h-72 sm:h-80 bg-neutral-900 flex-shrink-0">
+          <div className="relative w-full h-44 sm:h-72 bg-neutral-900 flex-shrink-0">
             {fotoCabecera ? (
               <img 
                 src={fotoCabecera} 
@@ -71,7 +71,7 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
               </div>
             )}
             
-            <div className="absolute inset-0 bg-gradient-to-t from-[#fcfaf7] dark:from-[#121216] via-black/40 to-transparent flex flex-col justify-between p-6">
+            <div className="absolute inset-0 bg-gradient-to-t from-[#fcfaf7] dark:from-[#121216] via-black/40 to-transparent flex flex-col justify-between p-3.5 sm:p-6">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <span className="bg-rose-600 text-white font-black text-xs px-3 py-1 rounded-lg uppercase tracking-wider shadow">
@@ -83,7 +83,7 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
                 </div>
 
                 <button 
-                  type="button"
+                  type="button" 
                   onClick={onClose} 
                   className="w-9 h-9 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition cursor-pointer border border-white/20 backdrop-blur-sm"
                   title="Cerrar"
@@ -97,7 +97,7 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
                 <p className="text-xs font-black tracking-widest text-rose-500 dark:text-rose-400 uppercase drop-shadow">
                   {serie.titulo}
                 </p>
-                <h2 className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white leading-tight drop-shadow-md">
+                <h2 className="text-xl sm:text-3xl font-black text-neutral-900 dark:text-white leading-tight drop-shadow-md">
                   {detalle?.nombre ? `${episodio}. ${detalle.nombre}` : `Capítulo ${episodio}`}
                 </h2>
               </div>
@@ -105,7 +105,7 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
           </div>
 
           {/* Cuerpo tipo Prime Video X-Ray */}
-          <div className="p-6 overflow-y-auto space-y-6 flex-1 scrollbar-thin">
+          <div className="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 flex-1 min-h-0 scrollbar-thin pb-8">
             
             {/* Sinopsis del capítulo */}
             <div className="space-y-1.5">
@@ -169,7 +169,7 @@ export default function ModalDetalleEpisodioViendo({ serie, onClose, onMarcarVis
           </div>
 
           {/* Botonera Inferior con Selector de Fecha */}
-          <div className="p-4 border-t border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-[#0c0c0f] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="p-3 sm:p-4 border-t border-neutral-200 dark:border-white/10 bg-neutral-100 dark:bg-[#0c0c0f] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 flex-shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             {/* Selector de Fecha */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] font-black uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center gap-1">

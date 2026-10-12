@@ -101,7 +101,7 @@ export default function BarraConfiguracionRegistro({
     const mesStr = String(mesNavegacion + 1).padStart(2, '0');
     const diaStr = String(dia).padStart(2, '0');
     setFechaVisto(`${anioNavegacion}-${mesStr}-${diaStr}`);
-    if (noRecuerdaFecha && onToggleNoRecuerda) onToggleNoRecuerda();
+    if (noRecuerdaFecha && onToggleNoRecuerda) onToggleNoRecuerda(false);
     setPanelActivo(null);
   };
 
@@ -144,7 +144,7 @@ export default function BarraConfiguracionRegistro({
               type="button"
               onClick={() => {
                 setFechaVisto(fechaHoy);
-                if (noRecuerdaFecha && onToggleNoRecuerda) onToggleNoRecuerda();
+                if (noRecuerdaFecha && onToggleNoRecuerda) onToggleNoRecuerda(false);
                 setPanelActivo(null);
               }}
               className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
@@ -160,7 +160,7 @@ export default function BarraConfiguracionRegistro({
               type="button"
               onClick={() => {
                 setFechaVisto(fechaAyer);
-                if (noRecuerdaFecha && onToggleNoRecuerda) onToggleNoRecuerda();
+                if (noRecuerdaFecha && onToggleNoRecuerda) onToggleNoRecuerda(false);
                 setPanelActivo(null);
               }}
               className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer ${

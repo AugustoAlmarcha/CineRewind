@@ -62,7 +62,7 @@ export default function VistaRegistroPelicula({
   };
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto pb-2 animate-fadeIn select-none">
+    <div className="space-y-4 max-w-2xl mx-auto pb-16 sm:pb-4 animate-fadeIn select-none">
       
       {/* 1. SECCIÓN PRINCIPAL DE REGISTRO & PUNTUACIÓN (VISIBILIDAD PRIORITARIA) */}
       <div className="p-3.5 sm:p-5 rounded-3xl bg-white dark:bg-[#181820] border border-neutral-300/80 dark:border-white/10 shadow-sm space-y-3.5">

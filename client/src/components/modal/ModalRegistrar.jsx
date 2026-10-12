@@ -78,6 +78,9 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
   const [capitulosPorTanda, setCapitulosPorTanda] = useState(1);
   const [diasIntervalo, setDiasIntervalo] = useState(1);
   const [distribucionTemporadas, setDistribucionTemporadas] = useState(null);
+  const [modoDistribucion, setModoDistribucion] = useState('ritmo'); // 'ritmo' | 'rango'
+  const [fechaFinDistribuir, setFechaFinDistribuir] = useState(() => obtenerFechaHoyLocal());
+  const [omitirYaVistos, setOmitirYaVistos] = useState(true);
   const [bannerExito, setBannerExito] = useState(null);
 
   // Cargar progreso de visualización de cada temporada de la serie
@@ -297,8 +300,12 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     return '2020-01-01';
   };
 
-  const handleToggleNoRecuerda = () => {
-    const nuevoEstado = !noRecuerdaFecha;
+  const handleToggleNoRecuerda = (forzar) => {
+    if (forzar === false) {
+      setNoRecuerdaFecha(false);
+      return;
+    }
+    const nuevoEstado = typeof forzar === 'boolean' ? forzar : !noRecuerdaFecha;
     setNoRecuerdaFecha(nuevoEstado);
     if (nuevoEstado) {
       setFechaVisto(calcularFechaEstreno(obraActual, datosTemporada, episodiosSeleccionados));
@@ -360,48 +367,82 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     if (!fechaInicioDistribuir || episodiosSeleccionados.length === 0) return;
     setNoRecuerdaFecha(false);
     const ordenados = [...episodiosSeleccionados].sort((a, b) => Number(a) - Number(b));
-    const [y, m, d] = String(fechaInicioDistribuir).substring(0, 10).split('-').map(Number);
-    const baseDate = new Date(y, m - 1, d);
-
-    const cantPorTanda = Math.max(1, Number(capitulosPorTanda) || 1);
-    const intervaloDias = Math.max(1, Number(diasIntervalo) || 1);
 
     const nuevas = { ...fechasEpisodios };
-    ordenados.forEach((epNum, idx) => {
-      const tanda = Math.floor(idx / cantPorTanda);
-      const diasAAgregar = tanda * intervaloDias;
 
-      const cur = new Date(baseDate);
-      cur.setDate(baseDate.getDate() + diasAAgregar);
-      const yr = cur.getFullYear();
-      const mo = String(cur.getMonth() + 1).padStart(2, '0');
-      const da = String(cur.getDate()).padStart(2, '0');
-      nuevas[epNum] = `${yr}-${mo}-${da}`;
-    });
+    if (modoDistribucion === 'rango' && fechaFinDistribuir) {
+      // Distribución uniforme entre fecha inicio y fecha fin
+      const [y1, m1, d1] = String(fechaInicioDistribuir).substring(0, 10).split('-').map(Number);
+      const [y2, m2, d2] = String(fechaFinDistribuir).substring(0, 10).split('-').map(Number);
+      const inicio = new Date(y1, m1 - 1, d1);
+      const fin = new Date(y2, m2 - 1, d2);
+      const diasTotales = Math.max(0, Math.round((fin.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24)));
+      const total = ordenados.length;
 
-    setFechasEpisodios(nuevas);
-    setPanelDistribuirAbierto(false);
-    const textoIntervalo = intervaloDias === 1 ? 'día' : intervaloDias === 7 ? 'semana' : `${intervaloDias} días`;
-    setBannerExito(`¡Se asignaron fechas distribuidas (${cantPorTanda} ${cantPorTanda === 1 ? 'capítulo' : 'capítulos'} por ${textoIntervalo})!`);
-    setTimeout(() => setBannerExito(null), 4000);
+      ordenados.forEach((epNum, idx) => {
+        const offset = total <= 1 ? 0 : Math.min(diasTotales, Math.round((idx * diasTotales) / (total - 1)));
+        const cur = new Date(inicio);
+        cur.setDate(inicio.getDate() + offset);
+        nuevas[epNum] = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+      });
+
+      setFechasEpisodios(nuevas);
+      setPanelDistribuirAbierto(false);
+      setBannerExito(`¡Fechas distribuidas entre ${formatearFecha(fechaInicioDistribuir)} y ${formatearFecha(fechaFinDistribuir)}!`);
+      setTimeout(() => setBannerExito(null), 4000);
+    } else {
+      // Distribución por ritmo (modo original)
+      const [y, m, d] = String(fechaInicioDistribuir).substring(0, 10).split('-').map(Number);
+      const baseDate = new Date(y, m - 1, d);
+      const cantPorTanda = Math.max(1, Number(capitulosPorTanda) || 1);
+      const intervaloDias = Math.max(1, Number(diasIntervalo) || 1);
+
+      ordenados.forEach((epNum, idx) => {
+        const tanda = Math.floor(idx / cantPorTanda);
+        const diasAAgregar = tanda * intervaloDias;
+        const cur = new Date(baseDate);
+        cur.setDate(baseDate.getDate() + diasAAgregar);
+        nuevas[epNum] = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+      });
+
+      setFechasEpisodios(nuevas);
+      setPanelDistribuirAbierto(false);
+      const textoIntervalo = intervaloDias === 1 ? 'día' : intervaloDias === 7 ? 'semana' : `${intervaloDias} días`;
+      setBannerExito(`¡Se asignaron fechas distribuidas (${cantPorTanda} ${cantPorTanda === 1 ? 'capítulo' : 'capítulos'} por ${textoIntervalo})!`);
+      setTimeout(() => setBannerExito(null), 4000);
+    }
   };
+
 
   const handleAplicarDistribucionTemporadas = () => {
     if (!fechaInicioDistribuir || temporadasSeleccionadas.length === 0) return;
     setNoRecuerdaFecha(false);
-    const cantPorTanda = Math.max(1, Number(capitulosPorTanda) || 1);
-    const intervaloDias = Math.max(1, Number(diasIntervalo) || 1);
 
-    setDistribucionTemporadas({
-      fecha_inicio: fechaInicioDistribuir,
-      capitulos_por_tanda: cantPorTanda,
-      dias_intervalo: intervaloDias,
-    });
-    setPanelDistribuirTemporadasAbierto(false);
-    const textoIntervalo = intervaloDias === 1 ? 'día' : intervaloDias === 7 ? 'semana' : `${intervaloDias} días`;
-    setBannerExito(`¡Ritmo configurado para las temporadas (${cantPorTanda} cap(s) por ${textoIntervalo})! Se aplicará al guardar.`);
-    setTimeout(() => setBannerExito(null), 4000);
+    if (modoDistribucion === 'rango' && fechaFinDistribuir) {
+      setDistribucionTemporadas({
+        tipo: 'rango',
+        fecha_inicio: fechaInicioDistribuir,
+        fecha_fin: fechaFinDistribuir,
+      });
+      setPanelDistribuirTemporadasAbierto(false);
+      setBannerExito(`¡Distribución por rango configurada (${formatearFecha(fechaInicioDistribuir)} → ${formatearFecha(fechaFinDistribuir)})! Se aplicará al guardar.`);
+      setTimeout(() => setBannerExito(null), 4000);
+    } else {
+      const cantPorTanda = Math.max(1, Number(capitulosPorTanda) || 1);
+      const intervaloDias = Math.max(1, Number(diasIntervalo) || 1);
+      setDistribucionTemporadas({
+        tipo: 'ritmo',
+        fecha_inicio: fechaInicioDistribuir,
+        capitulos_por_tanda: cantPorTanda,
+        dias_intervalo: intervaloDias,
+      });
+      setPanelDistribuirTemporadasAbierto(false);
+      const textoIntervalo = intervaloDias === 1 ? 'día' : intervaloDias === 7 ? 'semana' : `${intervaloDias} días`;
+      setBannerExito(`¡Ritmo configurado para las temporadas (${cantPorTanda} cap(s) por ${textoIntervalo})! Se aplicará al guardar.`);
+      setTimeout(() => setBannerExito(null), 4000);
+    }
   };
+
 
   const handleMarcarRestantes = () => {
     setErrorRegistro(null);
@@ -485,6 +526,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         usar_fechas_estreno: !distribucionTemporadas && Boolean(noRecuerdaFecha),
         fecha_visto: fechaVisto,
         distribucion: distribucionTemporadas,
+        omitir_ya_vistos: omitirYaVistos,
         amigos_etiquetados: amigosSeleccionados,
         visto_con_texto: vistoConTexto.trim() || null,
       });
@@ -677,9 +719,9 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
   const listaTemporadasNumeros = Array.from({ length: Math.max(1, totalTemporadas) }, (_, i) => i + 1);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/80 backdrop-blur-md pt-1.5 sm:p-4 select-none animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/80 backdrop-blur-md pt-1 sm:p-4 select-none animate-fadeIn">
       <div className={`bg-[#fcfaf7] dark:bg-[#141418] border-t sm:border border-neutral-300 dark:border-white/10 rounded-t-3xl sm:rounded-3xl max-w-4xl w-full flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white transition-colors relative ${
-        esSerie ? 'h-[94dvh] sm:h-[90vh]' : 'h-auto max-h-[98dvh] sm:max-h-[92vh]'
+        esSerie ? 'h-[94dvh] sm:h-[90vh]' : 'h-[92dvh] sm:h-auto sm:max-h-[90vh]'
       }`}>
         
         {/* Cabecera Principal */}
@@ -780,10 +822,10 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         )}
 
         {/* Contenedor Principal */}
-        <div className={`overflow-y-auto ${
+        <div className={`overflow-y-auto flex-1 min-h-0 ${
           esSerie 
-            ? 'flex-1 p-3.5 sm:p-5 space-y-4' 
-            : 'p-3 sm:p-5 space-y-3'
+            ? 'p-3.5 sm:p-5 space-y-4 pb-24 sm:pb-8' 
+            : 'p-3 sm:p-5 space-y-3.5 pb-28 sm:pb-8'
         }`}>
           {/* Barra de Ajustes Unificada (Fecha, Plataforma, Acompañantes) */}
           <BarraConfiguracionRegistro
@@ -864,6 +906,8 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                     onAbrirDistribuir={handleAbrirDistribuirTemporadas}
                     panelDistribuirAbierto={panelDistribuirTemporadasAbierto}
                     distribucionActiva={distribucionTemporadas}
+                    omitirYaVistos={omitirYaVistos}
+                    setOmitirYaVistos={setOmitirYaVistos}
                     onVerEpisodiosDeTemporada={(num) => {
                       setTemporadaSeleccionada(num);
                       setModoSerie('capitulos');
@@ -875,10 +919,15 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                         esModoTemporadas={true}
                         fechaInicio={fechaInicioDistribuir}
                         setFechaInicio={setFechaInicioDistribuir}
+                        fechaFin={fechaFinDistribuir}
+                        setFechaFin={setFechaFinDistribuir}
                         capitulosPorTanda={capitulosPorTanda}
                         setCapitulosPorTanda={setCapitulosPorTanda}
                         diasIntervalo={diasIntervalo}
                         setDiasIntervalo={setDiasIntervalo}
+                        modoDistribucion={modoDistribucion}
+                        setModoDistribucion={setModoDistribucion}
+                        totalCapitulosEstimados={totalCapitulosTemporadasSeleccionadas}
                         onAplicar={handleAplicarDistribucionTemporadas}
                         onCerrar={() => setPanelDistribuirTemporadasAbierto(false)}
                       />
@@ -910,10 +959,14 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                       esModoTemporadas={false}
                       fechaInicio={fechaInicioDistribuir}
                       setFechaInicio={setFechaInicioDistribuir}
+                      fechaFin={fechaFinDistribuir}
+                      setFechaFin={setFechaFinDistribuir}
                       capitulosPorTanda={capitulosPorTanda}
                       setCapitulosPorTanda={setCapitulosPorTanda}
                       diasIntervalo={diasIntervalo}
                       setDiasIntervalo={setDiasIntervalo}
+                      modoDistribucion={modoDistribucion}
+                      setModoDistribucion={setModoDistribucion}
                       onAplicar={handleAplicarDistribucion}
                       onCerrar={() => setPanelDistribuirAbierto(false)}
                     />
@@ -959,7 +1012,10 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                   <span className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
                     {distribucionTemporadas ? (
                       <span className="text-rose-600 dark:text-rose-400 font-bold">
-                        Ritmo: {distribucionTemporadas.capitulos_por_tanda} cap(s) cada {distribucionTemporadas.dias_intervalo === 1 ? 'día' : distribucionTemporadas.dias_intervalo === 7 ? 'semana' : `${distribucionTemporadas.dias_intervalo} días`} desde {formatearFecha(distribucionTemporadas.fecha_inicio)}
+                        {distribucionTemporadas.tipo === 'rango'
+                          ? `Rango: ${formatearFecha(distribucionTemporadas.fecha_inicio)} → ${formatearFecha(distribucionTemporadas.fecha_fin)}`
+                          : `Ritmo: ${distribucionTemporadas.capitulos_por_tanda} cap(s) cada ${distribucionTemporadas.dias_intervalo === 1 ? 'día' : distribucionTemporadas.dias_intervalo === 7 ? 'semana' : `${distribucionTemporadas.dias_intervalo} días`} desde ${formatearFecha(distribucionTemporadas.fecha_inicio)}`
+                        }
                       </span>
                     ) : noRecuerdaFecha ? (
                       'Con fechas de emisión oficial de cada capítulo'

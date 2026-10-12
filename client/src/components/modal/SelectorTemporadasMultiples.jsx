@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, ChevronRight, Layers, ListChecks, CheckCircle2, Clock, Calendar } from 'lucide-react';
+import { Check, ChevronRight, Layers, ListChecks, CheckCircle2, Clock, Calendar, SkipForward } from 'lucide-react';
 
 export default function SelectorTemporadasMultiples({
   seasons = [],
@@ -13,6 +13,8 @@ export default function SelectorTemporadasMultiples({
   onAbrirDistribuir,
   panelDistribuirAbierto = false,
   distribucionActiva = null,
+  omitirYaVistos = true,
+  setOmitirYaVistos,
   children = null,
 }) {
   const todasSeleccionadas = seasons.length > 0 && temporadasSeleccionadas.length === seasons.length;
@@ -20,47 +22,80 @@ export default function SelectorTemporadasMultiples({
   return (
     <div className="space-y-3.5 animate-fadeIn select-none">
       {/* Barra de control superior */}
-      <div className="flex items-center justify-between gap-2 p-3 rounded-2xl bg-neutral-200/60 dark:bg-white/5 border border-neutral-300/80 dark:border-white/10 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-rose-500" />
-          <span className="text-xs font-black uppercase tracking-wider text-neutral-800 dark:text-neutral-200">
-            Temporadas de la serie
-          </span>
-          <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400">
-            ({temporadasSeleccionadas.length} de {seasons.length} para registrar)
-          </span>
-        </div>
+      <div className="rounded-2xl bg-neutral-200/60 dark:bg-white/5 border border-neutral-300/80 dark:border-white/10 overflow-hidden">
+        {/* Fila principal: título + botones */}
+        <div className="flex items-center justify-between gap-2 p-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-rose-500" />
+            <span className="text-xs font-black uppercase tracking-wider text-neutral-800 dark:text-neutral-200">
+              Temporadas de la serie
+            </span>
+            <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400">
+              ({temporadasSeleccionadas.length} de {seasons.length} para registrar)
+            </span>
+          </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {temporadasSeleccionadas.length > 0 && onAbrirDistribuir && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {temporadasSeleccionadas.length > 0 && onAbrirDistribuir && (
+              <button
+                type="button"
+                onClick={onAbrirDistribuir}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shadow-xs border ${
+                  panelDistribuirAbierto || distribucionActiva
+                    ? 'bg-rose-600 border-rose-600 text-white'
+                    : 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/30 text-rose-600 dark:text-rose-400'
+                }`}
+                title="Distribuir fechas de capítulos de las temporadas seleccionadas"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>
+                  {distribucionActiva
+                    ? (distribucionActiva.tipo === 'rango' ? 'Rango configurado' : 'Ritmo configurado')
+                    : `Distribuir fechas (${temporadasSeleccionadas.length})`}
+                </span>
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={onAbrirDistribuir}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shadow-xs border ${
-                panelDistribuirAbierto || distribucionActiva
-                  ? 'bg-rose-600 border-rose-600 text-white'
-                  : 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/30 text-rose-600 dark:text-rose-400'
-              }`}
-              title="Distribuir fechas de capítulos de las temporadas seleccionadas"
+              onClick={todasSeleccionadas ? onDeseleccionarTodas : onSeleccionarTodas}
+              className="px-3 py-1.5 rounded-xl text-xs font-black bg-white dark:bg-white/10 hover:bg-neutral-100 dark:hover:bg-white/20 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-white/10 transition cursor-pointer flex items-center gap-1.5 shadow-xs"
             >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>
-                {distribucionActiva 
-                  ? 'Ritmo configurado' 
-                  : `Distribuir fechas (${temporadasSeleccionadas.length})`}
+              <ListChecks className="w-3.5 h-3.5 text-rose-500" />
+              <span>{todasSeleccionadas ? 'Deseleccionar todas' : 'Marcar todas'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Fila secundaria: checkbox "Omitir ya vistos" siempre visible */}
+        {setOmitirYaVistos && (
+          <div className="border-t border-neutral-300/60 dark:border-white/10 px-3 py-2 bg-white/40 dark:bg-black/20">
+            <button
+              type="button"
+              onClick={() => setOmitirYaVistos(!omitirYaVistos)}
+              className="flex items-center gap-2 cursor-pointer group w-full text-left flex-wrap sm:flex-nowrap"
+            >
+              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition ${
+                omitirYaVistos
+                  ? 'bg-rose-600 border-rose-600'
+                  : 'border-neutral-400 dark:border-white/30 group-hover:border-rose-500'
+              }`}>
+                {omitirYaVistos && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
+              </div>
+              <SkipForward className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
+              <span className="text-xs text-neutral-700 dark:text-neutral-300 font-semibold">
+                Omitir capítulos ya registrados (evitar duplicados)
+              </span>
+              <span className={`ml-auto text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md transition ${
+                omitirYaVistos
+                  ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                  : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+              }`}>
+                {omitirYaVistos ? 'Evita duplicados' : 'Registrar 2ª vez'}
               </span>
             </button>
-          )}
-
-          <button
-            type="button"
-            onClick={todasSeleccionadas ? onDeseleccionarTodas : onSeleccionarTodas}
-            className="px-3 py-1.5 rounded-xl text-xs font-black bg-white dark:bg-white/10 hover:bg-neutral-100 dark:hover:bg-white/20 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-white/10 transition cursor-pointer flex items-center gap-1.5 shadow-xs"
-          >
-            <ListChecks className="w-3.5 h-3.5 text-rose-500" />
-            <span>{todasSeleccionadas ? 'Deseleccionar todas' : 'Marcar todas'}</span>
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Asistente interactivo de distribución (se muestra aquí arriba de las temporadas) */}
