@@ -55,6 +55,15 @@ export default function SlidePlataformas({ stats, onSiguiente }) {
         glowColor: 'rgba(56,189,248,0.3)'
       };
     }
+    if (n.includes('paramount')) {
+      return {
+        badgeBg: 'bg-blue-700 text-white',
+        barColor: 'from-blue-600 to-sky-700',
+        borderColor: 'border-blue-500/50',
+        textColor: 'text-sky-300',
+        glowColor: 'rgba(37,99,235,0.3)'
+      };
+    }
     return {
       badgeBg: 'bg-emerald-500 text-black',
       barColor: 'from-emerald-400 to-teal-600',

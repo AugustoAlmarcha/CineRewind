@@ -272,6 +272,7 @@ const obtenerProveedoresStreaming = async (req, res) => {
         if (nom.includes('max') || nom.includes('hbo')) return 'Max';
         if (nom.includes('disney')) return 'Disney+';
         if (nom.includes('amazon') || nom.includes('prime')) return 'Prime Video';
+        if (nom.includes('paramount')) return 'Paramount+';
         if (nom.includes('apple')) return 'Apple TV+';
         return null;
       }).filter(Boolean);
