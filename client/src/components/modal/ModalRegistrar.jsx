@@ -224,6 +224,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     const cargarDatosTemporada = async () => {
       setCargandoEpisodios(true);
       setEpisodiosSeleccionados([]);
+      setFechasEpisodios({});
       setErrorRegistro(null);
 
       try {
@@ -307,11 +308,23 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     }
     const nuevoEstado = typeof forzar === 'boolean' ? forzar : !noRecuerdaFecha;
     setNoRecuerdaFecha(nuevoEstado);
+    // Limpiar fechas individuales fijadas para que tomen reactivamente la fecha calculada
+    setFechasEpisodios({});
     if (nuevoEstado) {
       setFechaVisto(calcularFechaEstreno(obraActual, datosTemporada, episodiosSeleccionados));
     } else {
       setFechaVisto(obtenerFechaHoyLocal());
     }
+  };
+
+  const handleCambiarFechaVisto = (nuevaFecha) => {
+    setFechaVisto(nuevaFecha);
+    // Al cambiar la fecha principal/global en la barra superior,
+    // limpiamos cualquier fecha individual previa de episodios para que
+    // todos los episodios seleccionados adopten la nueva fecha elegida
+    // y no queden "congelados" con la fecha de hoy o la fecha anterior.
+    setFechasEpisodios({});
+    setDistribucionTemporadas(null);
   };
 
   useEffect(() => {
@@ -327,11 +340,16 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
     setErrorRegistro(null);
     setEpisodiosSeleccionados((prev) => {
       if (prev.includes(num)) {
+        // Al deseleccionar, limpiar cualquier fecha manual guardada para este episodio
+        setFechasEpisodios((f) => {
+          if (!f[num]) return f;
+          const clon = { ...f };
+          delete clon[num];
+          return clon;
+        });
         return prev.filter((e) => e !== num);
       } else {
-        if (!fechasEpisodios[num]) {
-          setFechasEpisodios((f) => ({ ...f, [num]: fechaVisto || obtenerFechaHoyLocal() }));
-        }
+        // Al seleccionar, no fijamos fechasEpisodios para que herede dinámicamente fechaVisto (o la nueva fecha que elija el usuario)
         return [...prev, num];
       }
     });
@@ -459,14 +477,8 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
       seleccion = episodiosSeleccionados.length === todos.length ? [] : todos;
     }
 
-    if (seleccion.length > 0) {
-      setFechasEpisodios((prev) => {
-        const clon = { ...prev };
-        seleccion.forEach((num) => {
-          if (!clon[num]) clon[num] = fechaVisto || obtenerFechaHoyLocal();
-        });
-        return clon;
-      });
+    if (seleccion.length === 0) {
+      setFechasEpisodios({});
     }
     setEpisodiosSeleccionados(seleccion);
   };
@@ -656,6 +668,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         });
         const cantGuardada = episodiosSeleccionados.length;
         setEpisodiosSeleccionados([]);
+        setFechasEpisodios({});
         setBannerExito(`¡Se registraron ${cantGuardada} capítulos! Podés seguir marcando.`);
         setTimeout(() => setBannerExito(null), 3500);
       } else {
@@ -719,7 +732,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
   const listaTemporadasNumeros = Array.from({ length: Math.max(1, totalTemporadas) }, (_, i) => i + 1);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/80 backdrop-blur-md pt-1 sm:p-4 select-none animate-fadeIn">
+    <div className="fixed inset-0 z-[10010] flex items-start sm:items-center justify-center bg-black/80 backdrop-blur-md pt-1 sm:p-4 select-none animate-fadeIn">
       <div className={`bg-[#fcfaf7] dark:bg-[#141418] border-t sm:border border-neutral-300 dark:border-white/10 rounded-t-3xl sm:rounded-3xl max-w-4xl w-full flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white transition-colors relative ${
         esSerie ? 'h-[94dvh] sm:h-[90vh]' : 'h-[92dvh] sm:h-auto sm:max-h-[90vh]'
       }`}>
@@ -833,7 +846,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
             plataforma={plataforma}
             setPlataforma={setPlataforma}
             fechaVisto={fechaVisto}
-            setFechaVisto={setFechaVisto}
+            setFechaVisto={handleCambiarFechaVisto}
             noRecuerdaFecha={noRecuerdaFecha}
             onToggleNoRecuerda={handleToggleNoRecuerda}
             amigosSeleccionados={amigosSeleccionados}

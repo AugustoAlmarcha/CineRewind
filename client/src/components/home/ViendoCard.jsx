@@ -476,7 +476,7 @@ export default function ViendoCard({
       {estaActivo && typeof document !== 'undefined' && createPortal(
         <div 
           onClick={() => onCerrarActivo && onCerrarActivo()}
-          className="sm:hidden fixed inset-0 z-[9999] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn"
+          className="sm:hidden fixed inset-0 z-[9990] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn"
         >
           <div
             onClick={(e) => e.stopPropagation()}

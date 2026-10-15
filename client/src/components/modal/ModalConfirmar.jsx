@@ -12,7 +12,7 @@ export default function ModalConfirmar({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
+    <div className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
       <div className="bg-[#fcfaf7] dark:bg-[#16161a] border border-neutral-300 dark:border-white/10 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-neutral-900 dark:text-white space-y-5">
         
         {/* Ícono de alerta */}

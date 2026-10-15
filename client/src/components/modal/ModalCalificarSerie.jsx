@@ -185,7 +185,7 @@ export default function ModalCalificarSerie({
   return createPortal(
     <div 
       onClick={onClose}
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn"
+      className="fixed inset-0 z-[10025] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn"
     >
       <div 
         onClick={(e) => e.stopPropagation()}
