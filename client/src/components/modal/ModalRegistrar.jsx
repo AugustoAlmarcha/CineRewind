@@ -59,6 +59,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
   const [noRecuerdaFecha, setNoRecuerdaFecha] = useState(false);
 
   const [episodiosYaVistos, setEpisodiosYaVistos] = useState([]);
+  const [fechasEpisodiosYaRegistrados, setFechasEpisodiosYaRegistrados] = useState({});
   const [episodiosSeleccionados, setEpisodiosSeleccionados] = useState([]);
 
   const [amigosSeleccionados, setAmigosSeleccionados] = useState([]);
@@ -242,8 +243,21 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
 
         if (!cancelado) {
           setDatosTemporada(tmdbData);
-          // Deduplicar para evitar números negativos
-          setEpisodiosYaVistos(Array.isArray(vistosData) ? Array.from(new Set(vistosData.map(Number))) : []);
+          const mapFechas = {};
+          const listaVistos = [];
+          if (Array.isArray(vistosData)) {
+            vistosData.forEach((item) => {
+              const epNum = typeof item === 'object' && item !== null ? Number(item.episodio) : Number(item);
+              if (!isNaN(epNum) && epNum > 0) {
+                listaVistos.push(epNum);
+                if (typeof item === 'object' && item !== null && item.fecha_visto) {
+                  mapFechas[epNum] = item.fecha_visto;
+                }
+              }
+            });
+          }
+          setEpisodiosYaVistos(Array.from(new Set(listaVistos)));
+          setFechasEpisodiosYaRegistrados(mapFechas);
         }
       } catch (err) {
         if (!cancelado) {
@@ -517,6 +531,41 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
       .reduce((acc, curr) => acc + (typeof curr.episodios === 'number' ? curr.episodios : 0), 0);
   }, [listaTemporadasObjetos, temporadasSeleccionadas]);
 
+  const infoPrimerCapitulo = useMemo(() => {
+    if (!esSerie) {
+      const fEstreno = fichaDetalle?.fecha_estreno || fichaDetalle?.release_date || obraActual?.fecha_estreno || obraActual?.release_date;
+      if (fEstreno) return `Estreno: ${formatearFecha(fEstreno)}`;
+      return null;
+    }
+
+    if (modoSerie === 'temporadas') {
+      const tempRef = temporadasSeleccionadas.length > 0
+        ? Math.min(...temporadasSeleccionadas)
+        : (listaTemporadasObjetos?.[0]?.temporada || 1);
+
+      const seasonObj = listaTemporadasObjetos.find((s) => s.temporada === tempRef);
+      const fTemp = seasonObj?.fecha_estreno || seasonObj?.air_date;
+
+      if (fTemp) {
+        return `T${tempRef} cap. 1: ${formatearFecha(fTemp)}`;
+      }
+      return `T${tempRef}`;
+    }
+
+    if (modoSerie === 'capitulos') {
+      const tempRef = temporadaSeleccionada || 1;
+      const primerEp = datosTemporada?.episodios?.[0];
+      const fPrimerEp = primerEp?.fecha_estreno || primerEp?.air_date || datosTemporada?.fecha_estreno || datosTemporada?.air_date;
+      
+      if (fPrimerEp) {
+        return `T${tempRef} cap. 1: ${formatearFecha(fPrimerEp)}`;
+      }
+      return `T${tempRef}`;
+    }
+
+    return null;
+  }, [esSerie, modoSerie, temporadasSeleccionadas, temporadaSeleccionada, listaTemporadasObjetos, datosTemporada, fichaDetalle, obraActual]);
+
   // Guardar múltiples temporadas en lote (1 solo clic para varias temporadas)
   const handleGuardarTemporadasMultiples = async () => {
     if (!usuario) {
@@ -732,9 +781,9 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
   const listaTemporadasNumeros = Array.from({ length: Math.max(1, totalTemporadas) }, (_, i) => i + 1);
 
   return (
-    <div className="fixed inset-0 z-[10010] flex items-start sm:items-center justify-center bg-black/80 backdrop-blur-md pt-1 sm:p-4 select-none animate-fadeIn">
-      <div className={`bg-[#fcfaf7] dark:bg-[#141418] border-t sm:border border-neutral-300 dark:border-white/10 rounded-t-3xl sm:rounded-3xl max-w-4xl w-full flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white transition-colors relative ${
-        esSerie ? 'h-[94dvh] sm:h-[90vh]' : 'h-[92dvh] sm:h-auto sm:max-h-[90vh]'
+    <div className="fixed inset-0 z-[10010] flex items-center justify-center bg-black/80 backdrop-blur-md p-2 sm:p-4 md:p-6 select-none animate-fadeIn">
+      <div className={`bg-[#fcfaf7] dark:bg-[#141418] border border-neutral-300 dark:border-white/10 rounded-2xl sm:rounded-3xl max-w-4xl md:max-w-3xl lg:max-w-4xl w-full flex flex-col shadow-2xl overflow-hidden text-neutral-900 dark:text-white transition-colors relative ${
+        esSerie ? 'h-[95dvh] sm:h-[88vh] max-h-[850px]' : 'h-[92dvh] sm:h-auto sm:max-h-[88vh] max-h-[850px]'
       }`}>
         
         {/* Cabecera Principal */}
@@ -855,6 +904,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
             setVistoConTexto={setVistoConTexto}
             repartoActores={esSerie ? repartoActores : []}
             onSeleccionarActor={(actor) => setActorParaFilmografia(actor)}
+            infoPrimerCapitulo={infoPrimerCapitulo}
           />
 
           {!esSerie ? (
@@ -912,6 +962,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                     seasons={listaTemporadasObjetos}
                     temporadasSeleccionadas={temporadasSeleccionadas}
                     progresoTemporadas={progresoTemporadas}
+                    fechasTemporadasRegistradas={progresoTemporadas?._fechas_temporadas}
                     posterFallback={obraActual?.poster_path}
                     onToggleTemporada={toggleTemporadaSeleccionada}
                     onSeleccionarTodas={handleSeleccionarTodasTemporadas}
@@ -998,6 +1049,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                       onVerActoresCapitulo={handleVerActoresCapitulo}
                       noRecuerdaFecha={noRecuerdaFecha}
                       fechasEpisodios={fechasEpisodios}
+                      fechasEpisodiosYaRegistrados={fechasEpisodiosYaRegistrados}
                       onCambiarFechaEpisodio={handleCambiarFechaEpisodio}
                       fechaDefecto={fechaVisto}
                     />

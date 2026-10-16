@@ -472,13 +472,17 @@ const obtenerEpisodiosVistosTemporada = async (req, res) => {
 
   try {
     const query = `
-      SELECT DISTINCT h.episodio 
+      SELECT DISTINCT h.episodio, h.fecha_visto 
       FROM historial_visualizaciones h
       INNER JOIN obras_catalogo o ON h.obra_id = o.id
-      WHERE h.usuario_id = $1 AND o.tmdb_id = $2 AND h.temporada = $3;
+      WHERE h.usuario_id = $1 AND o.tmdb_id = $2 AND h.temporada = $3
+      ORDER BY h.episodio ASC;
     `;
     const resultado = await pool.query(query, [usuario_id, tmdb_id, temporada]);
-    const vistos = resultado.rows.map((r) => r.episodio);
+    const vistos = resultado.rows.map((r) => ({
+      episodio: Number(r.episodio),
+      fecha_visto: r.fecha_visto ? String(r.fecha_visto).split('T')[0] : null,
+    }));
     res.json(vistos);
   } catch (error) {
     console.error('Error al consultar episodios vistos:', error.message);
@@ -1785,7 +1789,11 @@ const obtenerProgresoTemporadasSerie = async (req, res) => {
 
   try {
     const q = `
-      SELECT h.temporada, COUNT(DISTINCT h.episodio) as total_vistos
+      SELECT 
+        h.temporada, 
+        COUNT(DISTINCT h.episodio) as total_vistos,
+        MIN(h.fecha_visto) as fecha_min,
+        MAX(h.fecha_visto) as fecha_max
       FROM historial_visualizaciones h
       INNER JOIN obras_catalogo o ON h.obra_id = o.id
       WHERE h.usuario_id = $1 AND o.tmdb_id = $2 AND h.temporada IS NOT NULL
@@ -1794,9 +1802,19 @@ const obtenerProgresoTemporadasSerie = async (req, res) => {
     const resultado = await pool.query(q, [usuario_id, tmdbIdNum]);
     
     const progreso = {};
+    const infoFechas = {};
     resultado.rows.forEach((r) => {
-      progreso[Number(r.temporada)] = Number(r.total_vistos);
+      const tempNum = Number(r.temporada);
+      const total = Number(r.total_vistos);
+      progreso[tempNum] = total;
+      infoFechas[tempNum] = {
+        total_vistos: total,
+        fecha_min: r.fecha_min ? String(r.fecha_min).split('T')[0] : null,
+        fecha_max: r.fecha_max ? String(r.fecha_max).split('T')[0] : null,
+      };
     });
+
+    progreso._fechas_temporadas = infoFechas;
 
     res.json(progreso);
   } catch (error) {
@@ -1830,4 +1848,4 @@ module.exports = {
   asignarAcompananteLoteSerie,
   eliminarCalificacionSerie,
   eliminarReseniaVisualizacion,
-};
+};

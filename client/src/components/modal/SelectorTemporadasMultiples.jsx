@@ -1,5 +1,6 @@
 import React from 'react';
 import { Check, ChevronRight, Layers, ListChecks, CheckCircle2, Clock, Calendar, SkipForward } from 'lucide-react';
+import { formatearFecha } from '../../utils/fechas';
 
 export default function SelectorTemporadasMultiples({
   seasons = [],
@@ -9,6 +10,7 @@ export default function SelectorTemporadasMultiples({
   onDeseleccionarTodas,
   onVerEpisodiosDeTemporada,
   progresoTemporadas = {},
+  fechasTemporadasRegistradas = null,
   posterFallback = null,
   onAbrirDistribuir,
   panelDistribuirAbierto = false,
@@ -173,30 +175,53 @@ export default function SelectorTemporadasMultiples({
                   </p>
 
                   {/* Insignia visual del estado de avance en tu cuenta */}
-                  <div>
-                    {estaCompletada ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                        <CheckCircle2 className="w-3 h-3 shrink-0" />
-                        <span>Ya vista ({vistos}/{totalCaps})</span>
-                      </span>
-                    ) : enProgreso ? (
-                      <div className="space-y-1">
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                          <Clock className="w-3 h-3 shrink-0" />
-                          <span>En progreso ({vistos}/{totalCaps})</span>
+                  <div className="space-y-1">
+                    <div>
+                      {estaCompletada ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                          <CheckCircle2 className="w-3 h-3 shrink-0" />
+                          <span>Ya vista ({vistos}/{totalCaps})</span>
                         </span>
-                        <div className="w-24 h-1.5 bg-neutral-200 dark:bg-white/10 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-amber-500 rounded-full" 
-                            style={{ width: `${Math.min(100, (vistos / totalCaps) * 100)}%` }} 
-                          />
+                      ) : enProgreso ? (
+                        <div className="space-y-1">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                            <Clock className="w-3 h-3 shrink-0" />
+                            <span>En progreso ({vistos}/{totalCaps})</span>
+                          </span>
+                          <div className="w-24 h-1.5 bg-neutral-200 dark:bg-white/10 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-amber-500 rounded-full" 
+                              style={{ width: `${Math.min(100, (vistos / totalCaps) * 100)}%` }} 
+                            />
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <span className="inline-block text-[10px] font-bold text-neutral-400 dark:text-neutral-500">
-                        Sin ver aún
-                      </span>
-                    )}
+                      ) : (
+                        <span className="inline-block text-[10px] font-bold text-neutral-400 dark:text-neutral-500">
+                          Sin ver aún
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Fecha de guardado en tu cuenta personal (no fecha de estreno) */}
+                    {(() => {
+                      const fInfo = fechasTemporadasRegistradas?.[num] || progresoTemporadas?._fechas_temporadas?.[num];
+                      if (!fInfo?.fecha_min) return null;
+                      const fMin = fInfo.fecha_min;
+                      const fMax = fInfo.fecha_max || fMin;
+                      return (
+                        <div 
+                          className="inline-flex items-center gap-1 text-[10px] text-neutral-600 dark:text-neutral-400 font-mono bg-neutral-200/50 dark:bg-white/5 px-2 py-0.5 rounded-md border border-neutral-300/60 dark:border-white/10"
+                          title={`Fecha en que guardaste esta temporada en tu cuenta (no estreno): del ${formatearFecha(fMin)} al ${formatearFecha(fMax)}`}
+                        >
+                          <Calendar className="w-3 h-3 text-rose-500 shrink-0" />
+                          <span>
+                            {fMax && fMax !== fMin
+                              ? `Guardada: del ${formatearFecha(fMin)} al ${formatearFecha(fMax)}`
+                              : `Guardada: ${formatearFecha(fMin)}`}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

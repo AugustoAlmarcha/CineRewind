@@ -19,10 +19,12 @@ export default function ListaEpisodios({
   onVerActoresCapitulo,
   noRecuerdaFecha = false,
   fechasEpisodios = {},
+  fechasEpisodiosYaRegistrados = {},
   onCambiarFechaEpisodio,
   fechaDefecto = '',
 }) {
   const [episodioExpandido, setEpisodioExpandido] = useState(null);
+  const [popoverAbiertoEp, setPopoverAbiertoEp] = useState(null);
 
   const vistosSet = useMemo(() => {
     return new Set((episodiosYaVistos || []).map(Number));
@@ -48,17 +50,20 @@ export default function ListaEpisodios({
         const yaVisto = vistosSet.has(Number(num));
         const estaSeleccionado = episodiosSeleccionados.includes(num);
         const estaExpandido = episodioExpandido === num;
+        const estaPopoverAbierto = popoverAbiertoEp === num;
         const fechaEmision = ep.fecha_estreno || ep.air_date;
 
         return (
           <div
             key={num}
-            className={`rounded-2xl border transition-all duration-200 overflow-hidden select-none ${
-              estaSeleccionado
-                ? 'bg-rose-500/10 border-rose-500/50 dark:bg-rose-950/30 dark:border-rose-500/50 shadow-md ring-1 ring-rose-500/30'
-                : yaVisto
-                  ? 'bg-emerald-500/[0.04] border-emerald-500/25 dark:bg-emerald-950/15 dark:border-emerald-500/20 hover:border-emerald-500/40'
-                  : 'bg-white dark:bg-[#181820] border-neutral-200 dark:border-white/5 hover:border-neutral-300 dark:hover:border-white/15 shadow-xs'
+            className={`rounded-2xl border transition-all duration-200 select-none relative ${
+              estaPopoverAbierto
+                ? 'z-[60] bg-rose-500/10 border-rose-500/60 shadow-xl ring-2 ring-rose-500/40'
+                : estaSeleccionado
+                  ? 'bg-rose-500/10 border-rose-500/50 dark:bg-rose-950/30 dark:border-rose-500/50 shadow-md ring-1 ring-rose-500/30 z-10'
+                  : yaVisto
+                    ? 'bg-emerald-500/[0.04] border-emerald-500/25 dark:bg-emerald-950/15 dark:border-emerald-500/20 hover:border-emerald-500/40 z-0'
+                    : 'bg-white dark:bg-[#181820] border-neutral-200 dark:border-white/5 hover:border-neutral-300 dark:hover:border-white/15 shadow-xs z-0'
             }`}
           >
             {/* Fila principal */}
@@ -166,13 +171,28 @@ export default function ListaEpisodios({
                         onSeleccionarFecha={(f) => onCambiarFechaEpisodio && onCambiarFechaEpisodio(num, f)}
                         tamano="compacto"
                         align="right"
+                        onOpenChange={(estaAbierto) => setPopoverAbiertoEp(estaAbierto ? num : null)}
                       />
                     )}
                   </div>
                 ) : yaVisto ? (
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 rounded-md">
-                    Visto
-                  </span>
+                  <div className="flex flex-col items-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 rounded-md flex items-center gap-1">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      <span>Visto</span>
+                    </span>
+                    {fechasEpisodiosYaRegistrados && fechasEpisodiosYaRegistrados[num] && (
+                      <span 
+                        className="text-[9px] text-neutral-500 dark:text-neutral-400 font-mono tracking-tight flex items-center gap-0.5" 
+                        title={`Guardado en tu historial el ${formatearFecha(fechasEpisodiosYaRegistrados[num])} (no estreno)`}
+                      >
+                        <span className="opacity-70">Guardado:</span>
+                        <span className="font-bold text-neutral-700 dark:text-neutral-300">
+                          {formatearFecha(fechasEpisodiosYaRegistrados[num])}
+                        </span>
+                      </span>
+                    )}
+                  </div>
                 ) : null}
 
                 <div 
@@ -190,7 +210,7 @@ export default function ListaEpisodios({
 
             {/* Vista expandida: Sinopsis completa */}
             {estaExpandido && (
-              <div className="px-3.5 pb-3.5 pt-2 border-t border-neutral-200/80 dark:border-white/5 bg-neutral-50/80 dark:bg-white/[0.02] space-y-3 animate-fadeIn">
+              <div className="px-3.5 pb-3.5 pt-2 border-t border-neutral-200/80 dark:border-white/5 bg-neutral-50/80 dark:bg-white/[0.02] space-y-3 animate-fadeIn rounded-b-2xl">
                 {ep.still_path && (
                   <div className="w-full max-h-48 rounded-xl overflow-hidden relative shadow-md">
                     <img 

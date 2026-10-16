@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import SelectorAmigosEtiquetar from './SelectorAmigosEtiquetar';
 import GaleriaRepartoPrincipal from './GaleriaRepartoPrincipal';
-import { Calendar, Tv, Users, Clapperboard, ChevronDown, ChevronUp, X, Check } from 'lucide-react';
+import { Calendar, Tv, Users, Clapperboard, ChevronDown, ChevronUp, X, Check, Sparkles } from 'lucide-react';
 import { obtenerFechaHoyLocal, obtenerFechaAyerLocal, formatearFecha } from '../../utils/fechas';
 
 const PLATAFORMAS = [
@@ -38,6 +38,7 @@ export default function BarraConfiguracionRegistro({
   setFechaVisto,
   noRecuerdaFecha,
   onToggleNoRecuerda,
+  infoPrimerCapitulo = null,
   amigosSeleccionados = [],
   setAmigosSeleccionados,
   vistoConTexto = '',
@@ -212,11 +213,19 @@ export default function BarraConfiguracionRegistro({
         </div>
 
         {noRecuerdaFecha && (
-          <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium pl-0.5 animate-fadeIn">
-            {esSerie
-              ? 'Usando la fecha oficial de emisión de cada capítulo (TMDb).'
-              : 'Usando la fecha oficial de estreno (TMDb).'}
-          </p>
+          <div className="flex items-center gap-2 flex-wrap text-[11px] text-amber-600 dark:text-amber-400 font-medium pl-0.5 animate-fadeIn">
+            <span>
+              {esSerie
+                ? 'Usando la fecha oficial de emisión de cada capítulo (TMDb).'
+                : 'Usando la fecha oficial de estreno (TMDb).'}
+            </span>
+            {infoPrimerCapitulo && (
+              <span className="inline-flex items-center gap-1 font-bold text-amber-800 dark:text-amber-200 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-md shadow-2xs">
+                <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+                <span>{infoPrimerCapitulo}</span>
+              </span>
+            )}
+          </div>
         )}
       </div>
 
