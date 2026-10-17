@@ -171,7 +171,7 @@ const generarPlantillaRecuperacionHTML = ({ nombre, urlRestablecimiento }) => {
  * @param {string} params.token - Token único generado
  */
 const enviarEmailRecuperacion = async ({ destinatario, nombre, token }) => {
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const baseUrl = process.env.FRONTEND_URL || 'https://cinerewind.com.ar';
   const urlRestablecimiento = `${baseUrl}/restablecer-password?token=${encodeURIComponent(token)}`;
   const htmlContenido = generarPlantillaRecuperacionHTML({ nombre, urlRestablecimiento });
 

@@ -36,7 +36,6 @@ export default function ModalAuth({ isOpen, onClose }) {
   // Estados Recuperación de Contraseña
   const [emailRecuperacion, setEmailRecuperacion] = useState('');
   const [mensajeExitoRecuperacion, setMensajeExitoRecuperacion] = useState(null);
-  const [enlacePruebaRecuperacion, setEnlacePruebaRecuperacion] = useState(null);
 
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
@@ -175,14 +174,10 @@ export default function ModalAuth({ isOpen, onClose }) {
     setError(null);
     setEnviando(true);
     setMensajeExitoRecuperacion(null);
-    setEnlacePruebaRecuperacion(null);
 
     try {
       const data = await solicitarRecuperacionAPI(emailRecuperacion.trim());
       setMensajeExitoRecuperacion(data.mensaje);
-      if (data.enlacePrueba) {
-        setEnlacePruebaRecuperacion(data.enlacePrueba);
-      }
     } catch (err) {
       setError(err.message || 'No se pudo enviar el correo de recuperación');
     } finally {
@@ -272,28 +267,14 @@ export default function ModalAuth({ isOpen, onClose }) {
             {mensajeExitoRecuperacion ? (
               <div className="space-y-4 animate-fadeIn">
                 <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium rounded-2xl space-y-2 leading-relaxed">
-                  <div className="flex items-center gap-2 font-bold text-sm text-emerald-300">
-                    <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-                    <span>¡Correo enviado con éxito!</span>
+                  <div className="flex items-center gap-2 font-bold text-sm text-emerald-400">
+                    <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-500" />
+                    <span>¡Solicitud enviada!</span>
                   </div>
-                  <p>{mensajeExitoRecuperacion}</p>
+                  <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                    {mensajeExitoRecuperacion || 'Si tu correo electrónico está registrado, recibirás un enlace para restablecer tu contraseña en unos momentos. Revisa tu bandeja de entrada y la carpeta de spam.'}
+                  </p>
                 </div>
-
-                {/* Enlace de prueba si estamos en desarrollo local */}
-                {enlacePruebaRecuperacion && (
-                  <div className="p-3 bg-amber-400/10 border border-amber-400/20 rounded-2xl space-y-1.5">
-                    <p className="text-[11px] font-bold text-amber-400">
-                      🛠️ Modo Pruebas Local:
-                    </p>
-                    <a
-                      href={enlacePruebaRecuperacion}
-                      onClick={onClose}
-                      className="block text-xs text-rose-400 hover:text-rose-300 underline font-bold break-all"
-                    >
-                      Abrir pantalla de restablecimiento ahora →
-                    </a>
-                  </div>
-                )}
 
                 <button
                   type="button"

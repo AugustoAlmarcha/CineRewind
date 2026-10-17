@@ -551,24 +551,19 @@ const solicitarRecuperacionPassword = async (req, res) => {
     );
 
     try {
-      const resultadoEnvio = await enviarEmailRecuperacion({
+      await enviarEmailRecuperacion({
         destinatario: usuario.email,
         nombre: usuario.nombre,
         token
       });
-
-      res.json({
-        mensaje: 'Enlace de recuperación enviado con éxito. Revisa tu bandeja de entrada o spam.',
-        enlacePrueba: resultadoEnvio.enlacePrueba || null
-      });
     } catch (errEnvio) {
-      console.warn('[Aviso Envío Email]:', errEnvio.message);
-      const urlPrueba = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/restablecer-password?token=${encodeURIComponent(token)}`;
-      res.json({
-        mensaje: 'Se generó tu enlace de recuperación. Si tu cuenta de Resend está en modo prueba, recuerda que solo envía al correo con el que te registraste en Resend.',
-        enlacePrueba: urlPrueba
-      });
+      console.warn('[Aviso Envío Email Recuperación]:', errEnvio.message);
     }
+
+    // Por seguridad y privacidad, respondemos siempre un mensaje estándar sin exponer tokens al cliente
+    res.json({
+      mensaje: 'Si el correo electrónico está registrado, recibirás un enlace para restablecer tu contraseña en unos momentos. Revisa tu bandeja de entrada y la carpeta de spam.'
+    });
   } catch (error) {
     console.error('Error al solicitar recuperación de contraseña:', error);
     res.status(500).json({ error: 'No se pudo procesar la solicitud de recuperación' });
