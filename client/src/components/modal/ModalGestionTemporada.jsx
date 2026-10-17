@@ -226,7 +226,7 @@ export default function ModalGestionTemporada({
         if (ep.still_path) fotosMapa[ep.numero] = ep.still_path;
       });
 
-      // 2. Guardar cada lote por fecha
+      // 2. Guardar cada lote por fecha sin modificar ni agregar a Viendo actualmente
       for (const [fecha, datosGrupo] of Object.entries(gruposPorFecha)) {
         await registrarLoteAPI({
           usuario_id: usuario.id,
@@ -241,6 +241,8 @@ export default function ModalGestionTemporada({
           total_episodios_temporada: listaEpisodiosCompletos.length,
           amigos_etiquetados: datosGrupo.amigos,
           visto_con_texto: datosGrupo.visto_con_texto,
+          no_actualizar_seguimiento: true,
+          desactivar_seguimiento: true,
         });
       }
 

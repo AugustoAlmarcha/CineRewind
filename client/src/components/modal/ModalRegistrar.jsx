@@ -26,7 +26,7 @@ import ModalFilmografiaActor from './ModalFilmografiaActor';
 import ModalActoresEpisodio from './ModalActoresEpisodio';
 import ModalCalificarSerie from './ModalCalificarSerie';
 import PanelAsistenteDistribucion from './PanelAsistenteDistribucion';
-import { Bookmark, Check, X, AlertCircle, Play, Layers, Tv, Calendar, CheckCircle2 } from 'lucide-react';
+import { Bookmark, Check, X, AlertCircle, Play, Layers, Tv, Calendar, CheckCircle2, Sparkles } from 'lucide-react';
 
 export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, onCambiarObra }) {
   const { usuario } = useAuth();
@@ -82,6 +82,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
   const [modoDistribucion, setModoDistribucion] = useState('ritmo'); // 'ritmo' | 'rango'
   const [fechaFinDistribuir, setFechaFinDistribuir] = useState(() => obtenerFechaHoyLocal());
   const [omitirYaVistos, setOmitirYaVistos] = useState(true);
+  const [omitirSeguimiento, setOmitirSeguimiento] = useState(false);
   const [bannerExito, setBannerExito] = useState(null);
 
   // Cargar progreso de visualización de cada temporada de la serie
@@ -486,6 +487,10 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         .map((ep) => ep.episodio_numero)
         .filter((num) => !episodiosYaVistos.includes(num));
       seleccion = episodiosSeleccionados.length === faltantes.length ? [] : faltantes;
+      // Al rellenar capítulos restantes, omitimos por defecto el carrusel de Viendo Actualmente
+      if (seleccion.length > 0) {
+        setOmitirSeguimiento(true);
+      }
     } else {
       const todos = datosTemporada.episodios.map((ep) => ep.episodio_numero);
       seleccion = episodiosSeleccionados.length === todos.length ? [] : todos;
@@ -493,6 +498,7 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
 
     if (seleccion.length === 0) {
       setFechasEpisodios({});
+      setOmitirSeguimiento(false);
     }
     setEpisodiosSeleccionados(seleccion);
   };
@@ -590,6 +596,8 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         omitir_ya_vistos: omitirYaVistos,
         amigos_etiquetados: amigosSeleccionados,
         visto_con_texto: vistoConTexto.trim() || null,
+        no_actualizar_seguimiento: omitirSeguimiento,
+        desactivar_seguimiento: omitirSeguimiento,
       });
 
       if (plataforma && plataforma !== 'Sin plataforma') {
@@ -675,6 +683,8 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
         total_episodios_temporada: datosTemporada?.episodios?.length || null,
         amigos_etiquetados: amigosSeleccionados,
         visto_con_texto: vistoConTexto.trim() || null,
+        no_actualizar_seguimiento: omitirSeguimiento,
+        desactivar_seguimiento: omitirSeguimiento,
       });
 
       if (plataforma && plataforma !== 'Sin plataforma') {
@@ -1102,6 +1112,25 @@ export default function ModalRegistrar({ obra, onClose, onRegistroCompletado, on
                   </span>
                 </>
               )}
+              <div className="mt-1">
+                <button
+                  type="button"
+                  onClick={() => setOmitirSeguimiento(!omitirSeguimiento)}
+                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer border ${
+                    omitirSeguimiento
+                      ? 'bg-amber-500/15 border-amber-500/30 text-amber-600 dark:text-amber-400'
+                      : 'bg-neutral-200/50 dark:bg-white/5 border-neutral-300 dark:border-white/10 text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+                  }`}
+                  title="Al activar este modo, los capítulos se guardan en tu historial pero no alteran ni agregan nada a «Viendo actualmente»"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+                  <span>
+                    {omitirSeguimiento 
+                      ? 'Solo rellenar historial (no añade a Viendo actualmente)' 
+                      : 'Añadir al carrusel Viendo actualmente'}
+                  </span>
+                </button>
+              </div>
             </div>
 
             {modoSerie === 'temporadas' ? (

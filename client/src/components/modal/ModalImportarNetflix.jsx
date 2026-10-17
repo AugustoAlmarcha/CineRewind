@@ -8,7 +8,8 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  ExternalLink
+  ExternalLink,
+  FileText
 } from 'lucide-react';
 
 export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar }) {
@@ -26,6 +27,7 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
   const [error, setError] = useState(null);
   const [mostrarDetalleOmitidos, setMostrarDetalleOmitidos] = useState(false);
   const [mostrarGuia, setMostrarGuia] = useState(false);
+  const [arrastrando, setArrastrando] = useState(false);
   const inputRef = useRef(null);
 
   const handleCerrarModal = () => {
@@ -40,19 +42,64 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
     setError(null);
     setMostrarDetalleOmitidos(false);
     setMostrarGuia(false);
+    setArrastrando(false);
     if (alCerrar) alCerrar();
   };
 
-  const handleArchivoSeleccionado = (e) => {
-    const file = e.target.files[0];
-    if (file && (file.name.endsWith('.csv') || file.type.includes('csv'))) {
+  const validarYEstablecerArchivo = (file) => {
+    if (!file) return;
+    const nombre = file.name ? file.name.toLowerCase() : '';
+    const tipo = file.type ? file.type.toLowerCase() : '';
+    const esCSV = nombre.endsWith('.csv') || tipo.includes('csv') || tipo.includes('text');
+    
+    if (esCSV) {
       setArchivo(file);
       setError(null);
       setResumen(null);
       setItemsOmitidos([]);
       setMostrarDetalleOmitidos(false);
     } else {
-      setError('Por favor selecciona un archivo .csv válido');
+      setError('Por favor arrastra o selecciona un archivo .csv válido');
+    }
+  };
+
+  const handleArchivoSeleccionado = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      validarYEstablecerArchivo(file);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  };
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setArrastrando(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget && e.relatedTarget && e.currentTarget.contains(e.relatedTarget)) {
+      return;
+    }
+    setArrastrando(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setArrastrando(false);
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) {
+      validarYEstablecerArchivo(file);
     }
   };
 
@@ -153,8 +200,15 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
       }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-white dark:bg-[#141419] rounded-3xl p-6 sm:p-7 border border-neutral-200 dark:border-white/10 shadow-2xl space-y-6 scrollbar-thin">
+    <div 
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn"
+    >
+      <div 
+        onDragOver={handleDragOver}
+        className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-white dark:bg-[#141419] rounded-3xl p-6 sm:p-7 border border-neutral-200 dark:border-white/10 shadow-2xl space-y-6 scrollbar-thin"
+      >
         
         {/* Cabecera Principal */}
         <div className="flex items-center justify-between border-b border-neutral-200 dark:border-white/10 pb-4">
@@ -188,31 +242,63 @@ export default function ModalImportarNetflix({ abierto, alCerrar, alCompletar })
               className="hidden"
             />
 
+            {/* Zona de Drop & Click Interactiva */}
             <div
               onClick={() => inputRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-all ${
-                archivo 
-                  ? 'border-red-500 bg-red-500/5' 
-                  : 'border-neutral-300 dark:border-white/15 hover:border-red-500'
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-2xl p-7 text-center cursor-pointer transition-all duration-200 select-none ${
+                arrastrando
+                  ? 'border-red-500 bg-red-500/15 scale-[1.02] shadow-xl ring-4 ring-red-500/20'
+                  : archivo 
+                  ? 'border-emerald-500/70 bg-emerald-500/5 dark:bg-emerald-500/10 hover:border-emerald-500' 
+                  : 'border-neutral-300 dark:border-white/15 hover:border-red-500 hover:bg-neutral-50 dark:hover:bg-white/[0.02]'
               }`}
             >
-              <div className="text-3xl mb-2">📁</div>
-              {archivo ? (
-                <div>
-                  <p className="text-sm font-bold text-neutral-900 dark:text-white truncate">
+              {arrastrando ? (
+                <div className="animate-pulse py-2">
+                  <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                    <Upload className="w-6 h-6 animate-bounce" />
+                  </div>
+                  <p className="text-sm font-black text-red-600 dark:text-red-400">
+                    ¡Suelta tu archivo .csv aquí!
+                  </p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                    Lo cargaremos de inmediato
+                  </p>
+                </div>
+              ) : archivo ? (
+                <div className="py-1">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-black text-neutral-900 dark:text-white truncate max-w-[280px] mx-auto">
                     {archivo.name}
                   </p>
-                  <p className="text-xs font-mono text-neutral-400 mt-1">
-                    {(archivo.size / 1024).toFixed(1)} KB listo para importar
+                  <div className="flex items-center justify-center gap-2 mt-1">
+                    <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/15 px-2 py-0.5 rounded-md">
+                      {(archivo.size / 1024).toFixed(1)} KB listo
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-2.5 hover:text-red-500 transition-colors underline">
+                    Haz clic o arrastra otro archivo para cambiarlo
                   </p>
                 </div>
               ) : (
-                <div>
-                  <p className="text-sm font-bold text-neutral-800 dark:text-neutral-200">
-                    Selecciona tu archivo <span className="text-red-500">.csv</span>
+                <div className="py-1 group">
+                  <div className="w-12 h-12 rounded-2xl bg-neutral-100 dark:bg-white/5 text-neutral-500 group-hover:text-red-500 group-hover:bg-red-500/10 flex items-center justify-center mx-auto mb-3 transition-colors">
+                    <Upload className="w-6 h-6 transition-transform group-hover:-translate-y-0.5" />
+                  </div>
+                  <p className="text-sm font-black text-neutral-800 dark:text-neutral-200">
+                    Arrastra tu archivo <span className="text-red-500">.csv</span> aquí
                   </p>
-                  <p className="text-xs text-neutral-400 mt-1">
-                    Exportado desde Netflix o plataformas compatibles
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                    o haz clic para buscarlo en tu equipo
+                  </p>
+                  <p className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 mt-2.5">
+                    Compatible con NetflixViewingHistory.csv
                   </p>
                 </div>
               )}

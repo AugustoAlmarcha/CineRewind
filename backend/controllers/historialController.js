@@ -139,7 +139,15 @@ const registrarVisualizacion = async (req, res) => {
       }
     }
 
-    if (tipo.toLowerCase() === 'serie' && tempNum !== null && epNum !== null) {
+    const noActualizarSeguimiento = Boolean(req.body.no_actualizar_seguimiento || req.body.omitir_seguimiento);
+    const desactivarSeguimiento = Boolean(req.body.desactivar_seguimiento);
+
+    if (desactivarSeguimiento) {
+      await pool.query(
+        'UPDATE seguimiento_series SET activo = false, actualizado_en = CURRENT_TIMESTAMP WHERE usuario_id = $1 AND obra_id = $2;',
+        [usuario_id, obra_id]
+      );
+    } else if (!noActualizarSeguimiento && tipo.toLowerCase() === 'serie' && tempNum !== null && epNum !== null) {
       const fechaRegistro = resHistorial.rows[0].creado_en;
 
       await pool.query(
@@ -148,7 +156,6 @@ const registrarVisualizacion = async (req, res) => {
          ON CONFLICT (usuario_id, obra_id) DO UPDATE SET 
             activo = true,
             fecha_reinicio = CASE 
-              WHEN seguimiento_series.activo = false THEN $5
               WHEN $3 = 1 AND $4 = 1 THEN $5
               ELSE COALESCE(seguimiento_series.fecha_reinicio, $5)
             END,
@@ -430,23 +437,32 @@ const registrarLoteVisualizaciones = async (req, res) => {
       }
     }
 
-    const incluyePrimerCapitulo = tempNum === 1 && episodiosNumeros.includes(1);
-    const fechaLote = new Date();
+    const noActualizarSeguimiento = Boolean(req.body.no_actualizar_seguimiento || req.body.omitir_seguimiento);
+    const desactivarSeguimiento = Boolean(req.body.desactivar_seguimiento);
 
-    await pool.query(
-      `INSERT INTO seguimiento_series (usuario_id, obra_id, activo, fecha_reinicio, total_episodios_temporada, actualizado_en)
-       VALUES ($1, $2, true, $4, $5, CURRENT_TIMESTAMP)
-       ON CONFLICT (usuario_id, obra_id) DO UPDATE SET 
-         activo = true,
-         total_episodios_temporada = COALESCE($5, seguimiento_series.total_episodios_temporada),
-         fecha_reinicio = CASE 
-           WHEN seguimiento_series.activo = false THEN $4
-           WHEN $3 = true THEN $4
-           ELSE COALESCE(seguimiento_series.fecha_reinicio, $4)
-         END,
-         actualizado_en = CURRENT_TIMESTAMP;`,
-      [usuario_id, obra_id, incluyePrimerCapitulo, fechaLote, totalRealTemp]
-    );
+    if (desactivarSeguimiento) {
+      await pool.query(
+        'UPDATE seguimiento_series SET activo = false, actualizado_en = CURRENT_TIMESTAMP WHERE usuario_id = $1 AND obra_id = $2;',
+        [usuario_id, obra_id]
+      );
+    } else if (!noActualizarSeguimiento) {
+      const incluyePrimerCapitulo = tempNum === 1 && episodiosNumeros.includes(1);
+      const fechaLote = new Date();
+
+      await pool.query(
+        `INSERT INTO seguimiento_series (usuario_id, obra_id, activo, fecha_reinicio, total_episodios_temporada, actualizado_en)
+         VALUES ($1, $2, true, $4, $5, CURRENT_TIMESTAMP)
+         ON CONFLICT (usuario_id, obra_id) DO UPDATE SET 
+           activo = true,
+           total_episodios_temporada = COALESCE($5, seguimiento_series.total_episodios_temporada),
+           fecha_reinicio = CASE 
+             WHEN $3 = true THEN $4
+             ELSE COALESCE(seguimiento_series.fecha_reinicio, $4)
+           END,
+           actualizado_en = CURRENT_TIMESTAMP;`,
+        [usuario_id, obra_id, incluyePrimerCapitulo, fechaLote, totalRealTemp]
+      );
+    }
 
     res.status(201).json({ 
       mensaje: `Se procesaron ${episodios.length} capítulos exitosamente.`,
@@ -1745,14 +1761,24 @@ const registrarTemporadasMultiples = async (req, res) => {
       }
     }
 
-    await client.query(
-      `INSERT INTO seguimiento_series (usuario_id, obra_id, activo, actualizado_en)
-       VALUES ($1, $2, true, CURRENT_TIMESTAMP)
-       ON CONFLICT (usuario_id, obra_id) DO UPDATE SET 
-         activo = true,
-         actualizado_en = CURRENT_TIMESTAMP;`,
-      [usuario_id, obra_id]
-    );
+    const noActualizarSeguimiento = Boolean(req.body.no_actualizar_seguimiento || req.body.omitir_seguimiento);
+    const desactivarSeguimiento = Boolean(req.body.desactivar_seguimiento);
+
+    if (desactivarSeguimiento) {
+      await client.query(
+        'UPDATE seguimiento_series SET activo = false, actualizado_en = CURRENT_TIMESTAMP WHERE usuario_id = $1 AND obra_id = $2;',
+        [usuario_id, obra_id]
+      );
+    } else if (!noActualizarSeguimiento) {
+      await client.query(
+        `INSERT INTO seguimiento_series (usuario_id, obra_id, activo, actualizado_en)
+         VALUES ($1, $2, true, CURRENT_TIMESTAMP)
+         ON CONFLICT (usuario_id, obra_id) DO UPDATE SET 
+           activo = true,
+           actualizado_en = CURRENT_TIMESTAMP;`,
+        [usuario_id, obra_id]
+      );
+    }
 
     await client.query('COMMIT');
     res.json({
